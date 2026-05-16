@@ -6,6 +6,7 @@ use App\Models\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -66,6 +67,13 @@ class RepositoryController extends Controller
         ]);
 
         // Install the webhook on GitHub.
+        $webhookUrl = rtrim((string) config('app.url'), '/').'/webhook/github';
+
+        Log::info('Installing webhook at: '.$webhookUrl, [
+            'repo'     => $data['full_name'],
+            'app_url'  => config('app.url'),
+        ]);
+
         $hookResponse = Http::withToken($user->github_token)
             ->acceptJson()
             ->post("https://api.github.com/repos/{$data['full_name']}/hooks", [
@@ -73,7 +81,7 @@ class RepositoryController extends Controller
                 'active' => true,
                 'events' => ['pull_request'],
                 'config' => [
-                    'url'          => url('/webhook/github'),
+                    'url'          => $webhookUrl,
                     'content_type' => 'json',
                     'secret'       => $webhookSecret,
                 ],
