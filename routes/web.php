@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepositoryController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -17,9 +19,9 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -29,6 +31,9 @@ Route::middleware('auth')->group(function () {
     // ── Repositories ─────────────────────────────────────────────────
     Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
     Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
+
+    // ── Reviews ──────────────────────────────────────────────────────
+    Route::get('/reviews/{pullRequest}', [ReviewController::class, 'show'])->name('reviews.show');
 });
 
 // ── GitHub Webhook ───────────────────────────────────────────────────
