@@ -18,6 +18,7 @@ class Review extends Model
         'code_quality_issues',
         'overall_score',
         'summary',
+        'suggested_fixes',
         'ai_model_used',
     ];
 
@@ -27,6 +28,7 @@ class Review extends Model
             'security_issues'     => 'array',
             'performance_issues'  => 'array',
             'code_quality_issues' => 'array',
+            'suggested_fixes'     => 'array',
             'overall_score'       => 'integer',
         ];
     }

@@ -9,20 +9,14 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    /**
-     * Render the dashboard with the user's PR review stats and recent activity.
-     */
     public function index()
     {
         $user = Auth::user();
-
         $repoIds = $user->repositories()->pluck('id');
 
         $totalRepos = $repoIds->count();
+        $totalPrs   = PullRequest::whereIn('repository_id', $repoIds)->count();
 
-        $totalPrs = PullRequest::whereIn('repository_id', $repoIds)->count();
-
-        // Average score across the user's reviews (only completed ones have scores).
         $avgScore = Review::whereHas(
             'pullRequest',
             fn ($q) => $q->whereIn('repository_id', $repoIds)
@@ -47,11 +41,26 @@ class DashboardController extends Controller
                 'score'      => $pr->review?->overall_score,
             ]);
 
+        // Score timeline — every scored PR for the user, ordered by date.
+        $timeline = Review::with('pullRequest:id,repository_id,pr_number,created_at')
+            ->whereNotNull('overall_score')
+            ->whereHas('pullRequest', fn ($q) => $q->whereIn('repository_id', $repoIds))
+            ->orderBy('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (Review $r) => [
+                'date'  => optional($r->created_at)->toIso8601String(),
+                'score' => $r->overall_score,
+                'pr'    => '#'.($r->pullRequest?->pr_number ?? '?'),
+            ])
+            ->values();
+
         return Inertia::render('Dashboard', [
             'total_repos' => $totalRepos,
             'total_prs'   => $totalPrs,
             'avg_score'   => $avgScore !== null ? round((float) $avgScore, 1) : null,
             'recent_prs'  => $recentPrs,
+            'timeline'    => $timeline,
         ]);
     }
 }

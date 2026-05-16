@@ -33,7 +33,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
 
     // ── Reviews ──────────────────────────────────────────────────────
-    Route::get('/reviews/{pullRequest}', [ReviewController::class, 'show'])->name('reviews.show');
+    Route::get('/reviews/{pullRequest}',                [ReviewController::class, 'show'])->name('reviews.show');
+    Route::post('/reviews/{pullRequest}/reanalyze',     [ReviewController::class, 'reanalyze'])->name('reviews.reanalyze');
+    Route::get('/reviews/{pullRequest}/diff',           [ReviewController::class, 'diff'])->name('reviews.diff');
+    Route::get('/reviews/{pullRequest}/pdf',            [ReviewController::class, 'pdf'])->name('reviews.pdf');
 });
 
 // ── GitHub Webhook ───────────────────────────────────────────────────

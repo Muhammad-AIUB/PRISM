@@ -1,5 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import { CategoryScale, Chart as ChartJS, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 const STATUS = {
     pending:   { label: 'Pending',   cls: 'bg-warn/10 text-warn ring-warn/30' },
@@ -68,11 +72,67 @@ function ScorePill({ score }) {
     return <span className={`font-mono text-sm font-semibold ${color}`}>{score}</span>;
 }
 
+function ScoreTimeline({ timeline = [] }) {
+    if (!timeline.length) {
+        return (
+            <div className="py-12 text-center text-sm text-ink-dim">
+                No completed reviews yet. Open a PR to see your score trend.
+            </div>
+        );
+    }
+
+    const labels = timeline.map((p) => {
+        try { return new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+        catch { return ''; }
+    });
+
+    const data = {
+        labels,
+        datasets: [{
+            label: 'Score',
+            data: timeline.map((p) => p.score),
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.15)',
+            pointBackgroundColor: '#818cf8',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            tension: 0.35,
+            fill: true,
+        }],
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1a1a24',
+                borderColor: '#262635',
+                borderWidth: 1,
+                titleColor: '#e2e8f0',
+                bodyColor: '#94a3b8',
+                callbacks: {
+                    title: (items) => timeline[items[0].dataIndex]?.pr || '',
+                    label: (item) => ` Score: ${item.parsed.y}/100`,
+                },
+            },
+        },
+        scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(38,38,53,0.5)' } },
+            y: { min: 0, max: 100, ticks: { color: '#64748b', stepSize: 25 }, grid: { color: 'rgba(38,38,53,0.5)' } },
+        },
+    };
+
+    return <div className="h-64"><Line data={data} options={options} /></div>;
+}
+
 export default function Dashboard({
     total_repos = 0,
     total_prs = 0,
     avg_score = null,
     recent_prs = [],
+    timeline = [],
 }) {
     return (
         <AuthenticatedLayout
@@ -96,6 +156,14 @@ export default function Dashboard({
                     <StatCard icon="repo"  label="Connected Repos" value={total_repos}              accent="brand" />
                     <StatCard icon="pr"    label="PRs Reviewed"     value={total_prs}                accent="ok" />
                     <StatCard icon="score" label="Average Score"    value={avg_score ?? '—'} hint="Across completed reviews" accent="warn" />
+                </div>
+
+                <div className="card p-5">
+                    <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-sm font-semibold text-ink-text">Score Timeline</h2>
+                        <span className="text-xs text-ink-faint">{timeline.length} review{timeline.length === 1 ? '' : 's'}</span>
+                    </div>
+                    <ScoreTimeline timeline={timeline} />
                 </div>
 
                 <div className="card overflow-hidden">
