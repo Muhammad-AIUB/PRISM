@@ -43,7 +43,7 @@ class ProcessPullRequestReview implements ShouldQueue
             $diff = mb_substr($diffResponse->body(), 0, 8000);
 
             // 2. Ask OpenRouter for a structured review.
-            $model = 'mistralai/mistral-7b-instruct:free';
+            $model = 'deepseek/deepseek-v4-flash:free';
 
             $systemPrompt = <<<'PROMPT'
 You are a senior software engineer reviewing a pull request.

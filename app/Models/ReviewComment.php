@@ -11,6 +11,7 @@ class ReviewComment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'review_id',
         'file_path',
         'line_number',
         'layer',

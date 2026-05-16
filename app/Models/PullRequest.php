@@ -12,6 +12,7 @@ class PullRequest extends Model
     use HasFactory;
 
     protected $fillable = [
+        'repository_id',
         'github_pr_id',
         'pr_number',
         'title',

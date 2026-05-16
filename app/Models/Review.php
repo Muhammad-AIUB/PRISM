@@ -12,6 +12,7 @@ class Review extends Model
     use HasFactory;
 
     protected $fillable = [
+        'pull_request_id',
         'security_issues',
         'performance_issues',
         'code_quality_issues',
