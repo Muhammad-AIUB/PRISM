@@ -1,39 +1,71 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
-const STATUS_STYLES = {
-    pending:   'bg-yellow-100 text-yellow-800 ring-yellow-200',
-    analyzing: 'bg-blue-100 text-blue-800 ring-blue-200',
-    completed: 'bg-green-100 text-green-800 ring-green-200',
-    failed:    'bg-red-100 text-red-800 ring-red-200',
+const STATUS = {
+    pending:   { label: 'Pending',   cls: 'bg-warn/10 text-warn ring-warn/30' },
+    analyzing: { label: 'Analyzing', cls: 'bg-brand-500/15 text-brand-300 ring-brand-500/30' },
+    completed: { label: 'Completed', cls: 'bg-ok/10 text-ok ring-ok/30' },
+    failed:    { label: 'Failed',    cls: 'bg-bad/10 text-bad ring-bad/30' },
 };
 
 function StatusBadge({ status }) {
-    const cls = STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-800 ring-gray-200';
+    const s = STATUS[status] ?? { label: status, cls: 'bg-ink-muted text-ink-dim ring-ink-border' };
+    return <span className={`badge ${s.cls}`}>{s.label}</span>;
+}
+
+function Icon({ name, className = 'h-5 w-5' }) {
+    const paths = {
+        repo:    <><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></>,
+        pr:      <><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v6"/><path d="M18 9V7a2 2 0 0 0-2-2h-3"/></>,
+        score:   <><path d="M12 2L15 8.5 22 9.3l-5 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5-4.9 7-0.8L12 2z"/></>,
+        plus:    <><path d="M12 5v14"/><path d="M5 12h14"/></>,
+    };
     return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${cls}`}>
-            {status}
-        </span>
+        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {paths[name]}
+        </svg>
     );
 }
 
-function StatCard({ label, value, hint }) {
+function StatCard({ icon, label, value, hint, accent = 'brand' }) {
+    const accents = {
+        brand: 'text-brand-400 bg-brand-500/10 ring-brand-500/20',
+        ok:    'text-ok bg-ok/10 ring-ok/20',
+        warn:  'text-warn bg-warn/10 ring-warn/20',
+    };
     return (
-        <div className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-100">
-            <p className="text-sm font-medium text-gray-500">{label}</p>
-            <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
-            {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+        <div className="card p-5">
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-xs uppercase tracking-wider text-ink-dim">{label}</p>
+                    <p className="mt-2 text-3xl font-semibold text-ink-text">{value}</p>
+                    {hint && <p className="mt-1 text-xs text-ink-faint">{hint}</p>}
+                </div>
+                <div className={`grid h-9 w-9 place-items-center rounded-btn ring-1 ${accents[accent]}`}>
+                    <Icon name={icon} className="h-4 w-4" />
+                </div>
+            </div>
         </div>
     );
 }
 
-function formatDate(iso) {
+function relative(iso) {
     if (!iso) return '—';
     try {
-        return new Date(iso).toLocaleString();
-    } catch {
-        return iso;
-    }
+        const d = new Date(iso);
+        const s = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (s < 60) return 'just now';
+        if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+        if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+        if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
+        return d.toLocaleDateString();
+    } catch { return iso; }
+}
+
+function ScorePill({ score }) {
+    if (score === null || score === undefined) return <span className="text-ink-faint">—</span>;
+    const color = score > 70 ? 'text-ok' : score >= 40 ? 'text-warn' : 'text-bad';
+    return <span className={`font-mono text-sm font-semibold ${color}`}>{score}</span>;
 }
 
 export default function Dashboard({
@@ -45,12 +77,13 @@ export default function Dashboard({
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">Dashboard</h2>
-                    <Link
-                        href="/repositories"
-                        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
-                    >
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+                        <p className="mt-1 text-sm text-ink-dim">AI-powered pull request reviews at a glance.</p>
+                    </div>
+                    <Link href="/repositories" className="btn-primary">
+                        <Icon name="plus" className="h-4 w-4" />
                         Connect Repository
                     </Link>
                 </div>
@@ -58,73 +91,60 @@ export default function Dashboard({
         >
             <Head title="Dashboard" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    {/* Stat cards */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <StatCard label="Connected Repos" value={total_repos} />
-                        <StatCard label="PRs Reviewed" value={total_prs} />
-                        <StatCard
-                            label="Average Score"
-                            value={avg_score !== null ? `${avg_score}/100` : '—'}
-                            hint="Across all completed reviews"
-                        />
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <StatCard icon="repo"  label="Connected Repos" value={total_repos}              accent="brand" />
+                    <StatCard icon="pr"    label="PRs Reviewed"     value={total_prs}                accent="ok" />
+                    <StatCard icon="score" label="Average Score"    value={avg_score ?? '—'} hint="Across completed reviews" accent="warn" />
+                </div>
+
+                <div className="card overflow-hidden">
+                    <div className="flex items-center justify-between border-b border-ink-border px-5 py-3">
+                        <h2 className="text-sm font-semibold text-ink-text">Recent Pull Requests</h2>
+                        <span className="text-xs text-ink-faint">Showing last {recent_prs.length}</span>
                     </div>
 
-                    {/* Recent PRs */}
-                    <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-100">
-                        <div className="border-b border-gray-100 px-6 py-4">
-                            <h3 className="text-base font-semibold text-gray-900">Recent Pull Requests</h3>
+                    {recent_prs.length === 0 ? (
+                        <div className="px-5 py-16 text-center">
+                            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-ink-muted text-ink-dim">
+                                <Icon name="pr" />
+                            </div>
+                            <p className="mt-4 text-sm text-ink-text">No pull requests yet.</p>
+                            <p className="mt-1 text-xs text-ink-dim">Connect a repo and open a PR to get an AI review.</p>
+                            <Link href="/repositories" className="btn-primary mt-5"><Icon name="plus" className="h-4 w-4" />Connect a Repository</Link>
                         </div>
-
-                        {recent_prs.length === 0 ? (
-                            <div className="px-6 py-12 text-center text-sm text-gray-500">
-                                No pull requests yet. Connect a repository and open a PR to see reviews here.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Repo</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">PR Title</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Author</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Score</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full">
+                                <thead>
+                                    <tr className="text-left text-xs uppercase tracking-wider text-ink-dim">
+                                        <th className="px-5 py-3 font-medium">Repo</th>
+                                        <th className="px-5 py-3 font-medium">PR</th>
+                                        <th className="px-5 py-3 font-medium">Author</th>
+                                        <th className="px-5 py-3 font-medium">Status</th>
+                                        <th className="px-5 py-3 font-medium">Score</th>
+                                        <th className="px-5 py-3 font-medium">Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-ink-border">
+                                    {recent_prs.map((pr) => (
+                                        <tr key={pr.id} className="text-sm transition hover:bg-ink-muted/40">
+                                            <td className="px-5 py-3 font-mono text-xs text-ink-dim">{pr.repository?.full_name ?? '—'}</td>
+                                            <td className="max-w-md px-5 py-3">
+                                                <Link href={`/reviews/${pr.id}`} className="block truncate font-medium text-ink-text hover:text-brand-400">
+                                                    <span className="text-ink-faint">#{pr.pr_number}</span> {pr.title}
+                                                </Link>
+                                            </td>
+                                            <td className="whitespace-nowrap px-5 py-3 text-ink-dim">{pr.author}</td>
+                                            <td className="whitespace-nowrap px-5 py-3"><StatusBadge status={pr.status} /></td>
+                                            <td className="whitespace-nowrap px-5 py-3"><ScorePill score={pr.score} /></td>
+                                            <td className="whitespace-nowrap px-5 py-3 text-xs text-ink-dim">{relative(pr.created_at)}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 bg-white">
-                                        {recent_prs.map((pr) => (
-                                            <tr key={pr.id} className="hover:bg-gray-50">
-                                                <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-700">
-                                                    {pr.repository?.full_name ?? pr.repository?.name ?? '—'}
-                                                </td>
-                                                <td className="max-w-xs truncate px-6 py-3 text-sm text-gray-900">
-                                                    <Link
-                                                        href={`/reviews/${pr.id}`}
-                                                        className="font-medium text-indigo-600 hover:underline"
-                                                    >
-                                                        #{pr.pr_number} {pr.title}
-                                                    </Link>
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-600">{pr.author}</td>
-                                                <td className="whitespace-nowrap px-6 py-3 text-sm">
-                                                    <StatusBadge status={pr.status} />
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-700">
-                                                    {pr.score !== null && pr.score !== undefined ? `${pr.score}/100` : '—'}
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-500">
-                                                    {formatDate(pr.created_at)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>
