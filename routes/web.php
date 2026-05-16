@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RepositoryController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -23,6 +24,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // ── Repositories ─────────────────────────────────────────────────
+    Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
+    Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
 });
 
 // ── GitHub OAuth ─────────────────────────────────────────────────────

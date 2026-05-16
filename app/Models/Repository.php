@@ -12,6 +12,7 @@ class Repository extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'full_name',
         'github_repo_id',
