@@ -41,4 +41,8 @@ return [
         'redirect'      => env('GITHUB_REDIRECT_URI'),
     ],
 
+    'openrouter' => [
+        'key' => env('OPENROUTER_API_KEY'),
+    ],
+
 ];

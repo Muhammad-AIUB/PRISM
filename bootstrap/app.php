@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // GitHub webhooks send their own HMAC signature; no CSRF token to verify.
+        $middleware->validateCsrfTokens(except: [
+            'webhook/github',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
