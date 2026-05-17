@@ -14,7 +14,7 @@ export default function Login({ status }) {
     const [permsOpen, setPermsOpen] = useState(false);
 
     return (
-        <div className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="login-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
             {/* Dot pattern overlay */}
             <div aria-hidden className="dot-pattern pointer-events-none absolute inset-0 opacity-50" />
 
