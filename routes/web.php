@@ -29,8 +29,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ── Repositories ─────────────────────────────────────────────────
-    Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
-    Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
+        Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
+    });
 
     // ── Reviews ──────────────────────────────────────────────────────
     Route::get('/reviews/{pullRequest}',                [ReviewController::class, 'show'])->name('reviews.show');
@@ -40,10 +42,14 @@ Route::middleware('auth')->group(function () {
 });
 
 // ── GitHub Webhook ───────────────────────────────────────────────────
-Route::post('/webhook/github', [WebhookController::class, 'handle'])->name('webhook.github');
+Route::post('/webhook/github', [WebhookController::class, 'handle'])
+    ->middleware('throttle:webhook')
+    ->name('webhook.github');
 
 // ── GitHub OAuth ─────────────────────────────────────────────────────
-Route::get('/auth/github', [AuthController::class, 'redirectToGithub'])->name('auth.github');
-Route::get('/auth/github/callback', [AuthController::class, 'handleGithubCallback'])->name('auth.github.callback');
+Route::middleware('throttle:auth')->group(function () {
+    Route::get('/auth/github',          [AuthController::class, 'redirectToGithub'])->name('auth.github');
+    Route::get('/auth/github/callback', [AuthController::class, 'handleGithubCallback'])->name('auth.github.callback');
+});
 
 require __DIR__.'/auth.php';
