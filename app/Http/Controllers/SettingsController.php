@@ -29,13 +29,13 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
-            'email_notifications' => ['required', 'boolean'],
-            'slack_webhook_url'   => ['nullable', 'url', 'max:1024'],
+            'email_notifications' => 'boolean',
+            'slack_webhook_url'   => 'nullable|url|starts_with:https://hooks.slack.com/',
         ]);
 
         Auth::user()->update($data);
 
-        return redirect()->route('settings.index')->with('success', 'Settings saved.');
+        return redirect()->back()->with('success', 'Settings updated successfully');
     }
 
     /**
@@ -45,22 +45,21 @@ class SettingsController extends Controller
     public function testSlack(Request $request)
     {
         $data = $request->validate([
-            'slack_webhook_url' => ['required', 'url', 'max:1024'],
+            'slack_webhook_url' => 'required|url|starts_with:https://hooks.slack.com/',
         ]);
 
         try {
-            $response = Http::asJson()->timeout(10)->post($data['slack_webhook_url'], [
-                'text' => '✅ PRism test — your webhook is working. You can save your settings now.',
+            $response = Http::post($data['slack_webhook_url'], [
+                'text' => '✅ PRism test notification - your Slack integration is working!',
             ]);
 
-            if (! $response->successful()) {
-                return back()->with('error', 'Slack rejected the test: '.$response->status().' '.mb_substr($response->body(), 0, 200));
+            if ($response->successful()) {
+                return back()->with('success', 'Test message sent to Slack!');
             }
-
-            return back()->with('success', 'Test message sent. Check your Slack channel.');
+            return back()->with('error', 'Slack returned: '.$response->body());
         } catch (Throwable $e) {
             Log::warning('Slack test failed', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Could not reach the webhook: '.$e->getMessage());
+            return back()->with('error', 'Failed: '.$e->getMessage());
         }
     }
 }

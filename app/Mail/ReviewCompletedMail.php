@@ -26,24 +26,13 @@ class ReviewCompletedMail extends Mailable
 
     public function content(): Content
     {
-        // Top 3 issues across all layers, prioritised by severity.
-        $rank = ['critical' => 0, 'warning' => 1, 'suggestion' => 2];
-        $topIssues = collect()
-            ->merge($this->review->security_issues     ?? [])
-            ->merge($this->review->performance_issues  ?? [])
-            ->merge($this->review->code_quality_issues ?? [])
-            ->sortBy(fn ($i) => $rank[$i['severity'] ?? 'suggestion'] ?? 3)
-            ->take(3)
-            ->values();
-
+        // Use Laravel's markdown mail template (rendered via the published
+        // mail components in resources/views/vendor/mail).
         return new Content(
-            view: 'emails.review-completed',
+            markdown: 'emails.review-completed',
             with: [
-                'pr'        => $this->pullRequest,
-                'review'    => $this->review,
-                'user'      => $this->pullRequest->repository?->user,
-                'topIssues' => $topIssues,
-                'reviewUrl' => url('/reviews/'.$this->pullRequest->id),
+                'pullRequest' => $this->pullRequest,
+                'review'      => $this->review,
             ],
         );
     }
