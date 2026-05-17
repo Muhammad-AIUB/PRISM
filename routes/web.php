@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\AuditController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommitReviewController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
@@ -59,6 +62,14 @@ Route::middleware('auth')->group(function () {
 
     // ── Help ─────────────────────────────────────────────────────────
     Route::get('/help/how-to-use', [HelpController::class, 'howToUse'])->name('help.how-to-use');
+
+    // ── Security / Privacy / Data ─────────────────────────────────────
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('/security',             [SecurityController::class, 'index'])->name('security.index');
+        Route::get('/security/my-data',     [DataController::class,     'view'])->name('data.view');
+        Route::delete('/security/my-data',  [DataController::class,     'delete'])->name('data.delete');
+        Route::get('/security/audit-log',   [AuditController::class,    'index'])->name('audit.index');
+    });
 
     // ── Reviews ──────────────────────────────────────────────────────
     Route::middleware('throttle:api')->group(function () {

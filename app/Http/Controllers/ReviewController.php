@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessPullRequestReview;
+use App\Models\AuditLog;
 use App\Models\PullRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -52,6 +53,10 @@ class ReviewController extends Controller
 
         ProcessPullRequestReview::dispatch($pullRequest);
 
+        AuditLog::record(Auth::id(), 'review_reanalyzed',
+            "Re-analyzed PR #{$pullRequest->pr_number} on {$pullRequest->repository?->full_name}",
+            ['pull_request_id' => $pullRequest->id]);
+
         return redirect()->back()->with('success', 'Re-analyzing PR…');
     }
 
@@ -84,6 +89,10 @@ class ReviewController extends Controller
             'pr'     => $pullRequest,
             'review' => $pullRequest->review,
         ]);
+
+        AuditLog::record(Auth::id(), 'data_exported',
+            "Exported PDF for PR #{$pullRequest->pr_number} on {$pullRequest->repository?->full_name}",
+            ['pull_request_id' => $pullRequest->id]);
 
         return $pdf->download("PRism-Review-PR{$pullRequest->pr_number}.pdf");
     }

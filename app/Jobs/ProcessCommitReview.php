@@ -107,6 +107,13 @@ class ProcessCommitReview implements ShouldQueue
         $review->update(['status' => 'completed']);
         Log::info('Commit review job completed', ['review_id' => $review->id, 'score' => $review->overall_score]);
 
+        \App\Models\AuditLog::record(
+            $user?->id,
+            'review_completed',
+            "Review completed for commit {$review->shortSha()} on {$repository->full_name}",
+            ['commit_review_id' => $review->id, 'score' => $review->overall_score]
+        );
+
         // 5. Notifications.
         $this->sendEmail($review->fresh(), $user);
         $this->sendSlack($review->fresh(), $user);

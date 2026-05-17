@@ -8,6 +8,7 @@ import {
     GitPullRequest,
     Mail,
     MessageSquare,
+    Shield,
     Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -182,6 +183,33 @@ export default function HowToUse() {
                         }}>
                         <Sparkles className="h-4 w-4" />
                         Get Started in 3 Steps
+                    </div>
+                </section>
+
+                {/* ── 1.5 Privacy & Security teaser ─────────────────── */}
+                <section>
+                    <div className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6"
+                        style={{ borderColor: 'rgba(34,197,94,0.30)' }}>
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md"
+                            style={{
+                                color: 'var(--success)',
+                                backgroundColor: 'rgba(34,197,94,0.10)',
+                                border: '1px solid rgba(34,197,94,0.30)',
+                            }}>
+                            <Shield className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-base font-semibold sm:text-lg" style={{ color: 'var(--text-primary)' }}>
+                                Privacy &amp; Security
+                            </h3>
+                            <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                Curious about how we handle your data? Visit the Security &amp; Privacy page to see exactly
+                                what PRism accesses, how your token is encrypted, and how to revoke access anytime.
+                            </p>
+                        </div>
+                        <Link href="/security" className="btn btn-primary min-h-[44px] shrink-0 transition active:scale-95">
+                            <Shield className="h-4 w-4" /> Visit Security Page
+                        </Link>
                     </div>
                 </section>
 

@@ -134,6 +134,13 @@ class ProcessPullRequestReview implements ShouldQueue
         $pr->update(['status' => 'completed']);
         Log::info('PR review job completed', ['pr_id' => $pr->id, 'score' => $review->overall_score]);
 
+        \App\Models\AuditLog::record(
+            $user?->id,
+            'review_completed',
+            "Review completed for PR #{$pr->pr_number} on {$repository->full_name}",
+            ['pull_request_id' => $pr->id, 'score' => $review->overall_score]
+        );
+
         // 6. Out-of-band notifications. Failure here must NOT roll back the review
         //    or cause a retry, so swallow exceptions narrowly.
         $this->sendEmail($pr, $user, $review);

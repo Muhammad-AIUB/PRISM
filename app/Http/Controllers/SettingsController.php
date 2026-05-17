@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -34,6 +35,11 @@ class SettingsController extends Controller
         ]);
 
         Auth::user()->update($data);
+
+        AuditLog::record(Auth::id(), 'settings_updated', 'Updated notification preferences', [
+            'email_notifications' => $data['email_notifications'] ?? null,
+            'has_slack_webhook'   => ! empty($data['slack_webhook_url']),
+        ]);
 
         return redirect()->back()->with('success', 'Settings updated successfully');
     }

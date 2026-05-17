@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -41,6 +42,8 @@ class AuthController extends Controller
         );
 
         Auth::login($user);
+
+        AuditLog::record($user->id, 'login', 'Signed in via GitHub OAuth');
 
         return redirect('/dashboard');
     }

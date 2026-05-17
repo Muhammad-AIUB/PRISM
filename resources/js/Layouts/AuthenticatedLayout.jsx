@@ -9,12 +9,13 @@ import {
     LogOut,
     Menu,
     Settings,
+    Shield,
     User as UserIcon,
     X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-function NavItem({ href, icon: Icon, label, active, onNavigate }) {
+function NavItem({ href, icon: Icon, label, active, onNavigate, indicator }) {
     return (
         <Link
             href={href}
@@ -26,13 +27,18 @@ function NavItem({ href, icon: Icon, label, active, onNavigate }) {
             }}
         >
             <Icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.4 : 2} />
-            <span className={active ? 'font-semibold' : 'font-medium'}>{label}</span>
-            {active && (
-                <span
-                    className="ml-auto h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: 'var(--accent)' }}
+            <span className={`flex-1 ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+            {indicator
+                ? <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{
+                        backgroundColor: indicator,
+                        boxShadow: `0 0 0 3px color-mix(in srgb, ${indicator} 25%, transparent)`,
+                    }}
                 />
-            )}
+                : active && (
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
+                )}
         </Link>
     );
 }
@@ -109,6 +115,7 @@ function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate, current
                         icon={item.icon}
                         label={item.label}
                         active={item.isActive}
+                        indicator={item.indicator}
                         onNavigate={onNavigate}
                     />
                 ))}
@@ -197,12 +204,13 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [drawerOpen]);
 
     const nav = [
-        { href: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard',    isActive: current === 'dashboard' },
-        { href: '/repositories', icon: GitBranch,       label: 'Repositories', isActive: current?.startsWith?.('repositories') },
+        { href: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard',         isActive: current === 'dashboard' },
+        { href: '/repositories', icon: GitBranch,       label: 'Repositories',      isActive: current?.startsWith?.('repositories') },
         // Reviews shortcut points at the dashboard (which lists recent PRs) until
         // a dedicated /reviews index exists.
-        { href: '/dashboard',    icon: FileSearch,      label: 'Reviews',      isActive: current?.startsWith?.('reviews') },
-        { href: '/settings',     icon: Settings,        label: 'Settings',     isActive: current?.startsWith?.('settings') },
+        { href: '/dashboard',    icon: FileSearch,      label: 'Reviews',           isActive: current?.startsWith?.('reviews') },
+        { href: '/settings',     icon: Settings,        label: 'Settings',          isActive: current?.startsWith?.('settings') },
+        { href: '/security',     icon: Shield,          label: 'Security & Privacy', isActive: current?.startsWith?.('security') || current?.startsWith?.('data'), indicator: '#22c55e' },
     ];
 
     const closeDrawer = () => setDrawerOpen(false);

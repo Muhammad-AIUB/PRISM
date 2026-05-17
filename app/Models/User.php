@@ -39,4 +39,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Repository::class);
     }
+
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
 }

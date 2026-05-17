@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -106,6 +107,10 @@ class RepositoryController extends Controller
             $repository->update(['webhook_id' => $hookResponse->json('id')]);
             $this->invalidateUserCaches($user->id);
 
+            AuditLog::record($user->id, 'repo_connected',
+                "Connected repository: {$data['full_name']}",
+                ['review_mode' => $reviewMode]);
+
             return redirect()
                 ->route('repositories.index')
                 ->with('success', "Connected {$data['full_name']} successfully.");
@@ -177,6 +182,10 @@ class RepositoryController extends Controller
                 Log::warning('GitHub webhook patch threw', ['error' => $e->getMessage()]);
             }
         }
+
+        AuditLog::record(Auth::id(), 'settings_updated',
+            "Updated review settings for {$repository->full_name}",
+            ['review_mode' => $repository->review_mode, 'branches' => $repository->watchedBranches()]);
 
         return redirect()
             ->route('repositories.settings', $repository)
