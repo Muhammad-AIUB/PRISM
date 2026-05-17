@@ -106,10 +106,11 @@ class ReviewController extends Controller
             'pr_number'   => $pr->pr_number,
             'base_branch' => $pr->base_branch,
             'head_branch' => $pr->head_branch,
-            'status'      => $pr->status,
-            'diff_url'    => $pr->diff_url,
-            'created_at'  => optional($pr->created_at)->toIso8601String(),
-            'repository'  => [
+            'status'             => $pr->status,
+            'diff_url'           => $pr->diff_url,
+            'detected_languages' => $pr->detected_languages ?? [],
+            'created_at'         => optional($pr->created_at)->toIso8601String(),
+            'repository'         => [
                 'name'      => $pr->repository?->name,
                 'full_name' => $pr->repository?->full_name,
             ],

@@ -5,11 +5,13 @@ import {
     ArrowRight,
     Check,
     ChevronRight,
+    Code2,
     Copy,
     Download,
     ExternalLink,
     Info,
     RefreshCw,
+    Wand2,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -30,8 +32,15 @@ const LAYERS = [
     { key: 'security',     label: 'Security' },
     { key: 'performance',  label: 'Performance' },
     { key: 'code_quality', label: 'Code Quality' },
+    { key: 'fixes',        label: 'Auto-Fixes' },
     { key: 'diff',         label: 'View Diff' },
 ];
+
+const LAYER_LABEL = {
+    security:     { label: 'security',     color: 'var(--danger)' },
+    performance:  { label: 'performance',  color: 'var(--warning)' },
+    code_quality: { label: 'code quality', color: 'var(--accent)' },
+};
 
 function SeverityBadge({ severity }) {
     const s = SEV[severity] ?? SEV.suggestion;
@@ -144,7 +153,180 @@ function ScoreCircle({ score }) {
     );
 }
 
-function IssueCard({ issue, fix }) {
+function LanguageBadges({ languages = [] }) {
+    if (!languages || languages.length === 0) return null;
+    return (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Languages:</span>
+            {languages.map((lang) => (
+                <span
+                    key={lang}
+                    className="badge"
+                    style={{
+                        backgroundColor: 'rgba(99,102,241,0.10)',
+                        color: 'var(--accent)',
+                        borderColor: 'rgba(99,102,241,0.30)',
+                    }}
+                >
+                    {lang}
+                </span>
+            ))}
+        </span>
+    );
+}
+
+function CodeBlock({ label, code, variant }) {
+    // variant: 'bad' (red tint) | 'good' (green tint)
+    const accentColor = variant === 'bad' ? 'var(--danger)' : 'var(--success)';
+    const bgTint      = variant === 'bad' ? 'rgba(239,68,68,0.07)' : 'rgba(34,197,94,0.07)';
+    const borderTint  = variant === 'bad' ? 'rgba(239,68,68,0.30)' : 'rgba(34,197,94,0.30)';
+
+    return (
+        <div className="rounded-md overflow-hidden" style={{ border: `1px solid ${borderTint}` }}>
+            <div
+                className="flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+                style={{ backgroundColor: bgTint, color: accentColor, borderBottom: `1px solid ${borderTint}` }}
+            >
+                <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                    {label}
+                </span>
+            </div>
+            <pre
+                className="overflow-x-auto whitespace-pre p-3 text-xs leading-relaxed font-mono"
+                style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+            >{code || <em style={{ color: 'var(--text-muted)' }}>// (empty)</em>}</pre>
+        </div>
+    );
+}
+
+function FixCard({ fix, onCopy }) {
+    const layerInfo = LAYER_LABEL[fix.layer] ?? LAYER_LABEL.code_quality;
+    return (
+        <div className="rounded-md p-4" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            {/* Header row */}
+            <div className="flex flex-wrap items-center gap-2">
+                {(fix.file || fix.line) && (
+                    <span
+                        className="inline-flex items-center gap-1 rounded font-mono text-[11px]"
+                        style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '0.125rem 0.5rem' }}
+                    >
+                        {fix.file || 'unknown'}
+                        {fix.line ? <span style={{ color: 'var(--text-muted)' }}>:{fix.line}</span> : null}
+                    </span>
+                )}
+                <span
+                    className="badge"
+                    style={{
+                        color: layerInfo.color,
+                        background: `color-mix(in srgb, ${layerInfo.color} 12%, transparent)`,
+                        borderColor: `color-mix(in srgb, ${layerInfo.color} 28%, transparent)`,
+                    }}
+                >
+                    {layerInfo.label}
+                </span>
+                <div className="ml-auto">
+                    <button
+                        type="button"
+                        onClick={() => onCopy(fix.suggested_code)}
+                        className="btn btn-secondary min-h-[36px] transition active:scale-95"
+                        style={{ padding: '0.25rem 0.625rem', fontSize: '0.75rem' }}
+                    >
+                        <Copy className="h-3.5 w-3.5" />
+                        Copy Fix
+                    </button>
+                </div>
+            </div>
+
+            {/* Original issue summary */}
+            {fix.original_issue && (
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                    {fix.original_issue}
+                </p>
+            )}
+
+            {/* Side-by-side on lg+, stacked under */}
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <CodeBlock label="Current Code"  code={fix.problematic_code} variant="bad" />
+                <CodeBlock label="Suggested Fix" code={fix.suggested_code}   variant="good" />
+            </div>
+
+            {/* Explanation */}
+            {fix.explanation && (
+                <div
+                    className="mt-3 rounded p-3 text-xs leading-relaxed"
+                    style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                >
+                    <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Why this is better:</span>{' '}
+                    {fix.explanation}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function FixesTab({ fixes }) {
+    const [copyToast, setCopyToast] = useState(false);
+
+    const copy = async (text) => {
+        try {
+            await navigator.clipboard.writeText(text ?? '');
+            setCopyToast(true);
+            setTimeout(() => setCopyToast(false), 2000);
+        } catch {}
+    };
+
+    if (!fixes || fixes.length === 0) {
+        return (
+            <div className="text-center py-10">
+                <div
+                    className="mx-auto grid h-14 w-14 place-items-center rounded-full"
+                    style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                >
+                    <Wand2 className="h-6 w-6" />
+                </div>
+                <p className="mt-4 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    No auto-fixes generated.
+                </p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    The AI didn't propose concrete fixes for this review. Run Re-analyze to try again.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative">
+            <ul className="space-y-4">
+                {fixes.map((fix, idx) => (
+                    <li key={idx}>
+                        <FixCard fix={fix} onCopy={copy} />
+                    </li>
+                ))}
+            </ul>
+
+            {/* Copy toast */}
+            <div
+                className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md px-4 py-2 text-sm transition-all duration-200"
+                style={{
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--success)',
+                    border: '1px solid rgba(34,197,94,0.35)',
+                    opacity: copyToast ? 1 : 0,
+                    transform: `translate(-50%, ${copyToast ? '0' : '8px'})`,
+                    pointerEvents: copyToast ? 'auto' : 'none',
+                    boxShadow: '0 12px 32px -8px rgba(0,0,0,0.5)',
+                }}
+            >
+                <span className="inline-flex items-center gap-2">
+                    <Check className="h-4 w-4" /> Copied to clipboard
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function IssueCard({ issue }) {
     return (
         <div
             className="rounded-md p-4 transition"
@@ -169,24 +351,6 @@ function IssueCard({ issue, fix }) {
                 </div>
                 <SeverityBadge severity={issue.severity} />
             </div>
-
-            {fix?.suggested_fix && (
-                <div
-                    className="mt-3 rounded-md"
-                    style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}
-                >
-                    <div className="flex items-center justify-between border-b px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
-                        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
-                            Suggested fix
-                        </span>
-                        <CopyBtn text={fix.suggested_fix} />
-                    </div>
-                    <pre
-                        className="overflow-x-auto whitespace-pre-wrap px-3 py-2 text-xs leading-relaxed"
-                        style={{ color: 'var(--text-primary)' }}
-                    >{fix.suggested_fix}</pre>
-                </div>
-            )}
         </div>
     );
 }
@@ -290,16 +454,12 @@ export default function Show({ pullRequest, review }) {
         code_quality: review?.code_quality_issues ?? [],
     }), [review]);
 
-    const fixesByLayer = useMemo(() => {
-        const out = { security: {}, performance: {}, code_quality: {} };
-        const fixes = review?.suggested_fixes?.fixes ?? review?.suggested_fixes ?? [];
-        if (Array.isArray(fixes)) {
-            for (const f of fixes) {
-                const layer = f.layer || 'code_quality';
-                if (out[layer]) out[layer][f.issue_index] = f;
-            }
-        }
-        return out;
+    // suggested_fixes is now stored as { fixes: [...] } — flat list for the Auto-Fixes tab.
+    const fixes = useMemo(() => {
+        const raw = review?.suggested_fixes;
+        if (Array.isArray(raw)) return raw;
+        if (Array.isArray(raw?.fixes)) return raw.fixes;
+        return [];
     }, [review]);
 
     const filterIssues = (list) =>
@@ -406,6 +566,11 @@ export default function Show({ pullRequest, review }) {
                                 </span>
                                 <StatusPill status={pullRequest.status} />
                             </div>
+                            {pullRequest.detected_languages?.length > 0 && (
+                                <div className="mt-3">
+                                    <LanguageBadges languages={pullRequest.detected_languages} />
+                                </div>
+                            )}
                         </div>
                         <div className="order-1 flex justify-center lg:order-2 lg:shrink-0">
                             <ScoreCircle score={review?.overall_score ?? null} />
@@ -455,7 +620,9 @@ export default function Show({ pullRequest, review }) {
                         <div className="border-b" style={{ borderColor: 'var(--border)' }}>
                             <nav className="-mx-px flex gap-1 overflow-x-auto px-3" aria-label="Review tabs" style={{ scrollbarWidth: 'thin' }}>
                                 {LAYERS.map((tab) => {
-                                    const count = tab.key === 'diff' ? null : issuesByLayer[tab.key].length;
+                                    let count = null;
+                                    if (tab.key === 'fixes')      count = fixes.length;
+                                    else if (tab.key !== 'diff')  count = issuesByLayer[tab.key].length;
                                     const isActive = activeTab === tab.key;
                                     return (
                                         <button
@@ -487,7 +654,7 @@ export default function Show({ pullRequest, review }) {
                             </nav>
                         </div>
 
-                        {activeTab !== 'diff' && (
+                        {activeTab !== 'diff' && activeTab !== 'fixes' && (
                             <div className="border-b px-5 py-3"
                                 style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
                                 <SeverityFilters counts={counts} active={severity} onChange={setSeverity} />
@@ -497,6 +664,8 @@ export default function Show({ pullRequest, review }) {
                         <div className="p-5">
                             {activeTab === 'diff' ? (
                                 <DiffViewer pullRequestId={pullRequest.id} />
+                            ) : activeTab === 'fixes' ? (
+                                <FixesTab fixes={fixes} />
                             ) : (() => {
                                 const filtered = filterIssues(issuesByLayer[activeTab]);
                                 if (filtered.length === 0) {
@@ -515,11 +684,9 @@ export default function Show({ pullRequest, review }) {
                                 }
                                 return (
                                     <ul className="space-y-3">
-                                        {filtered.map((issue, idx) => {
-                                            const originalIdx = issuesByLayer[activeTab].indexOf(issue);
-                                            const fix = fixesByLayer[activeTab][originalIdx];
-                                            return <li key={`${activeTab}-${idx}`}><IssueCard issue={issue} fix={fix} /></li>;
-                                        })}
+                                        {filtered.map((issue, idx) => (
+                                            <li key={`${activeTab}-${idx}`}><IssueCard issue={issue} /></li>
+                                        ))}
                                     </ul>
                                 );
                             })()}

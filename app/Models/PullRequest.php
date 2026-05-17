@@ -21,13 +21,15 @@ class PullRequest extends Model
         'head_branch',
         'status',
         'diff_url',
+        'detected_languages',
     ];
 
     protected function casts(): array
     {
         return [
-            'github_pr_id' => 'integer',
-            'pr_number'    => 'integer',
+            'github_pr_id'       => 'integer',
+            'pr_number'          => 'integer',
+            'detected_languages' => 'array',
         ];
     }
 

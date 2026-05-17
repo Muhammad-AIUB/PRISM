@@ -62,6 +62,11 @@ class ProcessPullRequestReview implements ShouldQueue
             $diff      = mb_substr($diffBody, 0, 8000);
             $languages = $this->detectLanguages($diff);
 
+            // Persist detected languages on the PR so the UI can render badges.
+            if (! empty($languages)) {
+                $pr->update(['detected_languages' => $languages]);
+            }
+
             // 2. First AI pass: structured review.
             $model = 'deepseek/deepseek-v4-flash:free';
             $parsed = $this->callAi(
@@ -149,7 +154,8 @@ class ProcessPullRequestReview implements ShouldQueue
     }
 
     /**
-     * Inspect filenames in the diff and return language tags we recognise.
+     * Inspect filenames in the diff and return human-readable language names
+     * (used both for badges in the UI and the AI prompt).
      */
     protected function detectLanguages(string $diff): array
     {
@@ -159,18 +165,69 @@ class ProcessPullRequestReview implements ShouldQueue
         foreach ($files as $f) {
             $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
             $langs[] = match ($ext) {
-                'php'                                          => 'php',
-                'js', 'jsx', 'mjs', 'cjs'                      => 'js',
-                'ts', 'tsx'                                    => 'ts',
-                'py'                                           => 'python',
-                default                                        => null,
+                'php'                       => 'PHP',
+                'js', 'jsx', 'mjs', 'cjs'   => 'JavaScript',
+                'ts', 'tsx'                 => 'TypeScript',
+                'py'                        => 'Python',
+                'go'                        => 'Go',
+                'rb'                        => 'Ruby',
+                'java'                      => 'Java',
+                default                     => null,
             };
         }
         return array_values(array_unique(array_filter($langs)));
     }
 
     /**
-     * Build the system prompt, appending language-specific rules where applicable.
+     * Return the per-language inspection rules that get appended to the system
+     * prompt. Keyed by the detectLanguages() output so JavaScript and TypeScript
+     * share the same rule set with TS-specific additions.
+     */
+    protected function getLanguageRules(array $languages): array
+    {
+        $rules = [];
+
+        if (in_array('PHP', $languages, true)) {
+            $rules = array_merge($rules, [
+                'Detect N+1 query patterns (loops with model calls)',
+                'Check for missing form validation in controllers',
+                'Flag raw SQL queries without parameter binding',
+                'Verify authorization checks in sensitive endpoints',
+                'Check for hardcoded credentials',
+                'Detect missing return type hints',
+            ]);
+        }
+        if (in_array('JavaScript', $languages, true) || in_array('TypeScript', $languages, true)) {
+            $rules = array_merge($rules, [
+                'Flag console.log statements left in production code',
+                'Check for missing error handling in async functions',
+                'Detect usage of `any` type in TypeScript',
+                'Check for missing key prop in React lists',
+                'Flag direct DOM manipulation in React',
+                'Detect potential memory leaks (uncleaned listeners)',
+            ]);
+        }
+        if (in_array('Python', $languages, true)) {
+            $rules = array_merge($rules, [
+                'Check for bare except clauses',
+                'Detect missing type hints',
+                'Flag print statements in production code',
+                'Check for SQL injection in raw queries',
+            ]);
+        }
+        if (in_array('Go', $languages, true)) {
+            $rules = array_merge($rules, [
+                'Verify error handling on every error return',
+                'Check for goroutine leaks',
+                'Detect missing context propagation',
+            ]);
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Build the system prompt, embedding detected languages and their rules.
      */
     protected function buildSystemPrompt(array $languages): string
     {
@@ -187,51 +244,75 @@ Analyze the diff and return ONLY a valid JSON object with this exact structure:
 severity must be: critical, warning, or suggestion
 PROMPT;
 
-        $rules = [];
-        if (in_array('php', $languages, true)) {
-            $rules[] = "PHP/Laravel rules: flag N+1 queries (eager-load with ->with()); missing FormRequest/validate() on controller actions; raw SQL or unparameterised DB::statement; missing auth/policy checks on protected routes; use of dd()/dump() left in code.";
-        }
-        if (in_array('js', $languages, true) || in_array('ts', $languages, true)) {
-            $rules[] = "JS/TS rules: flag console.log/console.error left in production paths; missing try/catch around await; unhandled promise rejections; use of the `any` type in TypeScript; `==` instead of `===`.";
-        }
-        if (in_array('python', $languages, true)) {
-            $rules[] = "Python rules: flag bare `except:` clauses; mutable default arguments; missing type hints on public functions; `print()` statements left in code; using `eval`/`exec` on untrusted input.";
-        }
+        $rules = $this->getLanguageRules($languages);
+        if (empty($rules)) return $base;
 
-        return $rules ? $base."\n\nAdditional rules to enforce:\n- ".implode("\n- ", $rules) : $base;
+        return "Detected languages: ".implode(', ', $languages)."\n\n"
+            . $base
+            . "\n\nApply these language-specific rules:\n- "
+            . implode("\n- ", $rules);
     }
 
     /**
-     * Second AI call: for each issue, produce a concrete code fix.
+     * Second AI call: produce concrete code fixes with before/after snippets.
      * Returns null on failure (review still saved without fixes).
      */
     protected function generateFixes(string $model, array $layers, string $diff): ?array
     {
-        $issuesPayload = [];
-        foreach ($layers as $layer => $issues) {
-            foreach ((array) $issues as $idx => $issue) {
-                if (empty($issue['comment'])) continue;
-                $issuesPayload[] = [
-                    'issue_index' => $idx,
-                    'layer'       => $layer,
-                    'file'        => $issue['file'] ?? '',
-                    'line'        => $issue['line'] ?? null,
-                    'comment'     => $issue['comment'],
-                ];
-            }
+        $payload = [
+            'security'     => $layers['security']     ?? [],
+            'performance'  => $layers['performance']  ?? [],
+            'code_quality' => $layers['code_quality'] ?? [],
+        ];
+
+        // Nothing to fix.
+        if (
+            empty($payload['security']) && empty($payload['performance']) && empty($payload['code_quality'])
+        ) {
+            return ['fixes' => []];
         }
-        if (empty($issuesPayload)) return ['fixes' => []];
 
-        $system = 'You suggest concrete code fixes. For each issue, provide a short snippet of corrected code (no prose). '
-                . 'Return ONLY JSON: {"fixes":[{"issue_index":0,"layer":"","original_hint":"","suggested_fix":""}]}. '
-                . 'Keep suggested_fix under 600 characters.';
+        $userPrompt = "Based on these issues found in the code review, provide concrete code fixes.\n\n"
+            . "Issues:\n"
+            . json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n\n"
+            . "Diff context (first 4000 chars):\n"
+            . mb_substr($diff, 0, 4000) . "\n\n"
+            . 'Return ONLY a valid JSON object with this exact structure:'."\n"
+            . '{'."\n"
+            . '  "fixes": ['."\n"
+            . '    {'."\n"
+            . '      "layer": "security|performance|code_quality",'."\n"
+            . '      "file": "path/to/file",'."\n"
+            . '      "line": <number>,'."\n"
+            . '      "original_issue": "brief description",'."\n"
+            . '      "problematic_code": "the bad code snippet (2-5 lines)",'."\n"
+            . '      "suggested_code": "the fixed code snippet",'."\n"
+            . '      "explanation": "why this fix is better (1-2 sentences)"'."\n"
+            . '    }'."\n"
+            . '  ]'."\n"
+            . '}'."\n\n"
+            . 'Provide fixes only for the most impactful issues (max 5).';
 
-        $user = "Diff:\n".mb_substr($diff, 0, 4000)
-              . "\n\nIssues to fix:\n".json_encode($issuesPayload, JSON_UNESCAPED_SLASHES);
+        $system = 'You are an expert software engineer providing precise code fixes. Return only valid JSON.';
 
-        $parsed = $this->callAi(model: $model, system: $system, user: $user);
-        if (! is_array($parsed) || ! isset($parsed['fixes'])) return null;
-        return $parsed;
+        $parsed = $this->callAi(model: $model, system: $system, user: $userPrompt);
+        if (! is_array($parsed) || ! isset($parsed['fixes']) || ! is_array($parsed['fixes'])) {
+            return null;
+        }
+
+        // Defensive sanitisation: keep only the keys our UI expects, cap at 5.
+        $fixes = collect($parsed['fixes'])->take(5)->map(fn ($f) => [
+            'layer'            => in_array($f['layer'] ?? null, ['security', 'performance', 'code_quality'], true)
+                                    ? $f['layer'] : 'code_quality',
+            'file'             => (string) ($f['file'] ?? ''),
+            'line'             => is_numeric($f['line'] ?? null) ? (int) $f['line'] : null,
+            'original_issue'   => (string) ($f['original_issue'] ?? ''),
+            'problematic_code' => (string) ($f['problematic_code'] ?? ''),
+            'suggested_code'   => (string) ($f['suggested_code'] ?? ''),
+            'explanation'      => (string) ($f['explanation'] ?? ''),
+        ])->values()->all();
+
+        return ['fixes' => $fixes];
     }
 
     /**
