@@ -265,7 +265,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 {header ? (
                     <header
                         className="sticky top-0 z-20 border-b backdrop-blur"
-                        style={{ borderColor: 'var(--border)', backgroundColor: 'rgba(10,10,15,0.7)' }}
+                        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--header-bg)' }}
                     >
                         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
                             {/* Hamburger — visible only below lg */}
@@ -288,7 +288,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         onClick={() => setDrawerOpen(true)}
                         aria-label="Open menu"
                         className="fixed left-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-md backdrop-blur transition hover:bg-hover lg:hidden"
-                        style={{ color: 'var(--text-primary)', backgroundColor: 'rgba(10,10,15,0.7)', border: '1px solid var(--border)' }}
+                        style={{ color: 'var(--text-primary)', backgroundColor: 'var(--header-bg)', border: '1px solid var(--border)' }}
                     >
                         <Menu className="h-5 w-5" />
                     </button>

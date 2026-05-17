@@ -111,7 +111,7 @@ function GuestSecurityLayout({ children }) {
     return (
         <div className="flex min-h-screen flex-col" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
             <header className="sticky top-0 z-20 border-b backdrop-blur"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'rgba(10,10,15,0.7)' }}>
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--header-bg)' }}>
                 <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
                     <Link href="/" className="flex items-center gap-2">
                         <div className="grid h-8 w-8 place-items-center rounded-md text-white"
