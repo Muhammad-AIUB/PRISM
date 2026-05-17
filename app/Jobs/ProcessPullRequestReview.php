@@ -239,6 +239,8 @@ PROMPT;
      */
     protected function callAi(string $model, string $system, string $user): ?array
     {
+        $start = microtime(true);
+
         $response = Http::withToken(config('services.openrouter.key'))
             ->acceptJson()
             ->timeout(120)
@@ -250,12 +252,24 @@ PROMPT;
                 ],
             ]);
 
+        $durationMs = (int) round((microtime(true) - $start) * 1000);
+        $json       = $response->successful() ? $response->json() : [];
+
+        Log::info('ai_call', [
+            'model'           => $model,
+            'status'          => $response->status(),
+            'duration_ms'     => $durationMs,
+            'prompt_tokens'   => data_get($json, 'usage.prompt_tokens'),
+            'completion_tokens' => data_get($json, 'usage.completion_tokens'),
+            'total_tokens'    => data_get($json, 'usage.total_tokens'),
+        ]);
+
         if (! $response->successful()) {
             Log::warning('OpenRouter call failed', ['status' => $response->status(), 'body' => mb_substr($response->body(), 0, 500)]);
             return null;
         }
 
-        $content = data_get($response->json(), 'choices.0.message.content', '');
+        $content = data_get($json, 'choices.0.message.content', '');
         return $this->extractJson((string) $content);
     }
 

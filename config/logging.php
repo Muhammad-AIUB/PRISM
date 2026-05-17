@@ -1,5 +1,6 @@
 <?php
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -125,6 +126,18 @@ return [
 
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
+        ],
+
+        // One JSON object per line — ideal for log aggregators (Datadog, Loki, etc.)
+        // Use by setting LOG_CHANNEL=json (or stacking it) in production.
+        'json' => [
+            'driver'    => 'monolog',
+            'level'     => env('LOG_LEVEL', 'info'),
+            'handler'   => StreamHandler::class,
+            'formatter' => JsonFormatter::class,
+            'with'      => [
+                'stream' => storage_path('logs/prism.json.log'),
+            ],
         ],
 
     ],

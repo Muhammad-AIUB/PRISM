@@ -18,7 +18,16 @@ class WebhookController extends Controller
     {
         $payload   = $request->getContent();
         $signature = $request->header('X-Hub-Signature-256');
-        $data      = json_decode($payload, true) ?: [];
+        $deliveryId = $request->header('X-GitHub-Delivery');
+        $event      = $request->header('X-GitHub-Event');
+        $data       = json_decode($payload, true) ?: [];
+
+        Log::info('webhook_received', [
+            'delivery_id' => $deliveryId,
+            'event'       => $event,
+            'action'      => data_get($data, 'action'),
+            'repo_id'     => data_get($data, 'repository.id'),
+        ]);
 
         $githubRepoId = data_get($data, 'repository.id');
         if (! $githubRepoId) {

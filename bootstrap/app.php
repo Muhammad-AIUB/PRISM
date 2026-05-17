@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Applied to every request.
+        $middleware->prepend([
+            \App\Http\Middleware\LogRequests::class,
+        ]);
         $middleware->append([
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
