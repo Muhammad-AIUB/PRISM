@@ -346,12 +346,10 @@ export default function CommitShow({ commitReview: cr }) {
                                     const isActive = activeTab === tab.key;
                                     return (
                                         <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}
-                                            className="relative inline-flex shrink-0 items-center gap-2 px-3 py-3 text-sm font-medium transition active:scale-[0.98]"
-                                            style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                                            className={`tab-item shrink-0 ${isActive ? 'tab-item-active' : ''}`}>
                                             {tab.label}
                                             <span className="rounded-full px-1.5 text-[10px]"
                                                 style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>{count}</span>
-                                            {isActive && <span className="absolute inset-x-2 -bottom-px h-0.5" style={{ backgroundColor: 'var(--accent)' }} />}
                                         </button>
                                     );
                                 })}

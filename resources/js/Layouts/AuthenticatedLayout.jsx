@@ -20,14 +20,10 @@ function NavItem({ href, icon: Icon, label, active, onNavigate, indicator }) {
         <Link
             href={href}
             onClick={onNavigate}
-            className="group flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2 text-sm transition active:scale-[0.98]"
-            style={{
-                backgroundColor: active ? 'rgba(99,102,241,0.15)' : 'transparent',
-                color: active ? 'var(--accent)' : 'var(--text-secondary)',
-            }}
+            className={`nav-item ${active ? 'nav-item-active' : ''}`}
         >
             <Icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.4 : 2} />
-            <span className={`flex-1 ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+            <span className="flex-1">{label}</span>
             {indicator
                 ? <span
                     className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -134,7 +130,8 @@ function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate, current
                     <button
                         type="button"
                         onClick={() => setMenuOpen((s) => !s)}
-                        className="flex min-h-[44px] w-full items-center gap-3 rounded-md px-2 py-2 transition hover:bg-hover active:scale-[0.98]"
+                        className="menu-item w-full rounded-md px-2"
+                        style={{ gap: '0.75rem' }}
                     >
                         <Avatar user={user} />
                         <div className="min-w-0 flex-1 text-left">
@@ -153,24 +150,23 @@ function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate, current
                             <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
                             <div
                                 className="absolute bottom-full left-0 right-0 z-40 mb-2 overflow-hidden rounded-md anim-fade-in"
-                                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                                style={{
+                                    backgroundColor: 'var(--bg-card)',
+                                    border: '1px solid var(--border)',
+                                    boxShadow: 'var(--shadow-card), 0 10px 24px -8px rgba(0, 0, 0, 0.25)',
+                                }}
                             >
-                                <Link
-                                    href="/profile"
-                                    className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-sm transition hover:bg-hover"
-                                    style={{ color: 'var(--text-primary)' }}
-                                >
+                                <Link href="/profile" className="menu-item">
                                     <UserIcon className="h-4 w-4" /> Profile
                                 </Link>
-                                <div className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-sm" style={{ color: 'var(--text-primary)' }}>
+                                <div className="menu-item" style={{ cursor: 'default' }}>
                                     <span className="flex flex-1 items-center gap-2">Theme</span>
                                     <ThemeToggle />
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => router.post('/logout')}
-                                    className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-hover active:scale-[0.98]"
-                                    style={{ color: 'var(--text-primary)' }}
+                                    className="menu-item"
                                 >
                                     <LogOut className="h-4 w-4" /> Log out
                                 </button>

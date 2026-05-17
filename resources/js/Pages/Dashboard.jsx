@@ -233,17 +233,16 @@ export default function Dashboard({
                                         key={key}
                                         type="button"
                                         onClick={() => setTab(key)}
-                                        className="relative inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition active:scale-[0.98]"
-                                        style={{
-                                            color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-                                            backgroundColor: isActive ? 'rgba(99,102,241,0.10)' : 'transparent',
-                                        }}
+                                        className={`tab-item ${isActive ? 'tab-item-active' : ''}`}
                                     >
                                         <Icon className="h-4 w-4" />
                                         {label}
                                         <span
                                             className="rounded-full px-1.5 text-[10px]"
-                                            style={{ backgroundColor: 'var(--bg-hover)', color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}
+                                            style={{
+                                                backgroundColor: 'var(--bg-hover)',
+                                                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                                            }}
                                         >
                                             {count}
                                         </span>
