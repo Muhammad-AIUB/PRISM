@@ -1,58 +1,107 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PRism
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+AI-powered code review for GitHub pull requests. Connect a repository, open a PR, and PRism analyses the diff with an LLM across three layers — **security**, **performance**, and **code quality** — posts a summary comment back on the PR, and shows the full review (with suggested fixes, score, severity filters, PDF export, and a colored diff viewer) in a modern dark-themed dashboard.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Laravel 11 · PHP 8.4
+- Inertia.js · React 18 · TailwindCSS · Inter / JetBrains Mono · Chart.js
+- PostgreSQL (Neon) · Redis (Upstash) · `predis` over TLS
+- OpenRouter (free models) · Resend (email) · Slack webhook · dompdf
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- 🔍 **AI review** — Security / Performance / Code Quality issues with severity (`critical`/`warning`/`suggestion`) and an overall score 0-100.
+- 🛠️ **Auto-fix suggestions** — second AI pass produces concrete code snippets per issue, copy-to-clipboard.
+- 🌐 **Language-aware rules** — Laravel (N+1, validation, raw SQL), JS/TS (console.log, `any`, `==`), Python (bare except, mutable defaults).
+- 📈 **Score timeline** — Chart.js graph of every reviewed PR over time.
+- 🎯 **Severity filter** across all tabs simultaneously, with per-severity counts.
+- 🔁 **Re-analyze** any PR on demand.
+- 🧾 **View Diff** — colored unified diff (proxied through Laravel to bypass CORS).
+- 📄 **PDF export** of a review (dompdf).
+- 📨 **Email + Slack notifications** when a review completes.
+- 🌙 **Dark mode toggle** persisted to localStorage; FOUC-free.
 
-## Learning Laravel
+## Production-grade improvements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 🗄️ Database optimisation
+- Composite indexes on hot paths:
+  `repositories(user_id, is_active)`,
+  `pull_requests(repository_id, status)`,
+  `pull_requests(repository_id, created_at)`,
+  `reviews(pull_request_id, created_at)`,
+  `review_comments(review_id, severity)`,
+  `review_comments(review_id, layer)`.
+- Eager loading + explicit `select()` on the dashboard and review queries — eliminates N+1.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 🔐 Security
+- `users.github_token` stored as **encrypted** TEXT (Laravel `encrypted` cast); one-off `php artisan db:tokens:encrypt` migrates legacy plaintext rows.
+- `users.password` is nullable (OAuth-only signups).
+- Global **SecurityHeaders** middleware: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security` (prod over HTTPS only), and a tight **Content-Security-Policy** (`default-src 'self'` + GitHub avatars + Google Fonts + OpenRouter/GitHub APIs + `frame-ancestors 'none'`).
+- **VerifyGithubIp** middleware on the webhook — only requests inside GitHub's published `meta.hooks` CIDR ranges are accepted (24h cached; bypassed outside production for tunnels and local dev).
+- HMAC-SHA-256 verification of webhook payloads (`hash_equals`, 401 on mismatch).
+- CSRF excluded only for `/webhook/github`.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### 🚦 Rate limiting
+| Limiter | Rate | Key | Applied to |
+|---|---|---|---|
+| `webhook` | 60 / min | IP | `POST /webhook/github` |
+| `api` | 100 / min | user id (falls back to IP) | `/repositories`, `/repositories` |
+| `auth` | 10 / min | IP | `/auth/github`, `/auth/github/callback` |
 
-## Agentic Development
+### ⚡ Caching (Upstash Redis, TLS, `prism:` prefix)
+- `user_repos_{userId}` → 5 min (GitHub repo list)
+- `user_connected_repos_{userId}` → 10 min (connected repo ids)
+- `pr_diff_{prId}_{sha}` → 1 hour (unified diff)
+- `github_meta_hooks` → 24 hours (webhook IP ranges)
+- Invalidated automatically on repo connect / disconnect.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 🔁 Job reliability
+- `ProcessPullRequestReview` → `$tries = 3`, `$timeout = 120s`, `$backoff = [60, 180, 600]`.
+- Exceptions propagate so Laravel can retry; `failed()` writes `status = failed` and structured log line after the final attempt.
+- Notification failures (email/Slack) caught narrowly so they don't retry the whole review.
+
+### 📜 Structured logging
+- Dedicated `json` log channel (Monolog `JsonFormatter`) → `storage/logs/prism.json.log`.
+- Every request gets a UUID `X-Request-Id` header and an `http_request` log line (`user_id`, `method`, `path`, `status`, `duration_ms`, `ip`).
+- Domain events logged: `webhook_received` (delivery_id, event, action), `ai_call` (model, duration_ms, prompt/completion tokens), `PR review job started/completed`, plus warnings on Slack/mail/webhook-IP rejections.
+
+### ❤️ Health check
+- `GET /health` → JSON `{status, database, redis, queue, timestamp}`; 200 when healthy, 503 when degraded. No auth, no throttle. Suitable for k8s liveness/readiness probes.
+
+## Local development
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+npm install --legacy-peer-deps
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --force
+npm run build
+php artisan serve
+php artisan queue:work   # if QUEUE_CONNECTION=redis/database
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Required env:
 
-## Contributing
+```
+APP_URL=
+DB_CONNECTION=pgsql DB_HOST= DB_PORT=5432 DB_DATABASE= DB_USERNAME= DB_PASSWORD= DB_SSLMODE=require
+REDIS_URL=rediss://… REDIS_CLIENT=predis REDIS_PREFIX=prism:
+CACHE_STORE=redis
+GITHUB_CLIENT_ID= GITHUB_CLIENT_SECRET= GITHUB_REDIRECT_URI=
+OPENROUTER_API_KEY=
+RESEND_API_KEY=         # optional, email
+SLACK_WEBHOOK_URL=      # optional, slack
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+For webhook delivery from GitHub during local dev, run a Cloudflare tunnel:
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+cloudflared tunnel --url http://localhost:8000
+# then set APP_URL to the tunnel URL and re-connect repos
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT.
