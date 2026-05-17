@@ -14,6 +14,7 @@ import {
     GitBranch,
     GitCommit,
     GitPullRequest,
+    Info,
     Plus,
     TrendingUp,
 } from 'lucide-react';
@@ -224,15 +225,16 @@ export default function Dashboard({
                     <div className="flex flex-col gap-2 border-b px-5 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)' }}>
                         <nav className="-mx-1 flex gap-1" aria-label="Review type">
                             {[
-                                { key: 'prs',     label: 'Pull Requests', icon: GitPullRequest, count: total_prs },
-                                { key: 'commits', label: 'Commits',       icon: GitCommit,      count: total_commits },
-                            ].map(({ key, label, icon: Icon, count }) => {
+                                { key: 'prs',     label: 'Pull Requests', icon: GitPullRequest, count: total_prs,     tip: 'Reviews from PRs you opened (PR Mode)' },
+                                { key: 'commits', label: 'Commits',       icon: GitCommit,      count: total_commits, tip: 'Reviews from direct pushes (Commit Mode)' },
+                            ].map(({ key, label, icon: Icon, count, tip }) => {
                                 const isActive = tab === key;
                                 return (
                                     <button
                                         key={key}
                                         type="button"
                                         onClick={() => setTab(key)}
+                                        title={tip}
                                         className={`tab-item ${isActive ? 'tab-item-active' : ''}`}
                                     >
                                         <Icon className="h-4 w-4" />
@@ -246,6 +248,11 @@ export default function Dashboard({
                                         >
                                             {count}
                                         </span>
+                                        <Info
+                                            className="h-3 w-3 opacity-50"
+                                            style={{ color: 'var(--text-muted)' }}
+                                            aria-hidden
+                                        />
                                     </button>
                                 );
                             })}
@@ -258,24 +265,45 @@ export default function Dashboard({
                     </div>
 
                     {rows.length === 0 ? (
-                        <div className="px-5 py-16 text-center">
+                        <div className="px-5 py-12 text-center">
                             <div
-                                className="mx-auto grid h-14 w-14 place-items-center rounded-full"
-                                style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                                className="mx-auto grid h-12 w-12 place-items-center rounded-full"
+                                style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }}
                             >
                                 {tab === 'prs' ? <GitPullRequest className="h-6 w-6" /> : <GitCommit className="h-6 w-6" />}
                             </div>
-                            <p className="mt-4 text-sm font-medium">
+                            <h3 className="mt-4 text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                                 {tab === 'prs' ? 'No pull request reviews yet' : 'No commit reviews yet'}
-                            </p>
-                            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                            </h3>
+                            <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: 'var(--text-secondary)' }}>
                                 {tab === 'prs'
-                                    ? 'Connect a repository in PR mode and open a pull request.'
+                                    ? 'Connect a repository and open a pull request to get AI-powered reviews.'
                                     : 'Connect a repository in commit mode and push to a watched branch.'}
                             </p>
-                            <Link href="/repositories" className="btn-primary btn mt-5 inline-flex">
-                                <Plus className="h-4 w-4" /> Connect Repository
-                            </Link>
+
+                            {/* Cross-link to the OTHER mode — discoverability */}
+                            <div
+                                className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-md px-4 py-2 text-sm"
+                                style={{ backgroundColor: 'var(--bg-hover)' }}
+                            >
+                                <Info className="h-4 w-4" style={{ color: 'var(--info)' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>
+                                    {tab === 'prs' ? 'Working directly on main?' : 'Working in a team?'}
+                                </span>
+                                <Link
+                                    href="/repositories"
+                                    className="font-medium hover:underline"
+                                    style={{ color: 'var(--accent)' }}
+                                >
+                                    {tab === 'prs' ? 'Enable Commit Mode →' : 'Use PR Mode instead →'}
+                                </Link>
+                            </div>
+
+                            <div className="mt-6">
+                                <Link href="/repositories" className="btn btn-primary inline-flex">
+                                    <Plus className="h-4 w-4" /> Connect Repository
+                                </Link>
+                            </div>
                         </div>
                     ) : (
                         <>

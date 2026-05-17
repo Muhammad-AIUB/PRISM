@@ -5,7 +5,9 @@ import {
     ChevronDown,
     FileSearch,
     GitBranch,
+    GitCommit,
     GitPullRequest,
+    Info,
     Mail,
     MessageSquare,
     Shield,
@@ -155,6 +157,8 @@ function CheckTip({ children }) {
 }
 
 export default function HowToUse() {
+    const [workflow, setWorkflow] = useState('pr');
+
     return (
         <AuthenticatedLayout
             header={
@@ -219,43 +223,151 @@ export default function HowToUse() {
                         eyebrow="Quick start"
                         title="Three steps to your first review"
                     />
+
+                    {/* Callout — PRism works for everyone */}
+                    <div
+                        className="mt-6 rounded-lg p-4"
+                        style={{
+                            backgroundColor: 'var(--accent-bg)',
+                            border: '1px solid rgba(99,102,241,0.30)',
+                        }}
+                    >
+                        <div className="flex items-start gap-3">
+                            <Info className="h-5 w-5 shrink-0" style={{ color: 'var(--accent)' }} />
+                            <div>
+                                <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                    PRism works for everyone — teams AND solo developers
+                                </h4>
+                                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                    Use <strong>PR Mode</strong> if your team reviews via pull requests. Use{' '}
+                                    <strong>Commit Mode</strong> if you push directly to <code className="rounded font-mono px-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>main</code>
+                                    {' '}(perfect for solo developers, students, and rapid prototyping). You can change modes anytime in repository settings.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Workflow toggle */}
+                    <div className="mt-6 flex justify-center">
+                        <div
+                            className="inline-flex gap-1 rounded-lg p-1"
+                            style={{ backgroundColor: 'var(--bg-hover)' }}
+                            role="tablist"
+                        >
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={workflow === 'pr'}
+                                onClick={() => setWorkflow('pr')}
+                                className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition"
+                                style={{
+                                    backgroundColor: workflow === 'pr' ? 'var(--bg-card)' : 'transparent',
+                                    color: workflow === 'pr' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    boxShadow: workflow === 'pr' ? 'var(--shadow-card)' : 'none',
+                                }}
+                            >
+                                <GitPullRequest className="h-4 w-4" />
+                                PR Workflow (Teams)
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={workflow === 'commit'}
+                                onClick={() => setWorkflow('commit')}
+                                className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition"
+                                style={{
+                                    backgroundColor: workflow === 'commit' ? 'var(--bg-card)' : 'transparent',
+                                    color: workflow === 'commit' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    boxShadow: workflow === 'commit' ? 'var(--shadow-card)' : 'none',
+                                }}
+                            >
+                                <GitCommit className="h-4 w-4" />
+                                Commit Workflow (Solo)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Step cards — content swaps based on selected workflow */}
                     <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <StepCard
-                            icon={GitBranch}
-                            step={1}
-                            title="Connect a Repository"
-                            items={[
-                                'Click "Repositories" in the sidebar',
-                                'Find the GitHub repo you want PRism to review',
-                                'Click the "Connect" button next to it',
-                                'PRism automatically installs a webhook on that repo',
-                            ]}
-                            note="Connection takes about 2 seconds. You'll see a green 'Connected' badge when done."
-                        />
-                        <StepCard
-                            icon={GitPullRequest}
-                            step={2}
-                            title="Open a Pull Request"
-                            items={[
-                                'Create a new branch in your connected repo',
-                                'Make your code changes and push',
-                                'Open a PR targeting your main branch on GitHub',
-                                'PRism automatically receives the webhook and starts analyzing',
-                            ]}
-                            note="First review typically completes in 10–30 seconds."
-                        />
-                        <StepCard
-                            icon={FileSearch}
-                            step={3}
-                            title="Read Your Review"
-                            items={[
-                                'Open the Dashboard to see your PR in the table',
-                                'Click on the PR title to open the full review',
-                                'Browse issues by category (Security / Performance / Code Quality)',
-                                'Check the "Auto-Fixes" tab for ready-to-use code suggestions',
-                            ]}
-                            note="Reviews are also commented directly on your GitHub PR."
-                        />
+                        {workflow === 'pr' ? (
+                            <>
+                                <StepCard
+                                    icon={GitBranch}
+                                    step={1}
+                                    title="Connect a Repository"
+                                    items={[
+                                        'Click "Repositories" in the sidebar',
+                                        'Find the GitHub repo you want PRism to review',
+                                        'Click "Connect" and choose Pull Request Mode in the modal',
+                                        'PRism installs a webhook subscribed to pull_request events',
+                                    ]}
+                                    note="Connection takes about 2 seconds. You'll see a green 'Connected' badge plus a 'Pull Requests' mode badge."
+                                />
+                                <StepCard
+                                    icon={GitPullRequest}
+                                    step={2}
+                                    title="Open a Pull Request"
+                                    items={[
+                                        'Create a new branch in your connected repo',
+                                        'Make your code changes and push',
+                                        'Open a PR targeting your main branch on GitHub',
+                                        'PRism receives the webhook and starts analyzing',
+                                    ]}
+                                    note="First review typically completes in 10–30 seconds."
+                                />
+                                <StepCard
+                                    icon={FileSearch}
+                                    step={3}
+                                    title="Read Your Review"
+                                    items={[
+                                        'Open the Dashboard — Pull Requests tab',
+                                        'Click on the PR title to open the full review',
+                                        'Browse issues by category (Security / Performance / Code Quality)',
+                                        'Check the "Auto-Fixes" tab for ready-to-use code suggestions',
+                                    ]}
+                                    note="Reviews are also commented directly on your GitHub PR."
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <StepCard
+                                    icon={GitBranch}
+                                    step={1}
+                                    title="Connect a Repository"
+                                    items={[
+                                        'Click "Repositories" in the sidebar',
+                                        'Find the GitHub repo you push to directly',
+                                        'Click "Connect" and choose Commit Mode in the modal',
+                                        'Pick the branches to watch (defaults to main and master)',
+                                    ]}
+                                    note="PRism installs a webhook subscribed to push events on your watched branches."
+                                />
+                                <StepCard
+                                    icon={GitCommit}
+                                    step={2}
+                                    title="Push Directly to main"
+                                    items={[
+                                        'Make your code changes locally',
+                                        'git commit -m "your change"',
+                                        'git push origin main (or whichever watched branch)',
+                                        'PRism receives the push webhook and analyses the head commit',
+                                    ]}
+                                    note="No PR needed. Reviews fire on every push to a watched branch."
+                                />
+                                <StepCard
+                                    icon={FileSearch}
+                                    step={3}
+                                    title="Read Your Review"
+                                    items={[
+                                        'Open the Dashboard — Commits tab',
+                                        'Click the commit SHA to open the full review',
+                                        'Same Security / Performance / Code Quality breakdown as PRs',
+                                        'A summary comment is also posted on the commit on GitHub',
+                                    ]}
+                                    note="Email and Slack notifications still fire — same as PR reviews."
+                                />
+                            </>
+                        )}
                     </div>
                 </section>
 

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Check, ExternalLink, GitCommit, GitPullRequest, Lock, Search, Settings, Star, X } from 'lucide-react';
+import { Check, ExternalLink, GitCommit, GitPullRequest, Layers, Lock, Search, Settings, Star, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const MODE_OPTIONS = [
@@ -190,6 +190,27 @@ function relative(iso) {
     } catch { return iso; }
 }
 
+const MODE_BADGE = {
+    pr_only:     { icon: GitPullRequest, label: 'Pull Requests', tone: 'rgba(99,102,241,0.10)',  color: 'var(--accent)' },
+    commit_only: { icon: GitCommit,      label: 'Commits',       tone: 'rgba(59,130,246,0.10)',  color: 'var(--info)' },
+    both:        { icon: Layers,         label: 'Both',          tone: 'rgba(34,197,94,0.10)',   color: 'var(--success)' },
+};
+
+function ModeBadge({ mode }) {
+    const m = MODE_BADGE[mode] ?? MODE_BADGE.pr_only;
+    const Icon = m.icon;
+    return (
+        <span
+            className="badge"
+            style={{ backgroundColor: m.tone, color: m.color, borderColor: m.color }}
+            title={`Review mode: ${m.label}`}
+        >
+            <Icon className="h-3 w-3" />
+            {m.label}
+        </span>
+    );
+}
+
 function RepoCard({ repo, isConnected, connectedRepo, isLoading, onConnect }) {
     return (
         <div className="card flex flex-col gap-3 transition" style={{ minHeight: '180px' }}>
@@ -244,7 +265,7 @@ function RepoCard({ repo, isConnected, connectedRepo, isLoading, onConnect }) {
                 </div>
 
                 {isConnected ? (
-                    <div className="inline-flex items-center gap-2">
+                    <div className="inline-flex flex-wrap items-center gap-2">
                         <span
                             className="badge"
                             style={{
@@ -255,6 +276,7 @@ function RepoCard({ repo, isConnected, connectedRepo, isLoading, onConnect }) {
                         >
                             <Check className="h-3 w-3" /> Connected
                         </span>
+                        {connectedRepo?.review_mode && <ModeBadge mode={connectedRepo.review_mode} />}
                         {connectedRepo?.id && (
                             <Link
                                 href={`/repositories/${connectedRepo.id}/settings`}
