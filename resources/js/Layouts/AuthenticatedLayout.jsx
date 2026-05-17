@@ -159,10 +159,7 @@ function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate, current
                                 <Link href="/profile" className="menu-item">
                                     <UserIcon className="h-4 w-4" /> Profile
                                 </Link>
-                                <div className="menu-item" style={{ cursor: 'default' }}>
-                                    <span className="flex flex-1 items-center gap-2">Theme</span>
-                                    <ThemeToggle />
-                                </div>
+                                <ThemeToggle />
                                 <button
                                     type="button"
                                     onClick={() => router.post('/logout')}
