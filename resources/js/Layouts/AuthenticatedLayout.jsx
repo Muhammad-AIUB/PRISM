@@ -216,10 +216,13 @@ export default function AuthenticatedLayout({ header, children }) {
     const closeDrawer = () => setDrawerOpen(false);
 
     return (
-        <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-            {/* ── Desktop sidebar (lg+) ──────────────────────────────── */}
+        <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+            {/* ── Desktop sidebar (lg+) ──────────────────────────────────
+              Fixed position so it stays put while main content scrolls.
+              Internal overflow-y-auto means long nav lists scroll WITHIN the
+              sidebar rather than pushing the page. */}
             <aside
-                className="hidden w-60 shrink-0 flex-col border-r 2xl:w-[280px] lg:flex"
+                className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-60 2xl:w-[280px] flex-col overflow-y-auto border-r"
                 style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}
             >
                 <SidebarContents nav={nav} user={user} menuOpen={menuOpen} setMenuOpen={setMenuOpen} current={current} />
@@ -259,8 +262,10 @@ export default function AuthenticatedLayout({ header, children }) {
                 />
             </aside>
 
-            {/* ── Main column ─────────────────────────────────────────── */}
-            <div className="flex min-w-0 flex-1 flex-col">
+            {/* ── Main column ───────────────────────────────────────────
+              ml shift on lg+ matches the fixed sidebar width so content
+              doesn't underlap. Below lg the sidebar is a drawer so no shift. */}
+            <div className="flex min-h-screen min-w-0 flex-col lg:ml-60 2xl:ml-[280px]">
                 {header ? (
                     <header
                         className="sticky top-0 z-20 border-b backdrop-blur"

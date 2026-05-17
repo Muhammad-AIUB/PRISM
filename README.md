@@ -298,6 +298,16 @@ These are the deliberate trade-offs made during development — not bugs, choice
 
 ---
 
+## 🤝 Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to set up the project locally, the code style we follow, and how to submit pull requests.
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
 ## 🤝 Acknowledgements
 
 Built with engineering depth inspired by real production systems:
