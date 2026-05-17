@@ -43,7 +43,7 @@ Route::middleware('auth')->group(function () {
 
 // ── GitHub Webhook ───────────────────────────────────────────────────
 Route::post('/webhook/github', [WebhookController::class, 'handle'])
-    ->middleware('throttle:webhook')
+    ->middleware(['throttle:webhook', 'github.ip'])
     ->name('webhook.github');
 
 // ── GitHub OAuth ─────────────────────────────────────────────────────
