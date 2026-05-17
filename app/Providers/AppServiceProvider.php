@@ -6,6 +6,7 @@ use GuzzleHttp\Client;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +25,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force https:// on all generated URLs when running on Render (or any
+        // platform that terminates TLS at a reverse proxy). Without this the
+        // app sees raw HTTP from the proxy and route()/url() helpers emit
+        // http:// links — which break in browsers under HSTS and CSP.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         Vite::prefetch(concurrency: 3);
 
         // Disable SSL verification in local development (Windows SSL cert workaround)
