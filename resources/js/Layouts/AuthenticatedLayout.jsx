@@ -170,8 +170,10 @@ export default function AuthenticatedLayout({ header, children }) {
     const nav = [
         { href: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard',    isActive: current === 'dashboard' },
         { href: '/repositories', icon: GitBranch,       label: 'Repositories', isActive: current?.startsWith?.('repositories') },
+        // Reviews shortcut points at the dashboard (which lists recent PRs) until
+        // a dedicated /reviews index exists.
         { href: '/dashboard',    icon: FileSearch,      label: 'Reviews',      isActive: current?.startsWith?.('reviews') },
-        { href: '/profile',      icon: Settings,        label: 'Settings',     isActive: current?.startsWith?.('profile') },
+        { href: '/settings',     icon: Settings,        label: 'Settings',     isActive: current?.startsWith?.('settings') },
     ];
 
     const closeDrawer = () => setDrawerOpen(false);

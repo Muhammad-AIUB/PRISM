@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
-use App\Mail\ReviewCompleted;
+use App\Mail\ReviewCompletedMail;
 use App\Models\PullRequest;
 use App\Models\Review;
 use App\Models\ReviewComment;
-use App\Notifications\SlackReviewNotifier;
+use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
@@ -131,8 +131,8 @@ class ProcessPullRequestReview implements ShouldQueue
 
         // 6. Out-of-band notifications. Failure here must NOT roll back the review
         //    or cause a retry, so swallow exceptions narrowly.
-        $this->sendEmail($pr, $user);
-        SlackReviewNotifier::send($pr->fresh(['repository', 'review']));
+        $this->sendEmail($pr, $user, $review);
+        $this->sendSlack($pr, $user, $review);
     }
 
     /**
@@ -310,13 +310,56 @@ PROMPT;
             ."_Model: {$review->ai_model_used}_";
     }
 
-    protected function sendEmail(PullRequest $pr, $user): void
+    /**
+     * Send the completion email if the user has the preference enabled.
+     */
+    protected function sendEmail(PullRequest $pr, ?User $user, Review $review): void
     {
-        if (! config('mail.from.address') || ! $user?->email) return;
+        if (! $user || ! $user->email || ! $user->email_notifications) return;
+
         try {
-            Mail::to($user->email)->send(new ReviewCompleted($pr));
+            Mail::to($user->email)->send(new ReviewCompletedMail($pr, $review));
+            Log::info('Email notification sent', ['pr_id' => $pr->id, 'to' => $user->email]);
         } catch (Throwable $e) {
-            Log::warning('ReviewCompleted email failed', ['error' => $e->getMessage()]);
+            Log::warning('Email notification failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Post the review summary to the user's Slack webhook (if configured).
+     * Uses Slack's legacy attachments payload — works with both Slack-native
+     * incoming webhooks and most Slack-compatible endpoints (Mattermost, etc.).
+     */
+    protected function sendSlack(PullRequest $pr, ?User $user, Review $review): void
+    {
+        if (! $user || ! $user->slack_webhook_url) return;
+
+        try {
+            $score = $review->overall_score ?? 0;
+            $color = $score > 70 ? '#22c55e' : ($score > 40 ? '#f59e0b' : '#ef4444');
+
+            $criticalCount = $review->comments()->where('severity', 'critical')->count();
+            $warningCount  = $review->comments()->where('severity', 'warning')->count();
+
+            Http::asJson()->timeout(10)->post($user->slack_webhook_url, [
+                'attachments' => [[
+                    'color'      => $color,
+                    'title'      => "🔍 PRism Review: {$pr->title}",
+                    'title_link' => url("/reviews/{$pr->id}"),
+                    'text'       => $review->summary ?? '',
+                    'fields'     => [
+                        ['title' => 'Score',      'value' => "{$score}/100",                                            'short' => true],
+                        ['title' => 'Issues',     'value' => "🔴 {$criticalCount} Critical | 🟡 {$warningCount} Warning", 'short' => true],
+                        ['title' => 'Repository', 'value' => $pr->repository?->full_name ?? '—',                       'short' => true],
+                        ['title' => 'Author',     'value' => $pr->author ?? '—',                                       'short' => true],
+                    ],
+                    'footer' => 'PRism AI Code Review',
+                    'ts'     => now()->timestamp,
+                ]],
+            ]);
+            Log::info('Slack notification sent', ['pr_id' => $pr->id]);
+        } catch (Throwable $e) {
+            Log::warning('Slack notification failed', ['error' => $e->getMessage()]);
         }
     }
 }

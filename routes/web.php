@@ -6,6 +6,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('throttle:api')->group(function () {
         Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
         Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
+    });
+
+    // ── Settings ─────────────────────────────────────────────────────
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('/settings',             [SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings',            [SettingsController::class, 'update'])->name('settings.update');
+        Route::post('/settings/test-slack', [SettingsController::class, 'testSlack'])->name('settings.test-slack');
     });
 
     // ── Reviews ──────────────────────────────────────────────────────
