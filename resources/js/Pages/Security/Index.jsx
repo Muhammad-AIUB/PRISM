@@ -367,6 +367,57 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                     </p>
                 </section>
 
+                {/* ── 6.5 Why these permissions? ──────────────────────── */}
+                <section>
+                    <div className="card p-5 sm:p-7">
+                        <div className="flex items-center gap-3">
+                            <Key className="h-6 w-6" style={{ color: 'var(--accent)' }} />
+                            <SectionHeading title="Why does PRism need these permissions?" align="left" />
+                        </div>
+                        <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            We understand <em>"access to your repositories"</em> can sound scary. Here's exactly why we need it and what we don't do.
+                        </p>
+
+                        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--success)' }}>
+                                    We need <code className="font-mono">repo</code> access to
+                                </p>
+                                <ul className="mt-3 space-y-2.5">
+                                    <YesRow>Install a webhook so we know when you open a PR</YesRow>
+                                    <YesRow>Read the PR diff (only the changed lines) for AI analysis</YesRow>
+                                    <YesRow>Post a review summary as a PR comment</YesRow>
+                                </ul>
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--danger)' }}>
+                                    We will NEVER
+                                </p>
+                                <ul className="mt-3 space-y-2.5">
+                                    <NoRow>Push code to your repositories</NoRow>
+                                    <NoRow>Modify or delete any files</NoRow>
+                                    <NoRow>Access repositories you don't connect to PRism</NoRow>
+                                    <NoRow>Share your code with any third party</NoRow>
+                                    <NoRow>Store your source code in our database</NoRow>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 rounded-md p-4"
+                            style={{
+                                backgroundColor: 'rgba(99,102,241,0.10)',
+                                border: '1px solid rgba(99,102,241,0.30)',
+                            }}>
+                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
+                                Coming soon
+                            </p>
+                            <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                We're migrating to <strong style={{ color: 'var(--text-primary)' }}>GitHub App architecture</strong>, which will let you select specific repositories instead of giving blanket access. This is on our near-term roadmap.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 {/* ── 7. Compliance grid ──────────────────────────────── */}
                 <section>
                     <SectionHeading eyebrow="Hardening" title="Compliance &amp; Standards" />

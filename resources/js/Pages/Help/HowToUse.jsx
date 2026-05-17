@@ -433,6 +433,11 @@ export default function HowToUse() {
                             body={<>Most reviews complete in 10-30 seconds. Larger PRs (1000+ lines) may take up to a minute. If a review is stuck on "analyzing" for over 5 minutes, click <em>Re-analyze</em> to retry.</>}
                         />
                         <AccordionItem
+                            icon="🔑"
+                            title="Why does PRism ask for repository access?"
+                            body={<>To install a webhook (so we know when you open a PR), read the PR diff for analysis, and post review comments. <strong style={{ color: 'var(--text-primary)' }}>We never push code, modify files, or store your source code.</strong> See the <a href="/security" className="underline" style={{ color: 'var(--accent)' }}>Security &amp; Privacy</a> page for full details.</>}
+                        />
+                        <AccordionItem
                             icon="🔐"
                             title="Is my code sent anywhere?"
                             body={<>Your code diff is sent to OpenRouter (a free AI gateway) for analysis. It's not stored after the analysis completes. PRism itself only stores the review results, not your source code.</>}

@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 
 // GitHub mark — lucide-react dropped brand icons, so it's inlined here.
 function GithubIcon({ className }) {
@@ -10,6 +11,8 @@ function GithubIcon({ className }) {
 }
 
 export default function Login({ status }) {
+    const [permsOpen, setPermsOpen] = useState(false);
+
     return (
         <div className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
             {/* Dot pattern overlay */}
@@ -70,6 +73,47 @@ export default function Login({ status }) {
                 <p className="mt-5 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                     Free and open source · No password needed
                 </p>
+
+                {/* Permissions explainer */}
+                <div className="mt-6 overflow-hidden rounded-md transition"
+                    style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                    <button
+                        type="button"
+                        onClick={() => setPermsOpen((s) => !s)}
+                        aria-expanded={permsOpen}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition hover:bg-hover"
+                    >
+                        <span className="flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                            <span aria-hidden>🔒</span> Wondering about permissions?
+                        </span>
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 transition-transform"
+                            style={{ color: 'var(--text-muted)', transform: permsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </button>
+                    <div className="grid transition-all duration-300 ease-out"
+                        style={{ gridTemplateRows: permsOpen ? '1fr' : '0fr' }}>
+                        <div className="overflow-hidden">
+                            <div className="border-t px-3 py-3 text-[12px] leading-relaxed"
+                                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                                <p>PRism asks for <code className="rounded font-mono px-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>repo</code> + <code className="rounded font-mono px-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>read:user</code>.</p>
+                                <ul className="mt-2 space-y-1">
+                                    <li><span style={{ color: 'var(--success)' }}>✓</span> Install a webhook on the repos you choose</li>
+                                    <li><span style={{ color: 'var(--success)' }}>✓</span> Read PR diffs &amp; post review comments</li>
+                                    <li><span style={{ color: 'var(--danger)' }}>✗</span> We never push code or modify files</li>
+                                    <li><span style={{ color: 'var(--danger)' }}>✗</span> Your source code is never stored</li>
+                                </ul>
+                                <p className="mt-2">
+                                    Full details on the{' '}
+                                    <Link href="/security" className="underline" style={{ color: 'var(--accent)' }}>
+                                        Security &amp; Privacy
+                                    </Link>{' '}page (you'll see it after sign-in).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <footer
