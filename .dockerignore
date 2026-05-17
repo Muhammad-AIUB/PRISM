@@ -1,0 +1,14 @@
+node_modules
+vendor
+.git
+.env
+.env.local
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests
+*.md
+.github
+.vscode
+.idea
