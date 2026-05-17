@@ -33,6 +33,11 @@ Route::get('/health', HealthController::class)
     ->withoutMiddleware(['web'])
     ->name('health');
 
+// ── Public Security & Privacy page ───────────────────────────────────
+// Intentionally outside the auth group so visitors can read the trust
+// content BEFORE signing in — which is exactly when they need it.
+Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -61,12 +66,11 @@ Route::middleware('auth')->group(function () {
     // ── Help ─────────────────────────────────────────────────────────
     Route::get('/help/how-to-use', [HelpController::class, 'howToUse'])->name('help.how-to-use');
 
-    // ── Security / Privacy / Data ─────────────────────────────────────
+    // ── Security › Data + Audit (auth-only; /security itself is public) ─
     Route::middleware('throttle:api')->group(function () {
-        Route::get('/security',             [SecurityController::class, 'index'])->name('security.index');
-        Route::get('/security/my-data',     [DataController::class,     'view'])->name('data.view');
-        Route::delete('/security/my-data',  [DataController::class,     'delete'])->name('data.delete');
-        Route::get('/security/audit-log',   [AuditController::class,    'index'])->name('audit.index');
+        Route::get('/security/my-data',    [DataController::class,  'view'])->name('data.view');
+        Route::delete('/security/my-data', [DataController::class,  'delete'])->name('data.delete');
+        Route::get('/security/audit-log',  [AuditController::class, 'index'])->name('audit.index');
     });
 
     // ── Reviews ──────────────────────────────────────────────────────

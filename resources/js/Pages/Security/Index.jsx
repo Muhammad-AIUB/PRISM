@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import { LogIn } from 'lucide-react';
 import {
     AlertCircle,
     Check,
@@ -106,16 +107,67 @@ function ComplianceCard({ icon: Icon, title, body }) {
     );
 }
 
-export default function Index({ github_app_url, github_repo_url }) {
+function GuestSecurityLayout({ children }) {
     return (
-        <AuthenticatedLayout
-            header={
+        <div className="flex min-h-screen flex-col" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+            <header className="sticky top-0 z-20 border-b backdrop-blur"
+                style={{ borderColor: 'var(--border)', backgroundColor: 'rgba(10,10,15,0.7)' }}>
+                <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="grid h-8 w-8 place-items-center rounded-md text-white"
+                            style={{
+                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                boxShadow: '0 0 0 1px rgba(99,102,241,0.4), 0 4px 12px -2px rgba(99,102,241,0.45)',
+                            }}>
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 7l9-4 9 4-9 4-9-4z" />
+                                <path d="M3 17l9 4 9-4" />
+                                <path d="M3 12l9 4 9-4" />
+                            </svg>
+                        </div>
+                        <span className="brand-text text-lg">PRism</span>
+                    </Link>
+                    <div className="min-w-0 flex-1 px-2">
+                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Trust</p>
+                        <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">Security &amp; Privacy</h1>
+                    </div>
+                    <Link href="/login" className="btn btn-primary min-h-[44px] transition active:scale-95">
+                        <LogIn className="h-4 w-4" />
+                        <span className="hidden sm:inline">Sign in</span>
+                    </Link>
+                </div>
+            </header>
+
+            <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+
+            <footer className="mt-auto border-t px-6 py-4 text-center text-sm"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                Developed by{' '}
+                <a href="https://www.mjubayer.dev/" target="_blank" rel="noopener noreferrer"
+                    className="font-medium transition-colors hover:opacity-80"
+                    style={{ color: 'var(--accent)' }}>
+                    Muhammad Jubayer
+                </a>
+            </footer>
+        </div>
+    );
+}
+
+export default function Index({ github_app_url, github_repo_url, is_authenticated = false }) {
+    const Wrapper = is_authenticated ? AuthenticatedLayout : GuestSecurityLayout;
+    const wrapperProps = is_authenticated
+        ? {
+            header: (
                 <div className="min-w-0">
                     <p className="text-[10px] font-medium uppercase tracking-wider sm:text-xs" style={{ color: 'var(--text-muted)' }}>Trust</p>
                     <h1 className="mt-0.5 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">Security &amp; Privacy</h1>
                 </div>
-            }
-        >
+            ),
+        }
+        : {};
+
+    return (
+        <Wrapper {...wrapperProps}>
             <Head title="Security & Privacy" />
 
             <div className="mx-auto max-w-5xl space-y-16 sm:space-y-20">
@@ -308,13 +360,17 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                                 className="btn btn-primary min-h-[44px] transition active:scale-95">
                                 Open GitHub Settings <ExternalLink className="h-4 w-4" />
                             </a>
-                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                Or delete all your PRism data right now:
-                            </span>
-                            <Link href="/security/my-data" className="btn min-h-[44px] transition active:scale-95"
-                                style={{ backgroundColor: 'rgba(239,68,68,0.10)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.30)' }}>
-                                Delete My Data
-                            </Link>
+                            {is_authenticated && (
+                                <>
+                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                        Or delete all your PRism data right now:
+                                    </span>
+                                    <Link href="/security/my-data" className="btn min-h-[44px] transition active:scale-95"
+                                        style={{ backgroundColor: 'rgba(239,68,68,0.10)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.30)' }}>
+                                        Delete My Data
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                 </section>
@@ -448,14 +504,32 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                         <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                             Every meaningful action on your account is logged with a timestamp, action type, and IP address. You can review the full activity log anytime.
                         </p>
-                        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                            <Link href="/security/my-data" className="btn btn-primary min-h-[44px] transition active:scale-95">
-                                View My Data
-                            </Link>
-                            <Link href="/security/audit-log" className="btn btn-secondary min-h-[44px] transition active:scale-95">
-                                View Activity Log
-                            </Link>
-                        </div>
+                        {is_authenticated ? (
+                            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                                <Link href="/security/my-data" className="btn btn-primary min-h-[44px] transition active:scale-95">
+                                    View My Data
+                                </Link>
+                                <Link href="/security/audit-log" className="btn btn-secondary min-h-[44px] transition active:scale-95">
+                                    View Activity Log
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="mt-5 rounded-md p-4"
+                                style={{
+                                    backgroundColor: 'rgba(99,102,241,0.10)',
+                                    border: '1px solid rgba(99,102,241,0.30)',
+                                }}>
+                                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                                    <strong>Sign in to manage your data.</strong>{' '}
+                                    <span style={{ color: 'var(--text-secondary)' }}>
+                                        After signing in, you'll be able to view a copy of everything we store about you and your full activity log.
+                                    </span>
+                                </p>
+                                <Link href="/login" className="btn btn-primary mt-3 inline-flex min-h-[44px] transition active:scale-95">
+                                    <LogIn className="h-4 w-4" /> Sign in with GitHub
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -476,6 +550,6 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                     </div>
                 </section>
             </div>
-        </AuthenticatedLayout>
+        </Wrapper>
     );
 }
