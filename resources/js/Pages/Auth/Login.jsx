@@ -71,6 +71,24 @@ export default function Login({ status }) {
                     Free and open source · No password needed
                 </p>
             </div>
+
+            <footer
+                className="relative z-10 mt-8 text-center text-sm"
+                style={{ color: 'var(--text-muted)' }}
+            >
+                Developed by{' '}
+                <a
+                    href="https://www.mjubayer.dev/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium transition-colors hover:opacity-80"
+                    style={{ color: 'var(--accent)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                >
+                    Muhammad Jubayer
+                </a>
+            </footer>
         </div>
     );
 }

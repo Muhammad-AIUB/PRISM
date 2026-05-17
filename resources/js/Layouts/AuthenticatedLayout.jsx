@@ -4,6 +4,7 @@ import {
     ChevronUp,
     FileSearch,
     GitBranch,
+    HelpCircle,
     LayoutDashboard,
     LogOut,
     Menu,
@@ -59,7 +60,27 @@ function Avatar({ user, size = 'sm' }) {
     );
 }
 
-function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate }) {
+function HelpLink({ active, onNavigate }) {
+    return (
+        <Link
+            href="/help/how-to-use"
+            onClick={onNavigate}
+            className="group flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition active:scale-[0.98]"
+            style={{
+                backgroundColor: active ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.08)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(99,102,241,0.30)',
+            }}
+        >
+            <HelpCircle className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+            <span>Need Help? How to Use</span>
+            {/* Attention-getting pulse dot */}
+            <span className="pulse-dot ml-auto" aria-hidden />
+        </Link>
+    );
+}
+
+function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate, current }) {
     return (
         <>
             {/* Logo */}
@@ -92,6 +113,14 @@ function SidebarContents({ nav, user, menuOpen, setMenuOpen, onNavigate }) {
                     />
                 ))}
             </nav>
+
+            {/* Help link — accent-tinted, with attention pulse, sits above user card */}
+            <div className="px-3 pb-3">
+                <HelpLink
+                    active={current?.startsWith?.('help')}
+                    onNavigate={onNavigate}
+                />
+            </div>
 
             <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
                 <div className="relative">
@@ -185,7 +214,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 className="hidden w-60 shrink-0 flex-col border-r 2xl:w-[280px] lg:flex"
                 style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-secondary)' }}
             >
-                <SidebarContents nav={nav} user={user} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+                <SidebarContents nav={nav} user={user} menuOpen={menuOpen} setMenuOpen={setMenuOpen} current={current} />
             </aside>
 
             {/* ── Mobile drawer + backdrop (< lg) ────────────────────── */}
@@ -218,6 +247,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     menuOpen={menuOpen}
                     setMenuOpen={setMenuOpen}
                     onNavigate={closeDrawer}
+                    current={current}
                 />
             </aside>
 
@@ -256,6 +286,24 @@ export default function AuthenticatedLayout({ header, children }) {
                 )}
 
                 <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+
+                <footer
+                    className="mt-auto border-t px-6 py-4 text-center text-sm"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                >
+                    Developed by{' '}
+                    <a
+                        href="https://www.mjubayer.dev/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium transition-colors hover:opacity-80"
+                        style={{ color: 'var(--accent)' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-hover)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                    >
+                        Muhammad Jubayer
+                    </a>
+                </footer>
             </div>
         </div>
     );

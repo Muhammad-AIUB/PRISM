@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\ReviewController;
@@ -47,6 +48,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings',            [SettingsController::class, 'update'])->name('settings.update');
         Route::post('/settings/test-slack', [SettingsController::class, 'testSlack'])->name('settings.test-slack');
     });
+
+    // ── Help ─────────────────────────────────────────────────────────
+    Route::get('/help/how-to-use', [HelpController::class, 'howToUse'])->name('help.how-to-use');
 
     // ── Reviews ──────────────────────────────────────────────────────
     Route::middleware('throttle:api')->group(function () {
