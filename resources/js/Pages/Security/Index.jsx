@@ -409,10 +409,20 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                                 border: '1px solid rgba(99,102,241,0.30)',
                             }}>
                             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
-                                Coming soon
+                                🚀 Coming Soon — GitHub App Migration
                             </p>
                             <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                We're migrating to <strong style={{ color: 'var(--text-primary)' }}>GitHub App architecture</strong>, which will let you select specific repositories instead of giving blanket access. This is on our near-term roadmap.
+                                We're working on migrating to <strong style={{ color: 'var(--text-primary)' }}>GitHub App architecture</strong>, which will:
+                            </p>
+                            <ul className="mt-3 space-y-1.5 pl-5 text-sm leading-relaxed"
+                                style={{ color: 'var(--text-secondary)', listStyle: 'disc' }}>
+                                <li>Let you <strong style={{ color: 'var(--text-primary)' }}>select specific repositories</strong> instead of granting blanket access</li>
+                                <li>Reduce token lifetime from <strong style={{ color: 'var(--text-primary)' }}>forever to 1 hour</strong></li>
+                                <li>Provide <strong style={{ color: 'var(--text-primary)' }}>repo-level granular permissions</strong></li>
+                                <li>Co-exist with OAuth for users who prefer simplicity</li>
+                            </ul>
+                            <p className="mt-3 text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                                Tracked on our near-term roadmap.
                             </p>
                         </div>
                     </div>

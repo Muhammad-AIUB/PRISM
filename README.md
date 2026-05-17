@@ -215,15 +215,42 @@ Visit `/security` in the app for full transparency.
 
 ---
 
+## 🔨 Active Development
+
+### Dual Authentication Strategy (In Progress)
+
+PRism currently uses GitHub OAuth App which requires broad `repo` scope. While this works well for solo developers, security-conscious teams and enterprises prefer granular per-repository permissions.
+
+**Planned approach:**
+Implement dual authentication letting users choose:
+
+| Method | Best For | Trade-off |
+|---|---|---|
+| **OAuth** (current) | Solo developers, quick setup | Broad repo access |
+| **GitHub App** (planned) | Teams, enterprises, sensitive code | Granular per-repo permissions |
+
+**Technical implementation:**
+- JWT-based installation token authentication (1-hour expiry)
+- Granular repository selection during install
+- Co-existence with OAuth flow (no breaking change for existing users)
+- Migration path: existing OAuth users can upgrade anytime
+
+**Estimated effort:** 6–8 hours of focused development.
+
+**Why this matters:** Industry leaders like Sentry, Vercel, and CodeRabbit all use the GitHub App pattern. This migration brings PRism to enterprise-grade authentication standards.
+
+---
+
 ## 🔮 Roadmap — Future Enhancements
 
 ### Near-term (high-impact, low-effort)
+
+- [ ] **Dual Authentication Strategy** — Add GitHub App support alongside OAuth, letting users choose between broad access (OAuth) and granular per-repo permissions (GitHub App). Will reduce token security blast radius by 90% and provide enterprise-grade trust signals.
 - [ ] **Merge risk indicator** — automatically block merges below score 40 via GitHub Status API
 - [ ] **One-click "Post Fix to GitHub"** — turn `suggested_fix` into an inline PR comment
 - [ ] **Developer insight dashboard** — per-author trend: "your top 3 recurring mistakes"
 - [ ] **Team leaderboard** — weekly code quality ranking for organizations
-- [ ] **Inline diff annotations on review page** — line-by-line view tied to issues
-- [ ] **Repository settings page UX polish** — change review mode without disconnecting (backend already ships this)
+- [ ] **Repository settings page** — change review mode without disconnecting
 
 ### Mid-term (medium-effort, differentiating)
 - [ ] **Configurable review profiles** — strict / balanced / relaxed per repo

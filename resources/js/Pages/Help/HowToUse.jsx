@@ -434,8 +434,34 @@ export default function HowToUse() {
                         />
                         <AccordionItem
                             icon="🔑"
-                            title="Why does PRism ask for repository access?"
-                            body={<>To install a webhook (so we know when you open a PR), read the PR diff for analysis, and post review comments. <strong style={{ color: 'var(--text-primary)' }}>We never push code, modify files, or store your source code.</strong> See the <a href="/security" className="underline" style={{ color: 'var(--accent)' }}>Security &amp; Privacy</a> page for full details.</>}
+                            title="Why does PRism need access to my repositories?"
+                            body={
+                                <>
+                                    To do its job, PRism needs to:
+                                    <ul className="mt-2 space-y-1 pl-5" style={{ listStyle: 'disc' }}>
+                                        <li>Install a webhook (to receive PR events)</li>
+                                        <li>Read the PR diff (to analyze code)</li>
+                                        <li>Post review comments (to share results)</li>
+                                    </ul>
+                                    <p className="mt-2">
+                                        We never push code, modify files, or access repositories you haven't connected. All access is logged and you can revoke anytime from your{' '}
+                                        <a href="https://github.com/settings/applications" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--accent)' }}>GitHub settings</a>.
+                                    </p>
+                                </>
+                            }
+                        />
+                        <AccordionItem
+                            icon="🎯"
+                            title="Can I limit PRism to specific repositories only?"
+                            body={
+                                <>
+                                    Currently PRism uses GitHub OAuth which grants access to all your repos (though we only use the ones you explicitly connect).
+                                    <p className="mt-2">
+                                        We're actively working on <strong style={{ color: 'var(--text-primary)' }}>GitHub App migration</strong> which will let you choose specific repositories during installation. This is coming in our near-term roadmap — track progress on the{' '}
+                                        <a href="/security" className="underline" style={{ color: 'var(--accent)' }}>Security &amp; Privacy</a> page.
+                                    </p>
+                                </>
+                            }
                         />
                         <AccordionItem
                             icon="🔐"
