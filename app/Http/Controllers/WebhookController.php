@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessCommitReview;
 use App\Jobs\ProcessPullRequestReview;
+use App\Models\CommitReview;
 use App\Models\PullRequest;
 use App\Models\Repository;
 use Illuminate\Http\Request;
@@ -11,13 +13,13 @@ use Illuminate\Support\Facades\Log;
 class WebhookController extends Controller
 {
     /**
-     * Receive GitHub PR webhook, verify HMAC signature, persist the PR,
-     * and queue the AI review job.
+     * Receive GitHub webhook, verify HMAC, then dispatch the right review job
+     * based on the X-GitHub-Event header.
      */
     public function handle(Request $request)
     {
-        $payload   = $request->getContent();
-        $signature = $request->header('X-Hub-Signature-256');
+        $payload    = $request->getContent();
+        $signature  = $request->header('X-Hub-Signature-256');
         $deliveryId = $request->header('X-GitHub-Delivery');
         $event      = $request->header('X-GitHub-Event');
         $data       = json_decode($payload, true) ?: [];
@@ -39,20 +41,29 @@ class WebhookController extends Controller
             return response()->json(['message' => 'Repository not connected'], 404);
         }
 
-        // Verify HMAC-SHA256 signature using a timing-safe comparison.
+        // HMAC-SHA256 verify (timing-safe).
         $expected = 'sha256='.hash_hmac('sha256', $payload, $repository->webhook_secret);
         if (! is_string($signature) || ! hash_equals($expected, $signature)) {
             Log::warning('Invalid GitHub webhook signature', ['repo' => $repository->full_name]);
             return response()->json(['message' => 'Invalid signature'], 401);
         }
 
+        return match ($event) {
+            'pull_request' => $this->handlePullRequest($repository, $data),
+            'push'         => $this->handlePush($repository, $data),
+            'ping'         => response()->json(['message' => 'pong'], 200),
+            default        => response()->json(['message' => 'Ignored event: '.$event], 200),
+        };
+    }
+
+    protected function handlePullRequest(Repository $repository, array $data)
+    {
         $action = data_get($data, 'action');
         if (! in_array($action, ['opened', 'synchronize'], true)) {
             return response()->json(['message' => 'Ignored action: '.$action], 200);
         }
 
         $pr = data_get($data, 'pull_request');
-
         $pullRequest = PullRequest::updateOrCreate(
             [
                 'repository_id' => $repository->id,
@@ -72,5 +83,54 @@ class WebhookController extends Controller
         ProcessPullRequestReview::dispatch($pullRequest);
 
         return response()->json(['message' => 'Review queued', 'pr_id' => $pullRequest->id], 200);
+    }
+
+    /**
+     * Push event: dispatch one ProcessCommitReview per head commit, but only
+     * on branches the repository owner asked us to watch.
+     */
+    protected function handlePush(Repository $repository, array $data)
+    {
+        $ref    = (string) data_get($data, 'ref', '');             // e.g. "refs/heads/main"
+        $branch = preg_replace('#^refs/heads/#', '', $ref);
+
+        if ($repository->review_mode === 'pr_only') {
+            return response()->json(['message' => 'Repository set to PR-only mode'], 200);
+        }
+
+        if (! in_array($branch, $repository->watchedBranches(), true)) {
+            return response()->json(['message' => 'Branch not watched: '.$branch], 200);
+        }
+
+        // Skip branch creation / deletion pushes (no commits to review).
+        if (data_get($data, 'deleted') === true) {
+            return response()->json(['message' => 'Branch deleted, skipping'], 200);
+        }
+
+        $headSha = data_get($data, 'after');
+        if (! $headSha || $headSha === str_repeat('0', 40)) {
+            return response()->json(['message' => 'No head commit'], 200);
+        }
+
+        // We review the head commit of the push; if a developer pushed several
+        // commits at once, the head represents the cumulative state.
+        $headCommit = collect(data_get($data, 'commits', []))
+            ->firstWhere('id', $headSha) ?? data_get($data, 'head_commit');
+
+        $review = CommitReview::firstOrCreate(
+            ['repository_id' => $repository->id, 'commit_sha' => $headSha],
+            [
+                'branch'         => $branch,
+                'commit_message' => data_get($headCommit, 'message'),
+                'author'         => data_get($headCommit, 'author.username')
+                                 ?? data_get($headCommit, 'author.name')
+                                 ?? data_get($data, 'pusher.name'),
+                'status'         => 'pending',
+            ]
+        );
+
+        ProcessCommitReview::dispatch($review);
+
+        return response()->json(['message' => 'Commit review queued', 'review_id' => $review->id], 200);
     }
 }

@@ -1,7 +1,153 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, usePage } from '@inertiajs/react';
-import { Check, ExternalLink, Lock, Search, Star } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Check, ExternalLink, GitCommit, GitPullRequest, Lock, Search, Settings, Star, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+
+const MODE_OPTIONS = [
+    {
+        value: 'pr_only',
+        icon: GitPullRequest,
+        title: 'Pull Requests only',
+        sub: 'Recommended for teams. Reviews fire when a PR is opened or updated.',
+    },
+    {
+        value: 'commit_only',
+        icon: GitCommit,
+        title: 'Direct commits to main/master',
+        sub: 'For solo developers. Reviews fire on every push to your watched branches.',
+    },
+    {
+        value: 'both',
+        icon: Settings,
+        title: 'Both PRs and commits',
+        sub: 'Maximum coverage. Reviews both events.',
+    },
+];
+
+function ModeModal({ repo, onClose, onSubmit, submitting }) {
+    const [mode, setMode]         = useState('pr_only');
+    const [branches, setBranches] = useState('main, master');
+
+    if (!repo) return null;
+
+    const submit = () => {
+        const branchList = branches
+            .split(',')
+            .map((b) => b.trim())
+            .filter(Boolean);
+        onSubmit(repo, mode, branchList.length ? branchList : ['main', 'master']);
+    };
+
+    return (
+        <>
+            <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm anim-fade-in" onClick={onClose} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div
+                    className="w-full max-w-lg rounded-lg p-6 sm:p-7 anim-fade-in"
+                    style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                >
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                Connect repository
+                            </p>
+                            <h2 className="mt-1 truncate text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                {repo.full_name}
+                            </h2>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label="Close"
+                            className="grid h-9 w-9 place-items-center rounded-md transition hover:bg-hover"
+                            style={{ color: 'var(--text-secondary)' }}
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        How should PRism review code in this repository?
+                    </p>
+
+                    <div className="mt-4 space-y-2">
+                        {MODE_OPTIONS.map(({ value, icon: Icon, title, sub }) => {
+                            const active = mode === value;
+                            return (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setMode(value)}
+                                    className="flex w-full items-start gap-3 rounded-md p-3 text-left transition active:scale-[0.99]"
+                                    style={{
+                                        backgroundColor: active ? 'rgba(99,102,241,0.10)' : 'var(--bg-secondary)',
+                                        border: `1px solid ${active ? 'rgba(99,102,241,0.45)' : 'var(--border)'}`,
+                                    }}
+                                >
+                                    <span
+                                        className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-md"
+                                        style={{
+                                            color: active ? 'var(--accent)' : 'var(--text-secondary)',
+                                            backgroundColor: active ? 'rgba(99,102,241,0.15)' : 'var(--bg-hover)',
+                                            border: '1px solid var(--border)',
+                                        }}
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</span>
+                                        <span className="mt-0.5 block text-xs" style={{ color: 'var(--text-secondary)' }}>{sub}</span>
+                                    </span>
+                                    <span
+                                        className="mt-1 h-4 w-4 shrink-0 rounded-full border-2 transition"
+                                        style={{
+                                            borderColor: active ? 'var(--accent)' : 'var(--border-hover)',
+                                            backgroundColor: active ? 'var(--accent)' : 'transparent',
+                                            boxShadow: active ? 'inset 0 0 0 3px var(--bg-card)' : 'none',
+                                        }}
+                                    />
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {(mode === 'commit_only' || mode === 'both') && (
+                        <div className="mt-4">
+                            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                Branches to watch (comma-separated)
+                            </label>
+                            <input
+                                type="text"
+                                value={branches}
+                                onChange={(e) => setBranches(e.target.value)}
+                                placeholder="main, master"
+                                className="input mt-1.5 min-h-[44px] font-mono text-xs"
+                            />
+                        </div>
+                    )}
+
+                    <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="btn btn-secondary min-h-[44px] transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            disabled={submitting}
+                            onClick={submit}
+                            className="btn btn-primary min-h-[44px] transition active:scale-95"
+                        >
+                            {submitting ? 'Connecting…' : 'Connect'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
 
 // GitHub-style language colors
 const LANG_COLORS = {
@@ -44,7 +190,7 @@ function relative(iso) {
     } catch { return iso; }
 }
 
-function RepoCard({ repo, isConnected, isLoading, onConnect }) {
+function RepoCard({ repo, isConnected, connectedRepo, isLoading, onConnect }) {
     return (
         <div className="card flex flex-col gap-3 transition" style={{ minHeight: '180px' }}>
             <div className="flex items-start justify-between gap-3">
@@ -98,16 +244,28 @@ function RepoCard({ repo, isConnected, isLoading, onConnect }) {
                 </div>
 
                 {isConnected ? (
-                    <span
-                        className="badge"
-                        style={{
-                            backgroundColor: 'rgba(34,197,94,0.10)',
-                            color: 'var(--success)',
-                            borderColor: 'rgba(34,197,94,0.30)',
-                        }}
-                    >
-                        <Check className="h-3 w-3" /> Connected
-                    </span>
+                    <div className="inline-flex items-center gap-2">
+                        <span
+                            className="badge"
+                            style={{
+                                backgroundColor: 'rgba(34,197,94,0.10)',
+                                color: 'var(--success)',
+                                borderColor: 'rgba(34,197,94,0.30)',
+                            }}
+                        >
+                            <Check className="h-3 w-3" /> Connected
+                        </span>
+                        {connectedRepo?.id && (
+                            <Link
+                                href={`/repositories/${connectedRepo.id}/settings`}
+                                aria-label="Repository settings"
+                                className="grid h-7 w-7 place-items-center rounded transition hover:bg-hover"
+                                style={{ color: 'var(--text-muted)' }}
+                            >
+                                <Settings className="h-3.5 w-3.5" />
+                            </Link>
+                        )}
+                    </div>
                 ) : (
                     <button
                         type="button"
@@ -124,10 +282,11 @@ function RepoCard({ repo, isConnected, isLoading, onConnect }) {
     );
 }
 
-export default function Index({ repos = [], connectedIds = [] }) {
+export default function Index({ repos = [], connectedIds = [], connectedRepos = {} }) {
     const { flash } = usePage().props;
     const [connectingId, setConnectingId] = useState(null);
     const [query, setQuery] = useState('');
+    const [modalRepo, setModalRepo] = useState(null);
 
     const filtered = useMemo(() => {
         if (!query.trim()) return repos;
@@ -140,16 +299,23 @@ export default function Index({ repos = [], connectedIds = [] }) {
         );
     }, [repos, query]);
 
-    const connect = (repo) => {
+    const openConnectModal = (repo) => setModalRepo(repo);
+
+    const submitConnect = (repo, mode, branches) => {
         setConnectingId(repo.id);
         router.post(
             '/repositories',
             {
-                github_repo_id: repo.id,
-                name: repo.name,
-                full_name: repo.full_name,
+                github_repo_id:  repo.id,
+                name:            repo.name,
+                full_name:       repo.full_name,
+                review_mode:     mode,
+                review_branches: branches,
             },
-            { preserveScroll: true, onFinish: () => setConnectingId(null) },
+            {
+                preserveScroll: true,
+                onFinish: () => { setConnectingId(null); setModalRepo(null); },
+            },
         );
     };
 
@@ -216,13 +382,21 @@ export default function Index({ repos = [], connectedIds = [] }) {
                                 key={repo.id}
                                 repo={repo}
                                 isConnected={connectedIds.includes(repo.id)}
+                                connectedRepo={connectedRepos[repo.id]}
                                 isLoading={connectingId === repo.id}
-                                onConnect={connect}
+                                onConnect={openConnectModal}
                             />
                         ))}
                     </div>
                 )}
             </div>
+
+            <ModeModal
+                repo={modalRepo}
+                onClose={() => setModalRepo(null)}
+                onSubmit={submitConnect}
+                submitting={connectingId !== null}
+            />
         </AuthenticatedLayout>
     );
 }

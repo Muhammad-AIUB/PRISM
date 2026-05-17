@@ -312,6 +312,36 @@ export default function HowToUse() {
                     </div>
                 </section>
 
+                {/* ── 3.5 Working without Pull Requests ───────────────── */}
+                <section>
+                    <SectionHeading
+                        eyebrow="Solo developers"
+                        title="Working without Pull Requests"
+                        subtitle="Push directly to main? PRism still reviews every commit — no PR workflow required."
+                    />
+                    <ol className="mt-8 space-y-3 rounded-md p-5 sm:p-6"
+                        style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', listStyle: 'decimal', paddingLeft: '2.25rem' }}>
+                        <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            Connect a repo from the <strong style={{ color: 'var(--text-primary)' }}>Repositories</strong> page and choose <strong style={{ color: 'var(--text-primary)' }}>"Direct commits to main/master"</strong> in the mode picker.
+                        </li>
+                        <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            Push directly to <code className="rounded px-1 font-mono" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>main</code> as you normally would.
+                        </li>
+                        <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            PRism receives the <code className="rounded px-1 font-mono" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>push</code> webhook automatically and reviews the head commit.
+                        </li>
+                        <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            Get notified via Email and Slack (if configured) — same as PR reviews.
+                        </li>
+                        <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            View commit reviews on the Dashboard under the <strong style={{ color: 'var(--text-primary)' }}>Commits</strong> tab.
+                        </li>
+                    </ol>
+                    <p className="mt-4 text-center text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                        You can also pick <strong>"Both PRs and commits"</strong> on the mode picker to cover both workflows.
+                    </p>
+                </section>
+
                 {/* ── 4. Notifications ────────────────────────────────── */}
                 <section>
                     <SectionHeading

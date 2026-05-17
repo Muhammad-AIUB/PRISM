@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommitReviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HelpController;
@@ -38,8 +39,15 @@ Route::middleware('auth')->group(function () {
 
     // ── Repositories ─────────────────────────────────────────────────
     Route::middleware('throttle:api')->group(function () {
-        Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
-        Route::post('/repositories', [RepositoryController::class, 'store'])->name('repositories.store');
+        Route::get('/repositories',                       [RepositoryController::class, 'index'])->name('repositories.index');
+        Route::post('/repositories',                      [RepositoryController::class, 'store'])->name('repositories.store');
+        Route::get('/repositories/{repository}/settings', [RepositoryController::class, 'settings'])->name('repositories.settings');
+        Route::post('/repositories/{repository}/settings',[RepositoryController::class, 'update'])->name('repositories.update');
+    });
+
+    // ── Commit reviews ───────────────────────────────────────────────
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('/commits/{commitReview}', [CommitReviewController::class, 'show'])->name('commits.show');
     });
 
     // ── Settings ─────────────────────────────────────────────────────
