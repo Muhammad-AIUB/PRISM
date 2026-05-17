@@ -9,6 +9,7 @@ use App\Models\ReviewComment;
 use App\Notifications\SlackReviewNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -34,16 +35,21 @@ class ProcessPullRequestReview implements ShouldQueue
         try {
             $pr->update(['status' => 'analyzing']);
 
-            // 1. Fetch unified diff from GitHub.
-            $diffResponse = Http::withToken($user->github_token)
-                ->withHeaders(['Accept' => 'application/vnd.github.v3.diff'])
-                ->get("https://api.github.com/repos/{$repository->full_name}/pulls/{$pr->pr_number}");
+            // 1. Fetch unified diff from GitHub. Cache for 1h keyed on PR head
+            //    branch so re-analyses skip the network call until a new push.
+            $cacheKey = "pr_diff_{$pr->id}_".sha1($pr->head_branch.'|'.$pr->updated_at);
+            $diffBody = Cache::remember($cacheKey, 3600, function () use ($user, $repository, $pr) {
+                $r = Http::withToken($user->github_token)
+                    ->withHeaders(['Accept' => 'application/vnd.github.v3.diff'])
+                    ->get("https://api.github.com/repos/{$repository->full_name}/pulls/{$pr->pr_number}");
 
-            if (! $diffResponse->successful()) {
-                throw new \RuntimeException('Failed to fetch diff: '.$diffResponse->status());
-            }
+                if (! $r->successful()) {
+                    throw new \RuntimeException('Failed to fetch diff: '.$r->status());
+                }
+                return $r->body();
+            });
 
-            $diff      = mb_substr($diffResponse->body(), 0, 8000);
+            $diff      = mb_substr($diffBody, 0, 8000);
             $languages = $this->detectLanguages($diff);
 
             // 2. First AI pass: structured review.
