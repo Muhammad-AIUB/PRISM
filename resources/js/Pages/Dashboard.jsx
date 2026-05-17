@@ -1,53 +1,83 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { CategoryScale, Chart as ChartJS, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js';
+import {
+    CategoryScale,
+    Chart as ChartJS,
+    Filler,
+    Legend,
+    LinearScale,
+    LineElement,
+    PointElement,
+    Tooltip,
+} from 'chart.js';
+import {
+    GitBranch,
+    GitPullRequest,
+    Plus,
+    TrendingUp,
+} from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 const STATUS = {
-    pending:   { label: 'Pending',   cls: 'bg-warn/10 text-warn ring-warn/30' },
-    analyzing: { label: 'Analyzing', cls: 'bg-brand-500/15 text-brand-300 ring-brand-500/30' },
-    completed: { label: 'Completed', cls: 'bg-ok/10 text-ok ring-ok/30' },
-    failed:    { label: 'Failed',    cls: 'bg-bad/10 text-bad ring-bad/30' },
+    pending:   { label: 'Pending',   color: 'var(--warning)' },
+    analyzing: { label: 'Analyzing', color: 'var(--info)',    pulse: true },
+    completed: { label: 'Completed', color: 'var(--success)' },
+    failed:    { label: 'Failed',    color: 'var(--danger)' },
 };
 
-function StatusBadge({ status }) {
-    const s = STATUS[status] ?? { label: status, cls: 'bg-ink-muted text-ink-dim ring-ink-border' };
-    return <span className={`badge ${s.cls}`}>{s.label}</span>;
-}
-
-function Icon({ name, className = 'h-5 w-5' }) {
-    const paths = {
-        repo:    <><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></>,
-        pr:      <><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v6"/><path d="M18 9V7a2 2 0 0 0-2-2h-3"/></>,
-        score:   <><path d="M12 2L15 8.5 22 9.3l-5 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5-4.9 7-0.8L12 2z"/></>,
-        plus:    <><path d="M12 5v14"/><path d="M5 12h14"/></>,
-    };
+function StatusPill({ status }) {
+    const s = STATUS[status] ?? { label: status, color: 'var(--text-muted)' };
     return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {paths[name]}
-        </svg>
+        <span className="inline-flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+            {s.pulse ? (
+                <span className="pulse-dot" />
+            ) : (
+                <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+            )}
+            {s.label}
+        </span>
     );
 }
 
-function StatCard({ icon, label, value, hint, accent = 'brand' }) {
-    const accents = {
-        brand: 'text-brand-400 bg-brand-500/10 ring-brand-500/20',
-        ok:    'text-ok bg-ok/10 ring-ok/20',
-        warn:  'text-warn bg-warn/10 ring-warn/20',
-    };
+function ScorePill({ score }) {
+    if (score === null || score === undefined) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+    let color = 'var(--danger)';
+    if (score > 70) color = 'var(--success)';
+    else if (score >= 40) color = 'var(--warning)';
     return (
-        <div className="card p-5">
-            <div className="flex items-start justify-between">
-                <div>
-                    <p className="text-xs uppercase tracking-wider text-ink-dim">{label}</p>
-                    <p className="mt-2 text-3xl font-semibold text-ink-text">{value}</p>
-                    {hint && <p className="mt-1 text-xs text-ink-faint">{hint}</p>}
-                </div>
-                <div className={`grid h-9 w-9 place-items-center rounded-btn ring-1 ${accents[accent]}`}>
-                    <Icon name={icon} className="h-4 w-4" />
-                </div>
+        <span
+            className="inline-flex items-center rounded-full px-2 py-0.5 font-mono text-xs font-semibold"
+            style={{
+                color,
+                backgroundColor: color.replace('var(--', 'rgba(') === color ? 'rgba(0,0,0,0.1)' : undefined,
+                background: `color-mix(in srgb, ${color} 12%, transparent)`,
+                border: `1px solid color-mix(in srgb, ${color} 28%, transparent)`,
+            }}
+        >
+            {score}
+        </span>
+    );
+}
+
+function StatCard({ icon: Icon, label, value, hint }) {
+    return (
+        <div className="card flex items-start justify-between">
+            <div>
+                <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</p>
+                <p className="mt-2 text-3xl font-semibold" style={{ color: 'var(--text-primary)' }}>{value}</p>
+                {hint && <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{hint}</p>}
+            </div>
+            <div
+                className="grid h-9 w-9 place-items-center rounded-md"
+                style={{
+                    color: 'var(--accent)',
+                    backgroundColor: 'rgba(99,102,241,0.12)',
+                    border: '1px solid rgba(99,102,241,0.25)',
+                }}
+            >
+                <Icon className="h-4 w-4" />
             </div>
         </div>
     );
@@ -66,20 +96,21 @@ function relative(iso) {
     } catch { return iso; }
 }
 
-function ScorePill({ score }) {
-    if (score === null || score === undefined) return <span className="text-ink-faint">—</span>;
-    const color = score > 70 ? 'text-ok' : score >= 40 ? 'text-warn' : 'text-bad';
-    return <span className={`font-mono text-sm font-semibold ${color}`}>{score}</span>;
+function AuthorAvatar({ login }) {
+    if (!login) return null;
+    return (
+        <img
+            src={`https://github.com/${login}.png?size=40`}
+            alt={login}
+            className="h-6 w-6 rounded-full ring-1"
+            style={{ '--tw-ring-color': 'var(--border)' }}
+            loading="lazy"
+        />
+    );
 }
 
 function ScoreTimeline({ timeline = [] }) {
-    if (!timeline.length) {
-        return (
-            <div className="py-12 text-center text-sm text-ink-dim">
-                No completed reviews yet. Open a PR to see your score trend.
-            </div>
-        );
-    }
+    if (!timeline.length) return null;
 
     const labels = timeline.map((p) => {
         try { return new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
@@ -108,9 +139,9 @@ function ScoreTimeline({ timeline = [] }) {
             legend: { display: false },
             tooltip: {
                 backgroundColor: '#1a1a24',
-                borderColor: '#262635',
+                borderColor: '#2a2a36',
                 borderWidth: 1,
-                titleColor: '#e2e8f0',
+                titleColor: '#f1f5f9',
                 bodyColor: '#94a3b8',
                 callbacks: {
                     title: (items) => timeline[items[0].dataIndex]?.pr || '',
@@ -119,8 +150,8 @@ function ScoreTimeline({ timeline = [] }) {
             },
         },
         scales: {
-            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(38,38,53,0.5)' } },
-            y: { min: 0, max: 100, ticks: { color: '#64748b', stepSize: 25 }, grid: { color: 'rgba(38,38,53,0.5)' } },
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(42,42,54,0.5)' } },
+            y: { min: 0, max: 100, ticks: { color: '#64748b', stepSize: 25 }, grid: { color: 'rgba(42,42,54,0.5)' } },
         },
     };
 
@@ -137,14 +168,13 @@ export default function Dashboard({
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="flex items-end justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-                        <p className="mt-1 text-sm text-ink-dim">AI-powered pull request reviews at a glance.</p>
+                        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Overview</p>
+                        <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">Dashboard</h1>
                     </div>
-                    <Link href="/repositories" className="btn-primary">
-                        <Icon name="plus" className="h-4 w-4" />
-                        Connect Repository
+                    <Link href="/repositories" className="btn-primary btn">
+                        <Plus className="h-4 w-4" /> Connect Repository
                     </Link>
                 </div>
             }
@@ -152,61 +182,96 @@ export default function Dashboard({
             <Head title="Dashboard" />
 
             <div className="space-y-6">
+                {/* Stat cards */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <StatCard icon="repo"  label="Connected Repos" value={total_repos}              accent="brand" />
-                    <StatCard icon="pr"    label="PRs Reviewed"     value={total_prs}                accent="ok" />
-                    <StatCard icon="score" label="Average Score"    value={avg_score ?? '—'} hint="Across completed reviews" accent="warn" />
+                    <StatCard icon={GitBranch}       label="Connected Repositories" value={total_repos} />
+                    <StatCard icon={GitPullRequest}  label="Pull Requests Reviewed"  value={total_prs} />
+                    <StatCard icon={TrendingUp}      label="Average Score"           value={avg_score ?? '—'} hint="Across completed reviews" />
                 </div>
 
-                <div className="card p-5">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-sm font-semibold text-ink-text">Score Timeline</h2>
-                        <span className="text-xs text-ink-faint">{timeline.length} review{timeline.length === 1 ? '' : 's'}</span>
+                {/* Timeline */}
+                {timeline.length > 0 && (
+                    <div className="card">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">Score Timeline</h2>
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {timeline.length} review{timeline.length === 1 ? '' : 's'}
+                            </span>
+                        </div>
+                        <ScoreTimeline timeline={timeline} />
                     </div>
-                    <ScoreTimeline timeline={timeline} />
-                </div>
+                )}
 
-                <div className="card overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-ink-border px-5 py-3">
-                        <h2 className="text-sm font-semibold text-ink-text">Recent Pull Requests</h2>
-                        <span className="text-xs text-ink-faint">Showing last {recent_prs.length}</span>
+                {/* PR Table */}
+                <div className="card-flat overflow-hidden">
+                    <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+                        <h2 className="text-sm font-semibold">Recent Pull Requests</h2>
+                        {recent_prs.length > 0 && (
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                Showing last {recent_prs.length}
+                            </span>
+                        )}
                     </div>
 
                     {recent_prs.length === 0 ? (
                         <div className="px-5 py-16 text-center">
-                            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-ink-muted text-ink-dim">
-                                <Icon name="pr" />
+                            <div
+                                className="mx-auto grid h-14 w-14 place-items-center rounded-full"
+                                style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                            >
+                                <GitPullRequest className="h-6 w-6" />
                             </div>
-                            <p className="mt-4 text-sm text-ink-text">No pull requests yet.</p>
-                            <p className="mt-1 text-xs text-ink-dim">Connect a repo and open a PR to get an AI review.</p>
-                            <Link href="/repositories" className="btn-primary mt-5"><Icon name="plus" className="h-4 w-4" />Connect a Repository</Link>
+                            <p className="mt-4 text-sm font-medium">No reviews yet</p>
+                            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                Connect a repository and open a PR to get an AI review.
+                            </p>
+                            <Link href="/repositories" className="btn-primary btn mt-5 inline-flex">
+                                <Plus className="h-4 w-4" /> Connect Repository
+                            </Link>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="min-w-full">
                                 <thead>
-                                    <tr className="text-left text-xs uppercase tracking-wider text-ink-dim">
-                                        <th className="px-5 py-3 font-medium">Repo</th>
-                                        <th className="px-5 py-3 font-medium">PR</th>
+                                    <tr className="text-left text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                        <th className="px-5 py-3 font-medium">Repository</th>
+                                        <th className="px-5 py-3 font-medium">PR Title</th>
                                         <th className="px-5 py-3 font-medium">Author</th>
                                         <th className="px-5 py-3 font-medium">Status</th>
                                         <th className="px-5 py-3 font-medium">Score</th>
-                                        <th className="px-5 py-3 font-medium">Created</th>
+                                        <th className="px-5 py-3 font-medium">Time</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-ink-border">
+                                <tbody>
                                     {recent_prs.map((pr) => (
-                                        <tr key={pr.id} className="text-sm transition hover:bg-ink-muted/40">
-                                            <td className="px-5 py-3 font-mono text-xs text-ink-dim">{pr.repository?.full_name ?? '—'}</td>
+                                        <tr
+                                            key={pr.id}
+                                            className="border-t text-sm transition-colors hover:bg-hover"
+                                            style={{ borderColor: 'var(--border)' }}
+                                        >
+                                            <td className="whitespace-nowrap px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                                                {pr.repository?.full_name ?? '—'}
+                                            </td>
                                             <td className="max-w-md px-5 py-3">
-                                                <Link href={`/reviews/${pr.id}`} className="block truncate font-medium text-ink-text hover:text-brand-400">
-                                                    <span className="text-ink-faint">#{pr.pr_number}</span> {pr.title}
+                                                <Link
+                                                    href={`/reviews/${pr.id}`}
+                                                    className="block truncate font-medium"
+                                                    style={{ color: 'var(--text-primary)' }}
+                                                >
+                                                    <span style={{ color: 'var(--text-muted)' }}>#{pr.pr_number}</span> {pr.title}
                                                 </Link>
                                             </td>
-                                            <td className="whitespace-nowrap px-5 py-3 text-ink-dim">{pr.author}</td>
-                                            <td className="whitespace-nowrap px-5 py-3"><StatusBadge status={pr.status} /></td>
+                                            <td className="whitespace-nowrap px-5 py-3">
+                                                <span className="inline-flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                    <AuthorAvatar login={pr.author} />
+                                                    {pr.author}
+                                                </span>
+                                            </td>
+                                            <td className="whitespace-nowrap px-5 py-3"><StatusPill status={pr.status} /></td>
                                             <td className="whitespace-nowrap px-5 py-3"><ScorePill score={pr.score} /></td>
-                                            <td className="whitespace-nowrap px-5 py-3 text-xs text-ink-dim">{relative(pr.created_at)}</td>
+                                            <td className="whitespace-nowrap px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                                {relative(pr.created_at)}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

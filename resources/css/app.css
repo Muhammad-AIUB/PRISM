@@ -1,8 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    /* Dark theme (default) */
+    --bg-primary:   #0a0a0f;
+    --bg-secondary: #13131a;
+    --bg-card:      #1a1a24;
+    --bg-hover:     #22222e;
+
+    --border:       #2a2a36;
+    --border-hover: #3a3a48;
+
+    --text-primary:   #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted:     #64748b;
+
+    --accent:       #6366f1;
+    --accent-hover: #7c7ff5;
+
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger:  #ef4444;
+    --info:    #3b82f6;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
+
+html.light {
+    --bg-primary:   #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card:      #ffffff;
+    --bg-hover:     #f1f5f9;
+
+    --border:       #e2e8f0;
+    --border-hover: #cbd5e1;
+
+    --text-primary:   #0f172a;
+    --text-secondary: #475569;
+    --text-muted:     #64748b;
+}
 
 @layer base {
     html { color-scheme: dark; }
@@ -11,36 +50,169 @@
     body {
         font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
         font-feature-settings: 'cv02','cv03','cv04','cv11';
-        background-color: #0f0f13;
-        color: #e2e8f0;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
     }
 
-    html.light body {
-        background-color: #f8fafc;
-        color: #0f172a;
+    code, pre, .font-mono {
+        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
-    /* Modern dark scrollbar */
+    /* Scrollbar */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #2d2d3d; border-radius: 8px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3a3a4d; }
-    html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
-    html.light ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-    code, pre, .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 }
 
 @layer components {
+    /* ── Buttons ─────────────────────────────────────────────────── */
     .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-btn px-3.5 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-50;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.25rem;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        outline: none;
     }
-    .btn-primary { @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700; }
-    .btn-secondary { @apply btn bg-ink-card text-ink-text ring-1 ring-ink-border hover:bg-ink-muted; }
-    .btn-ghost { @apply btn text-ink-dim hover:bg-ink-card hover:text-ink-text; }
+    .btn:focus-visible { box-shadow: 0 0 0 3px rgba(99,102,241,0.35); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    .card { @apply rounded-card bg-ink-card ring-1 ring-ink-border shadow-card; }
-    html.light .card { @apply bg-white ring-slate-200; }
+    .btn-primary {
+        background-color: var(--accent);
+        color: #ffffff;
+    }
+    .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
 
-    .badge { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1; }
+    .btn-secondary {
+        background-color: transparent;
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background-color: var(--bg-hover); border-color: var(--border-hover); }
+
+    .btn-ghost {
+        background-color: transparent;
+        color: var(--text-secondary);
+    }
+    .btn-ghost:hover { background-color: var(--bg-hover); color: var(--text-primary); }
+
+    /* ── Cards ───────────────────────────────────────────────────── */
+    .card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        transition: border-color 0.15s ease;
+    }
+    .card:hover { border-color: var(--border-hover); }
+    .card-flat { /* non-hover variant */
+        background-color: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+    }
+
+    /* ── Inputs ──────────────────────────────────────────────────── */
+    .input {
+        width: 100%;
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        outline: none;
+    }
+    .input::placeholder { color: var(--text-muted); }
+    .input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+    }
+
+    /* ── Badges ──────────────────────────────────────────────────── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        line-height: 1rem;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    /* ── Gradient brand text ─────────────────────────────────────── */
+    .brand-text {
+        background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #a855f7 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    /* ── Subtle backgrounds ──────────────────────────────────────── */
+    .dot-pattern {
+        background-image:
+            radial-gradient(circle, rgba(148,163,184,0.12) 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+    .login-bg {
+        background:
+            radial-gradient(60% 50% at 50% 0%, rgba(99,102,241,0.20) 0%, rgba(10,10,15,0) 70%),
+            radial-gradient(40% 40% at 80% 100%, rgba(168,85,247,0.12) 0%, rgba(10,10,15,0) 70%);
+    }
 }
+
+@layer utilities {
+    /* Pulsing dot — for status="analyzing" */
+    .pulse-dot {
+        position: relative;
+        display: inline-block;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 9999px;
+        background-color: var(--info);
+    }
+    .pulse-dot::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        background-color: var(--info);
+        opacity: 0.6;
+        animation: prism-pulse 1.4s ease-out infinite;
+    }
+    @keyframes prism-pulse {
+        0%   { transform: scale(1);   opacity: 0.6; }
+        100% { transform: scale(2.6); opacity: 0;   }
+    }
+
+    .anim-fade-in  { animation: prism-fade 200ms ease-out both; }
+    @keyframes prism-fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+    .anim-score-in { animation: prism-score 600ms cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes prism-score { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+}
+
+/* ── Tailwind utility surface for CSS-var colors ─────────────────── */
+/* Generated via Tailwind config too, but having a few common ones here
+   keeps the CSS understandable without round-tripping through config. */
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.text-accent    { color: var(--accent); }
+.bg-primary     { background-color: var(--bg-primary); }
+.bg-secondary   { background-color: var(--bg-secondary); }
+.bg-card        { background-color: var(--bg-card); }
+.bg-hover       { background-color: var(--bg-hover); }
+.border-base    { border-color: var(--border); }
