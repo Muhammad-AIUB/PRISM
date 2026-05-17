@@ -26,6 +26,13 @@ class SecurityHeaders
 
         // CSP — Inertia + Vite need 'unsafe-inline' for the @viteReactRefresh script,
         // and we allow Google Fonts CSS, fonts.gstatic.com fonts, and GitHub avatars.
+        //
+        // Note: script-src includes 'unsafe-inline' because the theme bootstrapper
+        // in resources/views/app.blade.php must run before any external JS to avoid
+        // a flash-of-unstyled-theme. Tightening this would require a nonce-based
+        // CSP applied via a middleware that injects the nonce into the inline
+        // script — tracked as a follow-up. The inline script never touches user
+        // data; it only reads the `prism-theme` localStorage key.
         $csp = "default-src 'self'; "
              . "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
              . "style-src 'self' 'unsafe-inline' fonts.googleapis.com; "

@@ -16,6 +16,8 @@
 
         {{-- Apply persisted theme before paint to avoid flash --}}
         <script>
+            // Safe: UI preference only, no PII or auth data.
+            // The only key PRism writes to localStorage is `prism-theme` ('light'|'dark').
             (function () {
                 try {
                     var t = localStorage.getItem('prism-theme');

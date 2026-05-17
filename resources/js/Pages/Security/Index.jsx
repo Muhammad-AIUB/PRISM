@@ -215,6 +215,42 @@ protected $casts = [
                     </div>
                 </section>
 
+                {/* ── 2.5 Browser storage policy ──────────────────────── */}
+                <section>
+                    <div className="card p-5 sm:p-7">
+                        <div className="flex items-center gap-3">
+                            <Database className="h-6 w-6" style={{ color: 'var(--accent)' }} />
+                            <SectionHeading title="Browser Storage Policy" align="left" />
+                        </div>
+                        <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            PRism is deliberate about what it puts in your browser. We audit every <code className="rounded font-mono px-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>localStorage</code> write to keep sensitive data off the client.
+                        </p>
+                        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <ul className="space-y-2.5">
+                                <YesRow>Only UI preferences stored in browser (theme, layout)</YesRow>
+                                <YesRow>Session uses HTTP-only secure cookies (XSS-safe)</YesRow>
+                                <YesRow>CSRF tokens rotated on every request</YesRow>
+                            </ul>
+                            <ul className="space-y-2.5">
+                                <NoRow>NO authentication tokens in localStorage</NoRow>
+                                <NoRow>NO personal data in localStorage</NoRow>
+                                <NoRow>NO API keys, ever, in the client</NoRow>
+                            </ul>
+                        </div>
+                        <div className="mt-5">
+                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                The only key we write
+                            </p>
+                            <pre className="mt-2 overflow-x-auto rounded-md p-3 text-[11px] leading-relaxed"
+                                style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+{`// resources/js/Components/ThemeToggle.jsx
+// Safe: UI preference only, no PII or auth data.
+localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
+                            </pre>
+                        </div>
+                    </div>
+                </section>
+
                 {/* ── 3. Code journey ─────────────────────────────────── */}
                 <section>
                     <SectionHeading eyebrow="Data flow" title="Your Code's Journey Through PRism" />

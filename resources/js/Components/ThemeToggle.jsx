@@ -3,10 +3,15 @@ import { useEffect, useState } from 'react';
 /**
  * Light/dark theme toggle. Persists preference in localStorage and applies
  * the corresponding class to <html>. Defaults to dark when unset.
+ *
+ * SECURITY: The only value PRism writes to localStorage is the theme string
+ * ('light' | 'dark'). No tokens, no PII, no auth data is ever stored
+ * client-side. Auth lives in HTTP-only cookies managed by Laravel.
  */
 export default function ThemeToggle() {
     const [theme, setTheme] = useState(() => {
         if (typeof window === 'undefined') return 'dark';
+        // Safe: UI preference only, no PII or auth data.
         return localStorage.getItem('prism-theme') === 'light' ? 'light' : 'dark';
     });
 
@@ -14,6 +19,7 @@ export default function ThemeToggle() {
         const root = document.documentElement;
         root.classList.remove('light', 'dark');
         root.classList.add(theme);
+        // Safe: UI preference only, no PII or auth data.
         localStorage.setItem('prism-theme', theme);
     }, [theme]);
 
