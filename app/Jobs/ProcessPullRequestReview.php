@@ -19,8 +19,11 @@ class ProcessPullRequestReview implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 240;
-    public int $tries   = 1;
+    /** Up to 3 attempts: ~1 immediate + 2 retries (60s, 180s, then 600s if a 4th somehow runs). */
+    public int $tries   = 3;
+    public int $timeout = 120;
+    /** Exponential-ish backoff in seconds between attempts. */
+    public array $backoff = [60, 180, 600];
 
     public function __construct(public PullRequest $pullRequest)
     {
@@ -32,8 +35,15 @@ class ProcessPullRequestReview implements ShouldQueue
         $repository = $pr->repository;
         $user       = $repository->user;
 
-        try {
-            $pr->update(['status' => 'analyzing']);
+        Log::info('PR review job started', [
+            'pr_id'   => $pr->id,
+            'repo'    => $repository->full_name,
+            'attempt' => $this->attempts(),
+        ]);
+
+        // No outer try/catch — we want exceptions to propagate so Laravel can
+        // retry per $tries/$backoff. The final-failure cleanup lives in failed().
+        $pr->update(['status' => 'analyzing']);
 
             // 1. Fetch unified diff from GitHub. Cache for 1h keyed on PR head
             //    branch so re-analyses skip the network call until a new push.
@@ -116,18 +126,26 @@ class ProcessPullRequestReview implements ShouldQueue
                     'body' => $this->buildSummaryComment($review),
                 ]);
 
-            $pr->update(['status' => 'completed']);
+        $pr->update(['status' => 'completed']);
+        Log::info('PR review job completed', ['pr_id' => $pr->id, 'score' => $review->overall_score]);
 
-            // 6. Out-of-band notifications. Failure here must not roll back review.
-            $this->sendEmail($pr, $user);
-            SlackReviewNotifier::send($pr->fresh(['repository', 'review']));
-        } catch (Throwable $e) {
-            Log::error('ProcessPullRequestReview failed', [
-                'pr_id' => $pr->id,
-                'error' => $e->getMessage(),
-            ]);
-            $pr->update(['status' => 'failed']);
-        }
+        // 6. Out-of-band notifications. Failure here must NOT roll back the review
+        //    or cause a retry, so swallow exceptions narrowly.
+        $this->sendEmail($pr, $user);
+        SlackReviewNotifier::send($pr->fresh(['repository', 'review']));
+    }
+
+    /**
+     * Invoked by Laravel after all $tries are exhausted (or once if $tries=1).
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::error('PR review job failed permanently', [
+            'pr_id'    => $this->pullRequest->id,
+            'attempts' => $this->attempts(),
+            'error'    => $exception->getMessage(),
+        ]);
+        $this->pullRequest->update(['status' => 'failed']);
     }
 
     /**
