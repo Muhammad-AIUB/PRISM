@@ -168,22 +168,27 @@ export default function Dashboard({
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-end justify-between">
-                    <div>
-                        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Overview</p>
-                        <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">Dashboard</h1>
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-medium uppercase tracking-wider sm:text-xs" style={{ color: 'var(--text-muted)' }}>Overview</p>
+                        <h1 className="mt-0.5 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">Dashboard</h1>
                     </div>
-                    <Link href="/repositories" className="btn-primary btn">
-                        <Plus className="h-4 w-4" /> Connect Repository
+                    <Link
+                        href="/repositories"
+                        className="btn btn-primary min-h-[44px] shrink-0 transition active:scale-95"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span className="hidden sm:inline">Connect Repository</span>
+                        <span className="sm:hidden">Connect</span>
                     </Link>
                 </div>
             }
         >
             <Head title="Dashboard" />
 
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
                 {/* Stat cards */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-6">
                     <StatCard icon={GitBranch}       label="Connected Repositories" value={total_repos} />
                     <StatCard icon={GitPullRequest}  label="Pull Requests Reviewed"  value={total_prs} />
                     <StatCard icon={TrendingUp}      label="Average Score"           value={avg_score ?? '—'} hint="Across completed reviews" />
@@ -230,53 +235,83 @@ export default function Dashboard({
                             </Link>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full">
-                                <thead>
-                                    <tr className="text-left text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                                        <th className="px-5 py-3 font-medium">Repository</th>
-                                        <th className="px-5 py-3 font-medium">PR Title</th>
-                                        <th className="px-5 py-3 font-medium">Author</th>
-                                        <th className="px-5 py-3 font-medium">Status</th>
-                                        <th className="px-5 py-3 font-medium">Score</th>
-                                        <th className="px-5 py-3 font-medium">Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recent_prs.map((pr) => (
-                                        <tr
-                                            key={pr.id}
-                                            className="border-t text-sm transition-colors hover:bg-hover"
-                                            style={{ borderColor: 'var(--border)' }}
-                                        >
-                                            <td className="whitespace-nowrap px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                                                {pr.repository?.full_name ?? '—'}
-                                            </td>
-                                            <td className="max-w-md px-5 py-3">
-                                                <Link
-                                                    href={`/reviews/${pr.id}`}
-                                                    className="block truncate font-medium"
-                                                    style={{ color: 'var(--text-primary)' }}
-                                                >
-                                                    <span style={{ color: 'var(--text-muted)' }}>#{pr.pr_number}</span> {pr.title}
-                                                </Link>
-                                            </td>
-                                            <td className="whitespace-nowrap px-5 py-3">
-                                                <span className="inline-flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                    <AuthorAvatar login={pr.author} />
-                                                    {pr.author}
-                                                </span>
-                                            </td>
-                                            <td className="whitespace-nowrap px-5 py-3"><StatusPill status={pr.status} /></td>
-                                            <td className="whitespace-nowrap px-5 py-3"><ScorePill score={pr.score} /></td>
-                                            <td className="whitespace-nowrap px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                                                {relative(pr.created_at)}
-                                            </td>
+                        <>
+                            {/* Mobile: stacked cards */}
+                            <ul className="divide-y md:hidden" style={{ borderColor: 'var(--border)' }}>
+                                {recent_prs.map((pr) => (
+                                    <li key={pr.id} className="px-4 py-3 transition active:bg-hover" style={{ borderColor: 'var(--border)' }}>
+                                        <Link href={`/reviews/${pr.id}`} className="block">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[11px] font-mono truncate" style={{ color: 'var(--text-muted)' }}>
+                                                        {pr.repository?.full_name ?? '—'}
+                                                    </p>
+                                                    <p className="mt-0.5 truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                                        <span style={{ color: 'var(--text-muted)' }}>#{pr.pr_number}</span> {pr.title}
+                                                    </p>
+                                                    <div className="mt-2 flex items-center gap-3">
+                                                        <StatusPill status={pr.status} />
+                                                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                                            {relative(pr.created_at)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <ScorePill score={pr.score} />
+                                            </div>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            {/* md+: full table */}
+                            <div className="hidden overflow-x-auto md:block">
+                                <table className="min-w-full">
+                                    <thead>
+                                        <tr className="text-left text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                            <th className="px-5 py-3 font-medium">Repository</th>
+                                            <th className="px-5 py-3 font-medium">PR Title</th>
+                                            <th className="px-5 py-3 font-medium">Author</th>
+                                            <th className="px-5 py-3 font-medium">Status</th>
+                                            <th className="px-5 py-3 font-medium">Score</th>
+                                            <th className="px-5 py-3 font-medium">Time</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {recent_prs.map((pr) => (
+                                            <tr
+                                                key={pr.id}
+                                                className="border-t text-sm transition-colors hover:bg-hover"
+                                                style={{ borderColor: 'var(--border)' }}
+                                            >
+                                                <td className="whitespace-nowrap px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                                                    {pr.repository?.full_name ?? '—'}
+                                                </td>
+                                                <td className="max-w-md px-5 py-3">
+                                                    <Link
+                                                        href={`/reviews/${pr.id}`}
+                                                        className="block truncate font-medium"
+                                                        style={{ color: 'var(--text-primary)' }}
+                                                    >
+                                                        <span style={{ color: 'var(--text-muted)' }}>#{pr.pr_number}</span> {pr.title}
+                                                    </Link>
+                                                </td>
+                                                <td className="whitespace-nowrap px-5 py-3">
+                                                    <span className="inline-flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                        <AuthorAvatar login={pr.author} />
+                                                        {pr.author}
+                                                    </span>
+                                                </td>
+                                                <td className="whitespace-nowrap px-5 py-3"><StatusPill status={pr.status} /></td>
+                                                <td className="whitespace-nowrap px-5 py-3"><ScorePill score={pr.score} /></td>
+                                                <td className="whitespace-nowrap px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                                                    {relative(pr.created_at)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

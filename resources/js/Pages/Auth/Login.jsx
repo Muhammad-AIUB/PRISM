@@ -18,7 +18,7 @@ export default function Login({ status }) {
             <Head title="Sign in to PRism" />
 
             <div
-                className="relative z-10 w-full max-w-sm rounded-lg p-8"
+                className="relative z-10 w-full max-w-sm rounded-lg p-6 sm:p-8 lg:p-10"
                 style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
             >
                 {/* Logo */}
@@ -37,7 +37,7 @@ export default function Login({ status }) {
                                 <path d="M3 12l9 4 9-4" />
                             </svg>
                         </div>
-                        <span className="brand-text text-3xl">PRism</span>
+                        <span className="brand-text text-3xl lg:text-4xl">PRism</span>
                     </Link>
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         AI-powered code review for everyone
@@ -55,7 +55,7 @@ export default function Login({ status }) {
 
                 <a
                     href="/auth/github"
-                    className="btn mt-8 w-full text-sm font-semibold"
+                    className="btn mt-8 min-h-[44px] w-full text-sm font-semibold transition active:scale-95"
                     style={{
                         backgroundColor: '#0f0f13',
                         color: '#ffffff',

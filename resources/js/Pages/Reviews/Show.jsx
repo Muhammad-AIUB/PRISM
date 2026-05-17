@@ -199,7 +199,7 @@ function SeverityFilters({ counts, active, onChange }) {
         { key: 'suggestion', label: 'Suggestion', count: counts.suggestion, color: 'var(--info)' },
     ];
     return (
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 sm:flex-wrap">
             {items.map(({ key, label, count, color }) => {
                 const isActive = active === key;
                 return (
@@ -207,7 +207,7 @@ function SeverityFilters({ counts, active, onChange }) {
                         key={key}
                         type="button"
                         onClick={() => onChange(key)}
-                        className="btn"
+                        className="btn shrink-0 transition active:scale-95"
                         style={{
                             padding: '0.375rem 0.75rem',
                             fontSize: '0.75rem',
@@ -335,22 +335,35 @@ export default function Show({ pullRequest, review }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-center justify-between gap-4">
-                    <Link href="/dashboard" className="btn-ghost btn" style={{ padding: '0.375rem 0.625rem' }}>
-                        <ArrowLeft className="h-4 w-4" /> Back
+                <div className="flex items-center justify-between gap-2">
+                    <Link
+                        href="/dashboard"
+                        className="btn btn-ghost min-h-[44px] transition active:scale-95"
+                        style={{ padding: '0.375rem 0.625rem' }}
+                        aria-label="Back to dashboard"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">Back</span>
                     </Link>
                     <div className="flex items-center gap-2">
                         <a
                             href={`/reviews/${pullRequest.id}/pdf`}
                             target="_blank"
                             rel="noreferrer"
-                            className="btn-secondary btn"
+                            className="btn btn-secondary min-h-[44px] transition active:scale-95"
+                            aria-label="Export PDF"
                         >
-                            <Download className="h-4 w-4" /> Export PDF
+                            <Download className="h-4 w-4" />
+                            <span className="hidden sm:inline">Export PDF</span>
                         </a>
-                        <button type="button" onClick={reanalyze} disabled={reanalyzing} className="btn-primary btn">
+                        <button
+                            type="button"
+                            onClick={reanalyze}
+                            disabled={reanalyzing}
+                            className="btn btn-primary min-h-[44px] transition active:scale-95"
+                        >
                             <RefreshCw className={`h-4 w-4 ${reanalyzing ? 'animate-spin' : ''}`} />
-                            {reanalyzing ? 'Analyzing…' : 'Re-analyze'}
+                            <span className="hidden sm:inline">{reanalyzing ? 'Analyzing…' : 'Re-analyze'}</span>
                         </button>
                     </div>
                 </div>
@@ -360,24 +373,24 @@ export default function Show({ pullRequest, review }) {
 
             <div className="space-y-6">
                 {/* ── Header card ─────────────────────────────────────── */}
-                <div className="card-flat p-6">
-                    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <div className="card-flat p-4 sm:p-6">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0 flex-1 order-2 lg:order-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                                 {githubPrUrl ? (
                                     <a href={githubPrUrl} target="_blank" rel="noreferrer"
-                                        className="inline-flex items-center gap-1 font-mono hover:opacity-80"
+                                        className="inline-flex max-w-full items-center gap-1 truncate font-mono hover:opacity-80"
                                         style={{ color: 'var(--text-secondary)' }}>
-                                        {pullRequest.repository?.full_name}
-                                        <ExternalLink className="h-3 w-3" />
+                                        <span className="truncate">{pullRequest.repository?.full_name}</span>
+                                        <ExternalLink className="h-3 w-3 shrink-0" />
                                     </a>
                                 ) : (
-                                    <span className="font-mono">{pullRequest.repository?.full_name}</span>
+                                    <span className="truncate font-mono">{pullRequest.repository?.full_name}</span>
                                 )}
                                 <ChevronRight className="h-3 w-3" />
                                 <span>PR #{pullRequest.pr_number}</span>
                             </div>
-                            <h1 className="mt-1 text-2xl font-semibold tracking-tight">{pullRequest.title}</h1>
+                            <h1 className="mt-1 break-words text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">{pullRequest.title}</h1>
                             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                                 <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                                     by <AuthorAvatar login={pullRequest.author} /><span style={{ color: 'var(--text-primary)' }}>{pullRequest.author}</span>
@@ -396,7 +409,7 @@ export default function Show({ pullRequest, review }) {
                                 <StatusPill status={pullRequest.status} />
                             </div>
                         </div>
-                        <div className="md:shrink-0">
+                        <div className="order-1 flex justify-center lg:order-2 lg:shrink-0">
                             <ScoreCircle score={review?.overall_score ?? null} />
                         </div>
                     </div>
@@ -442,7 +455,7 @@ export default function Show({ pullRequest, review }) {
                 {review && (
                     <div className="card-flat overflow-hidden">
                         <div className="border-b" style={{ borderColor: 'var(--border)' }}>
-                            <nav className="flex gap-1 px-3" aria-label="Review tabs">
+                            <nav className="-mx-px flex gap-1 overflow-x-auto px-3" aria-label="Review tabs" style={{ scrollbarWidth: 'thin' }}>
                                 {LAYERS.map((tab) => {
                                     const count = tab.key === 'diff' ? null : issuesByLayer[tab.key].length;
                                     const isActive = activeTab === tab.key;
@@ -451,7 +464,7 @@ export default function Show({ pullRequest, review }) {
                                             key={tab.key}
                                             type="button"
                                             onClick={() => setActiveTab(tab.key)}
-                                            className="relative inline-flex items-center gap-2 px-3 py-3 text-sm font-medium transition"
+                                            className="relative inline-flex shrink-0 items-center gap-2 px-3 py-3 text-sm font-medium transition active:scale-[0.98]"
                                             style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
                                         >
                                             {tab.label}

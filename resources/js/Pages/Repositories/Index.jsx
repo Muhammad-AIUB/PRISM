@@ -113,7 +113,7 @@ function RepoCard({ repo, isConnected, isLoading, onConnect }) {
                         type="button"
                         disabled={isLoading}
                         onClick={() => onConnect(repo)}
-                        className="btn-primary btn"
+                        className="btn btn-primary min-h-[36px] transition active:scale-95"
                         style={{ padding: '0.375rem 0.875rem', fontSize: '0.75rem' }}
                     >
                         {isLoading ? 'Connecting…' : 'Connect'}
@@ -156,20 +156,19 @@ export default function Index({ repos = [], connectedIds = [] }) {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Connect</p>
-                        <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">Repositories</h1>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-medium uppercase tracking-wider sm:text-xs" style={{ color: 'var(--text-muted)' }}>Connect</p>
+                        <h1 className="mt-0.5 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">Repositories</h1>
                     </div>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-72">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                             type="search"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="Filter repositories…"
-                            className="input pl-9"
-                            style={{ width: '18rem' }}
+                            className="input min-h-[44px] pl-9"
                         />
                     </div>
                 </div>
@@ -211,7 +210,7 @@ export default function Index({ repos = [], connectedIds = [] }) {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:grid-cols-3">
                         {filtered.map((repo) => (
                             <RepoCard
                                 key={repo.id}
