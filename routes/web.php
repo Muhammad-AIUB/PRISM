@@ -21,7 +21,7 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'throttle:api'])
     ->name('dashboard');
 
 // ── Health check (no auth, no throttle) ──────────────────────────────
@@ -41,10 +41,12 @@ Route::middleware('auth')->group(function () {
     });
 
     // ── Reviews ──────────────────────────────────────────────────────
-    Route::get('/reviews/{pullRequest}',                [ReviewController::class, 'show'])->name('reviews.show');
-    Route::post('/reviews/{pullRequest}/reanalyze',     [ReviewController::class, 'reanalyze'])->name('reviews.reanalyze');
-    Route::get('/reviews/{pullRequest}/diff',           [ReviewController::class, 'diff'])->name('reviews.diff');
-    Route::get('/reviews/{pullRequest}/pdf',            [ReviewController::class, 'pdf'])->name('reviews.pdf');
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('/reviews/{pullRequest}',            [ReviewController::class, 'show'])->name('reviews.show');
+        Route::post('/reviews/{pullRequest}/reanalyze', [ReviewController::class, 'reanalyze'])->name('reviews.reanalyze');
+        Route::get('/reviews/{pullRequest}/diff',       [ReviewController::class, 'diff'])->name('reviews.diff');
+        Route::get('/reviews/{pullRequest}/pdf',        [ReviewController::class, 'pdf'])->name('reviews.pdf');
+    });
 });
 
 // ── GitHub Webhook ───────────────────────────────────────────────────
