@@ -105,10 +105,14 @@ export default function Login({ status }) {
                                     <li><span style={{ color: 'var(--danger)' }}>✗</span> Your source code is never stored</li>
                                 </ul>
                                 <p className="mt-2">
-                                    Full details on the{' '}
-                                    <Link href="/security" className="underline" style={{ color: 'var(--accent)' }}>
+                                    Read our full{' '}
+                                    <Link
+                                        href="/security"
+                                        className="font-semibold underline-offset-2 hover:underline"
+                                        style={{ color: 'var(--accent)' }}
+                                    >
                                         Security &amp; Privacy
-                                    </Link>{' '}page (you'll see it after sign-in).
+                                    </Link>{' '}policy before you sign in.
                                 </p>
                             </div>
                         </div>
