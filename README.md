@@ -109,7 +109,8 @@ All of this — with zero recurring cost on free tiers.
 - 📈 **Score trend chart** — track code quality across last 30 PRs (Chart.js)
 - 🏷️ **Severity filter** — focus on Critical / Warning / Suggestion separately
 - 📄 **PDF export** — download a polished review report for offline sharing
-- 🔍 **Diff viewer** — syntax-highlighted view of the PR changes inline
+- 🔍 **Diff viewer** — color-coded diff (green/red/accent) with monospace formatting
+- 🌗 **Dark/light mode toggle with localStorage persistence (FOUC-free)**
 
 ### Notifications
 - 📧 **Email notifications** via Resend (3000/month free)
@@ -186,7 +187,6 @@ All of this — with zero recurring cost on free tiers.
 - [ ] **One-click "Post Fix to GitHub"** — turn suggested_fix into an inline PR comment
 - [ ] **Developer insight dashboard** — per-author trend: "your top 3 recurring mistakes"
 - [ ] **Team leaderboard** — weekly code quality ranking for orgs
-- [ ] **Dark/light mode toggle** with localStorage persistence
 
 ### Mid-term (medium-effort, differentiating)
 - [ ] **Configurable review profiles** — strict / balanced / relaxed per repo
