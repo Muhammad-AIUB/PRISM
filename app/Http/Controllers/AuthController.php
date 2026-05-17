@@ -24,21 +24,22 @@ class AuthController extends Controller
 
     /**
      * Handle the callback from GitHub after OAuth approval.
-     * Find or create the user by github_id, then log them in.
-     * Wrapped in try/catch so the user lands back on /login with a readable
-     * error instead of a generic 500.
+     * Logs every step so production 500s are diagnosable from Render's log tab.
      */
     public function handleGithubCallback()
     {
-        try {
-            Log::info('GitHub callback started');
+        Log::info('[OAuth] Callback hit', [
+            'url'      => request()->fullUrl(),
+            'has_code' => request()->has('code'),
+        ]);
 
+        try {
             $githubUser = Socialite::driver('github')->user();
 
-            Log::info('Got GitHub user', [
-                'id'        => $githubUser->getId(),
-                'username'  => $githubUser->getNickname(),
-                'has_email' => (bool) $githubUser->getEmail(),
+            Log::info('[OAuth] Got GitHub user', [
+                'id'       => $githubUser->getId(),
+                'nickname' => $githubUser->getNickname(),
+                'email'    => $githubUser->getEmail(),
             ]);
 
             $user = User::updateOrCreate(
@@ -52,22 +53,27 @@ class AuthController extends Controller
                 ]
             );
 
-            Log::info('User upserted', ['user_id' => $user->id]);
+            Log::info('[OAuth] User upserted', ['user_id' => $user->id]);
 
-            Auth::login($user);
+            Auth::login($user, true);
+
+            Log::info('[OAuth] User logged in, redirecting to dashboard');
 
             AuditLog::record($user->id, 'login', 'Signed in via GitHub OAuth');
 
-            return redirect()->route('dashboard');
+            return redirect()->intended(route('dashboard', absolute: false));
         } catch (Throwable $e) {
-            Log::error('GitHub OAuth callback failed', [
+            Log::error('[OAuth] FAILED', [
                 'message' => $e->getMessage(),
+                'class'   => get_class($e),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
+                'trace'   => collect($e->getTrace())->take(10)->toArray(),
             ]);
 
-            return redirect('/login')->with('error', 'GitHub sign-in failed: '.$e->getMessage());
+            return redirect()->route('login')->withErrors([
+                'github' => 'GitHub sign-in failed: '.$e->getMessage(),
+            ]);
         }
     }
 }

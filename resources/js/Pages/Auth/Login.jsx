@@ -10,9 +10,11 @@ function GithubIcon({ className }) {
     );
 }
 
-export default function Login({ status }) {
+export default function Login({ status, errors = {} }) {
     const { flash } = usePage().props;
     const [permsOpen, setPermsOpen] = useState(false);
+    // OAuth failures arrive via withErrors(['github' => ...]); generic redirects via flash.error.
+    const errorMessage = errors.github || flash?.error;
 
     return (
         <div className="login-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -57,12 +59,12 @@ export default function Login({ status }) {
                     </div>
                 )}
 
-                {flash?.error && (
+                {errorMessage && (
                     <div
                         className="mt-6 rounded-md px-3 py-2 text-sm"
                         style={{ backgroundColor: 'rgba(239,68,68,0.10)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.30)' }}
                     >
-                        {flash.error}
+                        {errorMessage}
                     </div>
                 )}
 
