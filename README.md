@@ -93,6 +93,23 @@ All of this — with zero recurring cost on free tiers.
 
 ---
 
+## 🛡️ Privacy & Trust
+
+PRism takes user trust seriously. Every aspect of data handling is transparent and user-controlled:
+
+- **AES-256 encryption** — GitHub tokens encrypted at rest using Laravel Crypt
+- **No source code stored** — only diffs are analyzed, never your full codebase
+- **Diffs auto-deleted** after 1 hour cache expiry
+- **Open source** — every line of data-handling code is publicly auditable
+- **Minimal OAuth scopes** — only `repo` and `read:user`, nothing dangerous
+- **One-click data deletion** — GDPR-compliant full data removal from settings
+- **Audit log** — see every action taken on your account
+- **Revoke anytime** from GitHub settings, data deleted immediately
+
+Visit `/security` in the app for full transparency.
+
+---
+
 ## 🚀 Features
 
 ### Core Review Pipeline
@@ -110,7 +127,9 @@ All of this — with zero recurring cost on free tiers.
 - 🏷️ **Severity filter** — focus on Critical / Warning / Suggestion separately
 - 📄 **PDF export** — download a polished review report for offline sharing
 - 🔍 **Diff viewer** — color-coded diff (green/red/accent) with monospace formatting
-- 🌗 **Dark/light mode toggle with localStorage persistence (FOUC-free)**
+- 🌓 **Dark/light mode toggle with localStorage persistence (FOUC-free)**
+- 📖 **Comprehensive "How to Use" in-app guide** with FAQs and tips
+- 🦶 **Developer credit footer** (links to [mjubayer.dev](https://www.mjubayer.dev/))
 
 ### Notifications
 - 📧 **Email notifications** via Resend (3000/month free)
@@ -124,6 +143,18 @@ All of this — with zero recurring cost on free tiers.
 - 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min, auth 10/min
 - 🔒 **Security headers** — CSP, HSTS, X-Frame-Options, Permissions-Policy
 - 🚪 **GitHub OAuth-only login** — no password attack surface
+- 🛡️ **Dedicated Security & Privacy page** with full transparency
+- 👁️ **"View My Data" page** showing exactly what PRism stores
+- 📜 **Audit log** tracking all user actions (login, connect, review, etc.)
+- 🗑️ **One-click data deletion** (GDPR-style)
+- 🔍 **Open-source codebase** — fully auditable
+
+### Flexible Workflows
+- 🔀 **PR Review Mode** — analyze pull requests (default for teams)
+- 📝 **Commit Review Mode** — analyze direct pushes to main (solo developers)
+- 🎯 **Mixed Mode** — review both PRs and commits
+- 🌳 **Branch filtering** — choose which branches to monitor
+- 💬 **Auto-posts review comments** on PR or commit
 
 ### Performance
 - ⚡ **Redis caching** (Upstash) — GitHub API responses cached 5min, diffs 1hr
@@ -170,6 +201,10 @@ All of this — with zero recurring cost on free tiers.
 | Untraceable production errors | Structured JSON logs + `X-Request-Id` | Debug single request across services |
 | Generic AI review missing framework issues | Language-specific rule injection | Catches Laravel N+1, React key-prop, etc. |
 | Email failures crashing reviews | Try-catch with `Log::warning`, no rethrow | Notifications fail-safe |
+| Solo developers don't use PR workflow | Commit-based review mode with branch filtering | PRism now serves both teams and solo devs |
+| Users unsure what data we collect | Dedicated Security page + "View My Data" + Audit log | Full transparency = user trust |
+| No way to delete account/data | One-click data deletion with webhook cleanup | GDPR-compliant data control |
+| Cold onboarding experience | Comprehensive in-app "How to Use" guide with FAQs | New users get to value in <5 minutes |
 
 ### Architectural Decisions
 
@@ -184,9 +219,11 @@ All of this — with zero recurring cost on free tiers.
 
 ### Near-term (high-impact, low-effort)
 - [ ] **Merge risk indicator** — automatically block merges below score 40 via GitHub Status API
-- [ ] **One-click "Post Fix to GitHub"** — turn suggested_fix into an inline PR comment
+- [ ] **One-click "Post Fix to GitHub"** — turn `suggested_fix` into an inline PR comment
 - [ ] **Developer insight dashboard** — per-author trend: "your top 3 recurring mistakes"
-- [ ] **Team leaderboard** — weekly code quality ranking for orgs
+- [ ] **Team leaderboard** — weekly code quality ranking for organizations
+- [ ] **Inline diff annotations on review page** — line-by-line view tied to issues
+- [ ] **Repository settings page UX polish** — change review mode without disconnecting (backend already ships this)
 
 ### Mid-term (medium-effort, differentiating)
 - [ ] **Configurable review profiles** — strict / balanced / relaxed per repo
@@ -240,6 +277,24 @@ Built with engineering depth inspired by real production systems:
 - **Hexagonal Architecture** principles (separation of core logic from external drivers)
 - **OWASP Top 10** security checklist applied throughout
 - **Twelve-Factor App** methodology for config and process management
+
+---
+
+## 👨‍💻 Developer
+
+<div align="center">
+
+Designed and built by **Muhammad Jubayer**
+
+Backend-focused full-stack developer specializing in Laravel, Node.js, and system design.
+
+🌐 [mjubayer.dev](https://www.mjubayer.dev/) — Portfolio
+💼 [linkedin.com/in/muhammadjubayer](https://linkedin.com/in/muhammadjubayer) — LinkedIn
+🐙 [github.com/Muhammad-AIUB](https://github.com/Muhammad-AIUB) — GitHub
+
+*Open to international remote opportunities.*
+
+</div>
 
 ---
 
