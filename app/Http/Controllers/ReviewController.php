@@ -7,6 +7,7 @@ use App\Models\PullRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 
@@ -27,17 +28,31 @@ class ReviewController extends Controller
     }
 
     /**
-     * Re-analyze the PR: re-dispatch the review job. The job uses
-     * updateOrCreate so the existing review record is overwritten.
+     * Re-analyze the PR: drop the existing review + comments, clear the cached
+     * diff, and dispatch a fresh review job. The UI will show "analyzing"
+     * while the queue worker picks the job back up.
      */
-    public function reanalyze(PullRequest $pullRequest)
+    public function reAnalyze(PullRequest $pullRequest)
     {
         $this->authorisePr($pullRequest);
 
-        $pullRequest->update(['status' => 'pending']);
+        $pullRequest->update(['status' => 'analyzing']);
+
+        // Delete prior review row + comments so the page reflects in-flight state.
+        if ($pullRequest->review) {
+            $pullRequest->review->comments()->delete();
+            $pullRequest->review->delete();
+        }
+
+        // Clear cached diff. The job's cache key is composite (sha + updated_at);
+        // bumping the PR's status above already invalidates the composite key
+        // by changing updated_at, but we forget the simple key too so manually
+        // primed caches don't leak.
+        Cache::forget("pr_diff_{$pullRequest->id}");
+
         ProcessPullRequestReview::dispatch($pullRequest);
 
-        return back()->with('success', 'Re-analysis queued. The page will update once it completes.');
+        return redirect()->back()->with('success', 'Re-analyzing PR…');
     }
 
     /**
@@ -58,9 +73,9 @@ class ReviewController extends Controller
     }
 
     /**
-     * Generate a PDF of the review.
+     * Generate and download a PDF of the review.
      */
-    public function pdf(PullRequest $pullRequest)
+    public function exportPdf(PullRequest $pullRequest)
     {
         $this->authorisePr($pullRequest);
         $pullRequest->load(['repository', 'review.comments']);
@@ -70,8 +85,7 @@ class ReviewController extends Controller
             'review' => $pullRequest->review,
         ]);
 
-        $filename = "prism-review-pr{$pullRequest->pr_number}.pdf";
-        return $pdf->stream($filename);
+        return $pdf->download("PRism-Review-PR{$pullRequest->pr_number}.pdf");
     }
 
     protected function authorisePr(PullRequest $pr): void

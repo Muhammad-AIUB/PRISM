@@ -42,10 +42,10 @@ Route::middleware('auth')->group(function () {
 
     // ── Reviews ──────────────────────────────────────────────────────
     Route::middleware('throttle:api')->group(function () {
-        Route::get('/reviews/{pullRequest}',            [ReviewController::class, 'show'])->name('reviews.show');
-        Route::post('/reviews/{pullRequest}/reanalyze', [ReviewController::class, 'reanalyze'])->name('reviews.reanalyze');
-        Route::get('/reviews/{pullRequest}/diff',       [ReviewController::class, 'diff'])->name('reviews.diff');
-        Route::get('/reviews/{pullRequest}/pdf',        [ReviewController::class, 'pdf'])->name('reviews.pdf');
+        Route::get('/reviews/{pullRequest}',             [ReviewController::class, 'show'])->name('reviews.show');
+        Route::post('/reviews/{pullRequest}/re-analyze', [ReviewController::class, 'reAnalyze'])->name('reviews.reanalyze');
+        Route::get('/reviews/{pullRequest}/diff',        [ReviewController::class, 'diff'])->name('reviews.diff');
+        Route::get('/reviews/{pullRequest}/export',      [ReviewController::class, 'exportPdf'])->name('reviews.export');
     });
 });
 

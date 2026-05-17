@@ -322,7 +322,7 @@ export default function Show({ pullRequest, review }) {
 
     const reanalyze = () => {
         setReanalyzing(true);
-        router.post(`/reviews/${pullRequest.id}/reanalyze`, {}, {
+        router.post(`/reviews/${pullRequest.id}/re-analyze`, {}, {
             preserveScroll: true,
             onFinish: () => setReanalyzing(false),
         });
@@ -347,9 +347,7 @@ export default function Show({ pullRequest, review }) {
                     </Link>
                     <div className="flex items-center gap-2">
                         <a
-                            href={`/reviews/${pullRequest.id}/pdf`}
-                            target="_blank"
-                            rel="noreferrer"
+                            href={`/reviews/${pullRequest.id}/export`}
                             className="btn btn-secondary min-h-[44px] transition active:scale-95"
                             aria-label="Export PDF"
                         >
