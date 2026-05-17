@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 // GitHub mark — lucide-react dropped brand icons, so it's inlined here.
@@ -11,6 +11,7 @@ function GithubIcon({ className }) {
 }
 
 export default function Login({ status }) {
+    const { flash } = usePage().props;
     const [permsOpen, setPermsOpen] = useState(false);
 
     return (
@@ -53,6 +54,15 @@ export default function Login({ status }) {
                         style={{ backgroundColor: 'rgba(34,197,94,0.10)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.30)' }}
                     >
                         {status}
+                    </div>
+                )}
+
+                {flash?.error && (
+                    <div
+                        className="mt-6 rounded-md px-3 py-2 text-sm"
+                        style={{ backgroundColor: 'rgba(239,68,68,0.10)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.30)' }}
+                    >
+                        {flash.error}
                     </div>
                 )}
 
