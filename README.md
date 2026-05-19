@@ -49,6 +49,37 @@ All of this — with zero recurring cost on free tiers.
 
 ---
 
+## 📸 Screenshots
+
+### Sign in — public, with full permissions transparency
+<p align="center">
+  <img src="docs/screenshots/01-login.png" alt="PRism login page with expandable 'Wondering about permissions?' card" width="420">
+</p>
+
+### GitHub OAuth authorization
+<p align="center">
+  <img src="docs/screenshots/02-github-oauth.png" alt="Authorizing PRism on GitHub" width="700">
+</p>
+
+### Dashboard — light & dark themes
+PR / Commit tabs, stat cards, empty-state with cross-mode discoverability, fixed sidebar.
+
+<p align="center">
+  <img src="docs/screenshots/03-dashboard-light.png" alt="PRism dashboard in light mode" width="800">
+</p>
+<p align="center">
+  <img src="docs/screenshots/04-dashboard-dark.png" alt="PRism dashboard in dark mode" width="800">
+</p>
+
+### Repository connect
+Searchable grid of your GitHub repos with language dots, stars, "last updated" — click Connect to pick PR / Commit / Both mode.
+
+<p align="center">
+  <img src="docs/screenshots/05-repositories.png" alt="Connect a repository — searchable grid with language dots and connect buttons" width="800">
+</p>
+
+---
+
 ## 🏗️ Architecture
 
 ```
