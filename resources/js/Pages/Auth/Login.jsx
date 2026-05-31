@@ -68,9 +68,29 @@ export default function Login({ status, errors = {} }) {
                     </div>
                 )}
 
+                {/* Demo Mode — frictionless evaluation, no GitHub authorisation needed */}
+                <Link
+                    href="/demo"
+                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium transition hover:opacity-90 active:scale-95"
+                    style={{
+                        backgroundColor: 'var(--accent-bg)',
+                        color: 'var(--accent)',
+                        border: '1px solid rgba(99,102,241,0.40)',
+                    }}
+                >
+                    <span aria-hidden>👀</span>
+                    Explore Demo (no login required)
+                </Link>
+
+                <div className="my-3 flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+                    <span>or</span>
+                    <span className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+                </div>
+
                 <a
                     href="/auth/github"
-                    className="btn mt-8 min-h-[44px] w-full text-sm font-semibold transition active:scale-95"
+                    className="btn min-h-[44px] w-full text-sm font-semibold transition active:scale-95"
                     style={{
                         backgroundColor: '#0f0f13',
                         color: '#ffffff',

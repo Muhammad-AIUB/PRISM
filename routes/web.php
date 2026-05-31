@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommitReviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DataController;
+use App\Http\Controllers\DemoController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\ProfileController;
@@ -37,6 +38,12 @@ Route::get('/health', HealthController::class)
 // Intentionally outside the auth group so visitors can read the trust
 // content BEFORE signing in — which is exactly when they need it.
 Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
+
+// ── Public Demo Mode ─────────────────────────────────────────────────
+// Lets evaluators explore the full UI with sample data, no GitHub
+// authorisation required.
+Route::get('/demo',                [DemoController::class, 'index'])->name('demo');
+Route::get('/demo/review/{id}',    [DemoController::class, 'review'])->name('demo.review')->whereNumber('id');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
