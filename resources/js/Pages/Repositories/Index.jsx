@@ -1,3 +1,4 @@
+import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Check, ExternalLink, GitCommit, GitPullRequest, Layers, Lock, Search, Settings, Star, X } from 'lucide-react';
@@ -365,30 +366,8 @@ export default function Index({ repos = [], connectedIds = [], connectedRepos = 
             <Head title="Repositories" />
 
             <div className="space-y-4">
-                {flash?.success && (
-                    <div
-                        className="rounded-md px-4 py-2 text-sm"
-                        style={{
-                            backgroundColor: 'rgba(34,197,94,0.10)',
-                            color: 'var(--success)',
-                            border: '1px solid rgba(34,197,94,0.30)',
-                        }}
-                    >
-                        {flash.success}
-                    </div>
-                )}
-                {flash?.error && (
-                    <div
-                        className="rounded-md px-4 py-2 text-sm"
-                        style={{
-                            backgroundColor: 'rgba(239,68,68,0.10)',
-                            color: 'var(--danger)',
-                            border: '1px solid rgba(239,68,68,0.30)',
-                        }}
-                    >
-                        {flash.error}
-                    </div>
-                )}
+                <FlashBanner type="success" message={flash?.success} />
+                <FlashBanner type="error"   message={flash?.error} />
 
                 {filtered.length === 0 ? (
                     <div className="card p-16 text-center">

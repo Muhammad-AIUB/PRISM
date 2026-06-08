@@ -1,3 +1,4 @@
+import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, ArrowLeft, FileText, GitBranch, Lock, Shield, Trash2 } from 'lucide-react';
@@ -61,12 +62,8 @@ export default function MyData({ profile, token_preview, stats, repositories }) 
             <Head title="My Data" />
 
             <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
-                {flash?.success && (
-                    <div className="rounded-md px-4 py-2 text-sm"
-                        style={{ backgroundColor: 'rgba(34,197,94,0.10)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.30)' }}>
-                        {flash.success}
-                    </div>
-                )}
+                <FlashBanner type="success" message={flash?.success} />
+                <FlashBanner type="error"   message={flash?.error} />
 
                 {/* Profile */}
                 <section className="card-flat p-5 sm:p-6">

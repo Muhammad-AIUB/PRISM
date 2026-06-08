@@ -1,3 +1,4 @@
+import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Bell, MessageSquare, Save, TestTube } from 'lucide-react';
@@ -66,18 +67,8 @@ export default function Index({ user }) {
 
             <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
                 {/* Flash banners */}
-                {flash?.success && (
-                    <div className="rounded-md px-4 py-2 text-sm"
-                        style={{ backgroundColor: 'rgba(34,197,94,0.10)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.30)' }}>
-                        {flash.success}
-                    </div>
-                )}
-                {flash?.error && (
-                    <div className="rounded-md px-4 py-2 text-sm"
-                        style={{ backgroundColor: 'rgba(239,68,68,0.10)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.30)' }}>
-                        {flash.error}
-                    </div>
-                )}
+                <FlashBanner type="success" message={flash?.success} />
+                <FlashBanner type="error"   message={flash?.error} />
 
                 {/* Profile (read-only) */}
                 <section className="card-flat p-5 sm:p-6">
