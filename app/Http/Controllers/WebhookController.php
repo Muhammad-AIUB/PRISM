@@ -80,7 +80,9 @@ class WebhookController extends Controller
             ]
         );
 
-        ProcessPullRequestReview::dispatch($pullRequest);
+        // dispatchAfterResponse so the AI call doesn't keep GitHub's webhook
+        // waiting (10s timeout) and doesn't fail the webhook with the job.
+        ProcessPullRequestReview::dispatchAfterResponse($pullRequest);
 
         return response()->json(['message' => 'Review queued', 'pr_id' => $pullRequest->id], 200);
     }
@@ -129,7 +131,9 @@ class WebhookController extends Controller
             ]
         );
 
-        ProcessCommitReview::dispatch($review);
+        // dispatchAfterResponse so the AI call doesn't keep GitHub's webhook
+        // waiting and doesn't fail the webhook with the job.
+        ProcessCommitReview::dispatchAfterResponse($review);
 
         return response()->json(['message' => 'Commit review queued', 'review_id' => $review->id], 200);
     }

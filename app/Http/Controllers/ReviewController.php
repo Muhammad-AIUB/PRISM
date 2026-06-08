@@ -51,7 +51,9 @@ class ReviewController extends Controller
         // primed caches don't leak.
         Cache::forget("pr_diff_{$pullRequest->id}");
 
-        ProcessPullRequestReview::dispatch($pullRequest);
+        // dispatchAfterResponse so the user gets an instant "Re-analyzing PR…"
+        // redirect, then the AI job runs after the response is sent.
+        ProcessPullRequestReview::dispatchAfterResponse($pullRequest);
 
         AuditLog::record(Auth::id(), 'review_reanalyzed',
             "Re-analyzed PR #{$pullRequest->pr_number} on {$pullRequest->repository?->full_name}",
