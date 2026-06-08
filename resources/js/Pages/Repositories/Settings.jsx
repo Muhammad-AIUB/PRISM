@@ -1,3 +1,4 @@
+import BranchPicker from '@/Components/BranchPicker';
 import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
@@ -26,20 +27,13 @@ const MODE_OPTIONS = [
 
 export default function Settings({ repository }) {
     const { flash } = usePage().props;
-    const { data, setData, transform, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         review_mode:     repository.review_mode,
-        review_branches: (repository.review_branches || ['main', 'master']).join(', '),
+        review_branches: repository.review_branches || ['main', 'master'],
     });
 
-    // useForm.post() sends whatever's in `data` — the second arg is options,
-    // NOT data overrides. So convert the comma-separated string to an array
-    // via transform() right before the request goes out.
     const submit = (e) => {
         e.preventDefault();
-        transform((d) => ({
-            review_mode:     d.review_mode,
-            review_branches: d.review_branches.split(',').map((b) => b.trim()).filter(Boolean),
-        }));
         post(`/repositories/${repository.id}/settings`, {
             preserveScroll: true,
         });
@@ -125,17 +119,23 @@ export default function Settings({ repository }) {
                         {(data.review_mode === 'commit_only' || data.review_mode === 'both') && (
                             <div className="mt-5">
                                 <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                    Branches to watch (comma-separated)
+                                    Branches to watch
                                 </label>
-                                <input
-                                    type="text"
-                                    value={data.review_branches}
-                                    onChange={(e) => setData('review_branches', e.target.value)}
-                                    placeholder="main, master"
-                                    className="input mt-1.5 min-h-[44px] font-mono text-xs"
-                                />
+                                <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Pick the branches PRism should review on every push. We auto-loaded the live list from GitHub.
+                                </p>
+                                <div className="mt-2">
+                                    <BranchPicker
+                                        fullName={repository.full_name}
+                                        selected={data.review_branches}
+                                        onChange={(arr) => setData('review_branches', arr)}
+                                    />
+                                </div>
                                 {errors.review_branches && (
                                     <p className="mt-2 text-xs" style={{ color: 'var(--danger)' }}>{errors.review_branches}</p>
+                                )}
+                                {errors['review_branches.0'] && (
+                                    <p className="mt-2 text-xs" style={{ color: 'var(--danger)' }}>{errors['review_branches.0']}</p>
                                 )}
                             </div>
                         )}

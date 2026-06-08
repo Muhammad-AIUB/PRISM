@@ -1,3 +1,4 @@
+import BranchPicker from '@/Components/BranchPicker';
 import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -27,16 +28,12 @@ const MODE_OPTIONS = [
 
 function ModeModal({ repo, onClose, onSubmit, submitting }) {
     const [mode, setMode]         = useState('pr_only');
-    const [branches, setBranches] = useState('main, master');
+    const [branches, setBranches] = useState([]);
 
     if (!repo) return null;
 
     const submit = () => {
-        const branchList = branches
-            .split(',')
-            .map((b) => b.trim())
-            .filter(Boolean);
-        onSubmit(repo, mode, branchList.length ? branchList : ['main', 'master']);
+        onSubmit(repo, mode, branches.length ? branches : ['main', 'master']);
     };
 
     return (
@@ -115,15 +112,18 @@ function ModeModal({ repo, onClose, onSubmit, submitting }) {
                     {(mode === 'commit_only' || mode === 'both') && (
                         <div className="mt-4">
                             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                Branches to watch (comma-separated)
+                                Branches to watch
                             </label>
-                            <input
-                                type="text"
-                                value={branches}
-                                onChange={(e) => setBranches(e.target.value)}
-                                placeholder="main, master"
-                                className="input mt-1.5 min-h-[44px] font-mono text-xs"
-                            />
+                            <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                Auto-loaded from your repo. Default branch is pre-selected — toggle as you like.
+                            </p>
+                            <div className="mt-2">
+                                <BranchPicker
+                                    fullName={repo.full_name}
+                                    selected={branches}
+                                    onChange={setBranches}
+                                />
+                            </div>
                         </div>
                     )}
 

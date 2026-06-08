@@ -144,6 +144,52 @@ class RepositoryController extends Controller
     }
 
     /**
+     * Fetch the branch list for a repo from GitHub on demand.
+     * Used by the connect modal (full_name in query) and the settings page
+     * (uses the repo's stored full_name). Cached 10 min per repo.
+     */
+    public function branches(Request $request)
+    {
+        $data = $request->validate([
+            'full_name' => ['required', 'string', 'regex:#^[\w.-]+/[\w.-]+$#'],
+        ]);
+
+        $user = Auth::user();
+        $fullName = $data['full_name'];
+
+        // Only allow listing branches on repos the user actually has access to —
+        // GitHub's API will 404 otherwise, so this is a safety net not a guard.
+        $branches = Cache::remember(
+            "repo_branches_{$user->id}_".sha1($fullName),
+            600,
+            function () use ($user, $fullName) {
+                $response = Http::withToken($user->github_token)
+                    ->acceptJson()
+                    ->timeout(10)
+                    ->get("https://api.github.com/repos/{$fullName}/branches", [
+                        'per_page' => 100,
+                    ]);
+
+                if (! $response->successful()) return [];
+
+                // Also fetch the default branch so the UI can mark it.
+                $repoInfo  = Http::withToken($user->github_token)
+                    ->acceptJson()
+                    ->timeout(10)
+                    ->get("https://api.github.com/repos/{$fullName}");
+                $defaultBranch = $repoInfo->successful() ? $repoInfo->json('default_branch') : null;
+
+                return collect($response->json())->map(fn ($b) => [
+                    'name'       => $b['name'],
+                    'is_default' => $b['name'] === $defaultBranch,
+                ])->values()->all();
+            }
+        );
+
+        return response()->json(['branches' => $branches]);
+    }
+
+    /**
      * Update review mode and watched branches; patch the GitHub webhook so
      * its event subscriptions match the new mode.
      */

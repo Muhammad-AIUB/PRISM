@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('throttle:api')->group(function () {
         Route::get('/repositories',                       [RepositoryController::class, 'index'])->name('repositories.index');
         Route::post('/repositories',                      [RepositoryController::class, 'store'])->name('repositories.store');
+        Route::get('/repositories/branches',              [RepositoryController::class, 'branches'])->name('repositories.branches');
         Route::get('/repositories/{repository}/settings', [RepositoryController::class, 'settings'])->name('repositories.settings');
         Route::post('/repositories/{repository}/settings',[RepositoryController::class, 'update'])->name('repositories.update');
     });
