@@ -45,6 +45,13 @@ return [
         'key' => env('OPENROUTER_API_KEY'),
     ],
 
+    // Groq is now the primary AI provider — free tier is 14,400 req/day with
+    // Llama 3.3 70B and supports native JSON mode (response_format), which
+    // makes parse failures near-zero. OpenRouter remains as a fallback chain.
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+    ],
+
     'slack_webhook' => [
         'url' => env('SLACK_WEBHOOK_URL'),
     ],

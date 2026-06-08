@@ -262,9 +262,19 @@ PROMPT;
     }
 
     /**
-     * Free models in fallback order. First-listed is tried first; if its output
-     * doesn't parse to JSON, we fall through to the next. All free at the time
-     * of writing — quality varies by request.
+     * Groq models (primary). Native JSON mode means near-zero parse failures.
+     */
+    protected function groqModels(): array
+    {
+        return [
+            'llama-3.3-70b-versatile',
+            'llama-3.1-8b-instant',
+        ];
+    }
+
+    /**
+     * OpenRouter free models (fallback). Tried only if Groq is misconfigured
+     * or every Groq model errors.
      */
     protected function aiModels(): array
     {
@@ -276,8 +286,8 @@ PROMPT;
     }
 
     /**
-     * Try each model in order; return the first one whose response parses to
-     * an array. Returns ['model' => ..., 'parsed' => ..., 'raw' => ...] always.
+     * Try Groq first (with native JSON mode), then fall through to the
+     * OpenRouter free chain. Returns ['model' => ..., 'parsed' => ..., 'raw' => ...].
      */
     protected function callAiWithFallback(string $system, string $user): array
     {
@@ -285,6 +295,24 @@ PROMPT;
         $lastRaw = null;
         $lastModel = null;
 
+        // 1) Groq chain — native JSON mode, very reliable.
+        if (config('services.groq.key')) {
+            foreach ($this->groqModels() as $model) {
+                $result = $this->callGroqRaw($model, $strongSystem, $user);
+                $lastModel = "groq/{$model}";
+                $lastRaw   = $result['raw'];
+
+                if (is_array($result['parsed'])) {
+                    return ['model' => $lastModel, 'parsed' => $result['parsed'], 'raw' => $result['raw']];
+                }
+                Log::warning('Groq model returned unparseable output, trying next', [
+                    'model'   => $model,
+                    'preview' => mb_substr((string) $result['raw'], 0, 200),
+                ]);
+            }
+        }
+
+        // 2) OpenRouter chain — last-resort fallback.
         foreach ($this->aiModels() as $model) {
             $result = $this->callAiRaw($model, $strongSystem, $user);
             $lastModel = $model;
@@ -300,6 +328,49 @@ PROMPT;
         }
 
         return ['model' => $lastModel, 'parsed' => null, 'raw' => $lastRaw];
+    }
+
+    /**
+     * Single-shot Groq call with native JSON mode (response_format).
+     */
+    protected function callGroqRaw(string $model, string $system, string $user): array
+    {
+        $start = microtime(true);
+
+        $response = Http::withToken(config('services.groq.key'))
+            ->acceptJson()
+            ->timeout(60)
+            ->post('https://api.groq.com/openai/v1/chat/completions', [
+                'model'           => $model,
+                'temperature'     => 0.2,
+                'response_format' => ['type' => 'json_object'],
+                'messages'        => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user',   'content' => $user],
+                ],
+            ]);
+
+        $durationMs = (int) round((microtime(true) - $start) * 1000);
+        $json       = $response->successful() ? $response->json() : [];
+        $content    = (string) data_get($json, 'choices.0.message.content', '');
+
+        Log::info('ai_call', [
+            'context'           => 'commit_review',
+            'provider'          => 'groq',
+            'model'             => $model,
+            'status'            => $response->status(),
+            'duration_ms'       => $durationMs,
+            'prompt_tokens'     => data_get($json, 'usage.prompt_tokens'),
+            'completion_tokens' => data_get($json, 'usage.completion_tokens'),
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('Groq call failed', ['status' => $response->status(), 'body' => mb_substr($response->body(), 0, 500)]);
+            return ['parsed' => null, 'raw' => $response->body()];
+        }
+
+        $parsed = $this->extractJson($content);
+        return ['parsed' => $parsed, 'raw' => $content];
     }
 
     /**
@@ -345,6 +416,12 @@ PROMPT;
 
     protected function callAi(string $model, string $system, string $user): ?array
     {
+        // Route to Groq if the model came from the Groq chain (prefix marker).
+        if (str_starts_with($model, 'groq/')) {
+            $result = $this->callGroqRaw(substr($model, 5), $system, $user);
+            return is_array($result['parsed']) ? $result['parsed'] : null;
+        }
+
         $start = microtime(true);
 
         $response = Http::withToken(config('services.openrouter.key'))
