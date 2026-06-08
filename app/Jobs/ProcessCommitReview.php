@@ -63,17 +63,30 @@ class ProcessCommitReview implements ShouldQueue
             $review->update(['detected_languages' => $languages]);
         }
 
-        // 2. First AI pass: structured review.
-        $model = 'deepseek/deepseek-v4-flash:free';
-
-        $parsed = $this->callAi(
-            model: $model,
+        // 2. First AI pass: structured review. Try a fallback chain of free
+        //    models — they each fail JSON parsing at different rates, so a
+        //    chain ~95% lands at least one parseable result.
+        $attempt = $this->callAiWithFallback(
             system: $this->buildSystemPrompt($languages),
-            user: "Review this commit diff:\n".$diff,
+            user:   "Review this commit diff:\n".$diff,
         );
+        $model  = $attempt['model'];
+        $parsed = $attempt['parsed'];
 
+        // Graceful degradation: if every model returned unparseable output,
+        // still complete the review with the best raw text we got so the user
+        // sees SOMETHING instead of a failed status.
         if (! is_array($parsed)) {
-            throw new \RuntimeException('Could not parse AI review JSON.');
+            $review->update([
+                'status'        => 'completed',
+                'overall_score' => null,
+                'summary'       => $attempt['raw']
+                    ? "AI review couldn't be parsed cleanly. Click Re-analyze to retry.\n\n— Raw output —\n".mb_substr($attempt['raw'], 0, 1500)
+                    : "AI review didn't return any usable content. Click Re-analyze to retry.",
+                'ai_model_used' => $model ?? 'multi-fallback',
+            ]);
+            Log::warning('Commit review: all AI models failed to return parseable JSON', ['review_id' => $review->id]);
+            return;
         }
 
         $review->update([
@@ -248,6 +261,88 @@ PROMPT;
         return ['fixes' => $fixes];
     }
 
+    /**
+     * Free models in fallback order. First-listed is tried first; if its output
+     * doesn't parse to JSON, we fall through to the next. All free at the time
+     * of writing — quality varies by request.
+     */
+    protected function aiModels(): array
+    {
+        return [
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'deepseek/deepseek-v4-flash:free',
+            'qwen/qwen-2.5-72b-instruct:free',
+        ];
+    }
+
+    /**
+     * Try each model in order; return the first one whose response parses to
+     * an array. Returns ['model' => ..., 'parsed' => ..., 'raw' => ...] always.
+     */
+    protected function callAiWithFallback(string $system, string $user): array
+    {
+        $strongSystem = "Respond with ONLY raw JSON. NO prose. NO markdown code fences. NO explanations before or after.\n\n".$system;
+        $lastRaw = null;
+        $lastModel = null;
+
+        foreach ($this->aiModels() as $model) {
+            $result = $this->callAiRaw($model, $strongSystem, $user);
+            $lastModel = $model;
+            $lastRaw   = $result['raw'];
+
+            if (is_array($result['parsed'])) {
+                return ['model' => $model, 'parsed' => $result['parsed'], 'raw' => $result['raw']];
+            }
+            Log::warning('AI model returned unparseable output, trying next', [
+                'model'    => $model,
+                'preview'  => mb_substr((string) $result['raw'], 0, 200),
+            ]);
+        }
+
+        return ['model' => $lastModel, 'parsed' => null, 'raw' => $lastRaw];
+    }
+
+    /**
+     * Single-shot AI call returning both parsed JSON (if any) and the raw text.
+     */
+    protected function callAiRaw(string $model, string $system, string $user): array
+    {
+        $start = microtime(true);
+
+        $response = Http::withToken(config('services.openrouter.key'))
+            ->acceptJson()
+            ->timeout(120)
+            ->post('https://openrouter.ai/api/v1/chat/completions', [
+                'model'       => $model,
+                'temperature' => 0.2,
+                'messages'    => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user',   'content' => $user],
+                ],
+            ]);
+
+        $durationMs = (int) round((microtime(true) - $start) * 1000);
+        $json       = $response->successful() ? $response->json() : [];
+        $content    = (string) data_get($json, 'choices.0.message.content', '');
+
+        Log::info('ai_call', [
+            'context'         => 'commit_review',
+            'model'           => $model,
+            'status'          => $response->status(),
+            'duration_ms'     => $durationMs,
+            'prompt_tokens'   => data_get($json, 'usage.prompt_tokens'),
+            'completion_tokens' => data_get($json, 'usage.completion_tokens'),
+            'parseable'       => false, // updated below
+        ]);
+
+        if (! $response->successful()) {
+            return ['parsed' => null, 'raw' => $response->body()];
+        }
+
+        $parsed = $this->extractJson($content);
+        return ['parsed' => $parsed, 'raw' => $content];
+    }
+
     protected function callAi(string $model, string $system, string $user): ?array
     {
         $start = microtime(true);
@@ -285,18 +380,40 @@ PROMPT;
         return $this->extractJson((string) $content);
     }
 
+    /**
+     * Coax a JSON object out of whatever the AI returned. Strategies:
+     *   1) Raw parse
+     *   2) Strip ```json fences
+     *   3) Strip trailing commas before } or ]
+     *   4) Fall back to the first balanced { … } we can find
+     */
     protected function extractJson(string $content): ?array
     {
         $content = trim($content);
+        if ($content === '') return null;
+
+        // Strategy 1
+        $d = json_decode($content, true);
+        if (is_array($d)) return $d;
+
+        // Strategy 2 — fenced code block
         if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $content, $m)) {
+            $d = json_decode($m[1], true);
+            if (is_array($d)) return $d;
             $content = $m[1];
         }
-        $decoded = json_decode($content, true);
-        if (is_array($decoded)) return $decoded;
-        if (preg_match('/\{.*\}/s', $content, $m)) {
-            $decoded = json_decode($m[0], true);
-            if (is_array($decoded)) return $decoded;
+
+        // Strategy 3 — drop common JSON-illegal patterns
+        $clean = preg_replace('/,(\s*[}\]])/', '$1', $content); // trailing commas
+        $d = json_decode($clean, true);
+        if (is_array($d)) return $d;
+
+        // Strategy 4 — first balanced object
+        if (preg_match('/\{.*\}/s', $clean, $m)) {
+            $d = json_decode($m[0], true);
+            if (is_array($d)) return $d;
         }
+
         return null;
     }
 

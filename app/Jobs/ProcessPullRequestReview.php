@@ -67,16 +67,32 @@ class ProcessPullRequestReview implements ShouldQueue
                 $pr->update(['detected_languages' => $languages]);
             }
 
-            // 2. First AI pass: structured review.
-            $model = 'deepseek/deepseek-v4-flash:free';
-            $parsed = $this->callAi(
-                model: $model,
+            // 2. First AI pass: structured review with multi-model fallback.
+            $attempt = $this->callAiWithFallback(
                 system: $this->buildSystemPrompt($languages),
-                user: "Review this diff:\n".$diff,
+                user:   "Review this diff:\n".$diff,
             );
+            $model  = $attempt['model'];
+            $parsed = $attempt['parsed'];
 
+            // Graceful degradation when every model returned unparseable output.
             if (! is_array($parsed)) {
-                throw new \RuntimeException('Could not parse AI review JSON.');
+                Review::updateOrCreate(
+                    ['pull_request_id' => $pr->id],
+                    [
+                        'overall_score' => null,
+                        'summary'       => $attempt['raw']
+                            ? "AI review couldn't be parsed cleanly. Click Re-analyze to retry.\n\n— Raw output —\n".mb_substr($attempt['raw'], 0, 1500)
+                            : "AI review didn't return any usable content. Click Re-analyze to retry.",
+                        'ai_model_used' => $model ?? 'multi-fallback',
+                        'security_issues'     => [],
+                        'performance_issues'  => [],
+                        'code_quality_issues' => [],
+                    ]
+                );
+                $pr->update(['status' => 'completed']);
+                Log::warning('PR review: all AI models failed to return parseable JSON', ['pr_id' => $pr->id]);
+                return;
             }
 
             // 3. Persist (or update) the review.
@@ -325,6 +341,75 @@ PROMPT;
     /**
      * Generic OpenRouter chat call returning the model's parsed JSON.
      */
+    /** Free model fallback order — first parseable response wins. */
+    protected function aiModels(): array
+    {
+        return [
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'deepseek/deepseek-v4-flash:free',
+            'qwen/qwen-2.5-72b-instruct:free',
+        ];
+    }
+
+    /** Try each model in order; returns the first parseable response or final raw. */
+    protected function callAiWithFallback(string $system, string $user): array
+    {
+        $strongSystem = "Respond with ONLY raw JSON. NO prose. NO markdown code fences. NO explanations before or after.\n\n".$system;
+        $lastRaw = null;
+        $lastModel = null;
+
+        foreach ($this->aiModels() as $model) {
+            $result = $this->callAiRaw($model, $strongSystem, $user);
+            $lastModel = $model;
+            $lastRaw   = $result['raw'];
+
+            if (is_array($result['parsed'])) {
+                return ['model' => $model, 'parsed' => $result['parsed'], 'raw' => $result['raw']];
+            }
+            Log::warning('AI model returned unparseable output, trying next', [
+                'model'   => $model,
+                'preview' => mb_substr((string) $result['raw'], 0, 200),
+            ]);
+        }
+
+        return ['model' => $lastModel, 'parsed' => null, 'raw' => $lastRaw];
+    }
+
+    protected function callAiRaw(string $model, string $system, string $user): array
+    {
+        $start = microtime(true);
+
+        $response = Http::withToken(config('services.openrouter.key'))
+            ->acceptJson()
+            ->timeout(120)
+            ->post('https://openrouter.ai/api/v1/chat/completions', [
+                'model'       => $model,
+                'temperature' => 0.2,
+                'messages'    => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user',   'content' => $user],
+                ],
+            ]);
+
+        $durationMs = (int) round((microtime(true) - $start) * 1000);
+        $json       = $response->successful() ? $response->json() : [];
+        $content    = (string) data_get($json, 'choices.0.message.content', '');
+
+        Log::info('ai_call', [
+            'context'       => 'pr_review',
+            'model'         => $model,
+            'status'        => $response->status(),
+            'duration_ms'   => $durationMs,
+            'prompt_tokens' => data_get($json, 'usage.prompt_tokens'),
+        ]);
+
+        if (! $response->successful()) {
+            return ['parsed' => null, 'raw' => $response->body()];
+        }
+
+        return ['parsed' => $this->extractJson($content), 'raw' => $content];
+    }
+
     protected function callAi(string $model, string $system, string $user): ?array
     {
         $start = microtime(true);
@@ -361,18 +446,30 @@ PROMPT;
         return $this->extractJson((string) $content);
     }
 
+    /** Coax JSON out of whatever the AI returned — see ProcessCommitReview for strategy notes. */
     protected function extractJson(string $content): ?array
     {
         $content = trim($content);
+        if ($content === '') return null;
+
+        $d = json_decode($content, true);
+        if (is_array($d)) return $d;
+
         if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $content, $m)) {
+            $d = json_decode($m[1], true);
+            if (is_array($d)) return $d;
             $content = $m[1];
         }
-        $decoded = json_decode($content, true);
-        if (is_array($decoded)) return $decoded;
-        if (preg_match('/\{.*\}/s', $content, $m)) {
-            $decoded = json_decode($m[0], true);
-            if (is_array($decoded)) return $decoded;
+
+        $clean = preg_replace('/,(\s*[}\]])/', '$1', $content);
+        $d = json_decode($clean, true);
+        if (is_array($d)) return $d;
+
+        if (preg_match('/\{.*\}/s', $clean, $m)) {
+            $d = json_decode($m[0], true);
+            if (is_array($d)) return $d;
         }
+
         return null;
     }
 
