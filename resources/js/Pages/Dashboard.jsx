@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     CategoryScale,
     Chart as ChartJS,
@@ -18,7 +18,7 @@ import {
     Plus,
     TrendingUp,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -177,6 +177,24 @@ export default function Dashboard({
     );
 
     const rows = tab === 'prs' ? recent_prs : recent_commits;
+
+    // Auto-refresh dashboard every 8s when any visible review is still
+    // pending/analyzing — so a fresh push appears without a manual reload.
+    const hasInFlight =
+        recent_prs.some((p) => p.status === 'pending' || p.status === 'analyzing') ||
+        recent_commits.some((c) => c.status === 'pending' || c.status === 'analyzing');
+
+    useEffect(() => {
+        if (!hasInFlight) return;
+        const id = setInterval(() => {
+            router.reload({
+                only: ['recent_prs', 'recent_commits', 'total_prs', 'total_commits', 'avg_score'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 8000);
+        return () => clearInterval(id);
+    }, [hasInFlight]);
     return (
         <AuthenticatedLayout
             header={
