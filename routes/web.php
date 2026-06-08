@@ -91,8 +91,13 @@ Route::middleware('auth')->group(function () {
 });
 
 // ── GitHub Webhook ───────────────────────────────────────────────────
+// Note: github.ip middleware temporarily removed — Render's edge proxy masks
+// GitHub's real source IP even with trustProxies('*'), so GitHub webhooks
+// were being rejected as "not in GitHub range". HMAC-SHA256 signature
+// verification inside WebhookController is the real security boundary;
+// without the right webhook_secret nothing gets past it.
 Route::post('/webhook/github', [WebhookController::class, 'handle'])
-    ->middleware(['throttle:webhook', 'github.ip'])
+    ->middleware(['throttle:webhook'])
     ->name('webhook.github');
 
 // ── GitHub OAuth ─────────────────────────────────────────────────────
