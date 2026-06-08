@@ -11,7 +11,7 @@ import {
     RefreshCw,
     Wand2,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const SEV = {
     critical:   { color: 'var(--danger)',  label: 'Critical' },
@@ -247,6 +247,21 @@ export default function CommitShow({ commitReview: cr }) {
         });
     };
 
+    // Auto-poll while review is in flight so the user doesn't have to refresh
+    // manually. Stops automatically once status flips to completed or failed.
+    const inFlight = cr.status === 'pending' || cr.status === 'analyzing';
+    useEffect(() => {
+        if (!inFlight) return;
+        const id = setInterval(() => {
+            router.reload({
+                only: ['commitReview', 'flash'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 5000);
+        return () => clearInterval(id);
+    }, [inFlight]);
+
     const issuesByLayer = useMemo(() => ({
         security:     cr?.security_issues     ?? [],
         performance:  cr?.performance_issues  ?? [],
@@ -340,10 +355,17 @@ export default function CommitShow({ commitReview: cr }) {
                 )}
 
                 {(cr.status === 'pending' || cr.status === 'analyzing') && (
-                    <div className="card flex items-center gap-3 text-sm"
+                    <div className="card flex items-start gap-3 text-sm"
                         style={{ color: 'var(--warning)', borderColor: 'rgba(245,158,11,0.30)' }}>
-                        <Info className="h-5 w-5 shrink-0" />
-                        Review is still being generated. The page status will move to <strong>completed</strong> when it finishes.
+                        <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 animate-spin" />
+                        <div>
+                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                Review in progress — typically takes 15-30 seconds
+                            </p>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                This page auto-refreshes every 5 seconds. No need to do anything — results will appear here when the AI finishes.
+                            </p>
+                        </div>
                     </div>
                 )}
 

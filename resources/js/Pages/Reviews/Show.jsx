@@ -488,6 +488,20 @@ export default function Show({ pullRequest, review }) {
         });
     };
 
+    // Auto-poll while review is in flight so the user doesn't have to refresh.
+    const inFlight = pullRequest.status === 'pending' || pullRequest.status === 'analyzing';
+    useEffect(() => {
+        if (!inFlight) return;
+        const id = setInterval(() => {
+            router.reload({
+                only: ['pullRequest', 'review', 'flash'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 5000);
+        return () => clearInterval(id);
+    }, [inFlight]);
+
     const githubPrUrl = pullRequest.diff_url?.replace('.diff', '') || (pullRequest.repository?.full_name
         ? `https://github.com/${pullRequest.repository.full_name}/pull/${pullRequest.pr_number}`
         : null);
@@ -604,14 +618,37 @@ export default function Show({ pullRequest, review }) {
                     </div>
                 )}
 
-                {!review && (
+                {!review && inFlight && (
                     <div
-                        className="card flex items-center gap-3 text-sm"
+                        className="card flex items-start gap-3 text-sm"
                         style={{ color: 'var(--warning)', borderColor: 'rgba(245,158,11,0.30)' }}
                     >
-                        <Info className="h-5 w-5 shrink-0" />
-                        The review is still being generated or has not run yet. The PR status will move to <strong>completed</strong> when it finishes.
+                        <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 animate-spin" />
+                        <div>
+                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                Review in progress — typically takes 15-30 seconds
+                            </p>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                This page auto-refreshes every 5 seconds. No need to do anything — results will appear here when the AI finishes.
+                            </p>
+                        </div>
                     </div>
+                )}
+
+                {pullRequest.status === 'failed' && (
+                    <div
+                        className="card flex items-start gap-3 text-sm"
+                        style={{ color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.30)' }}
+                    >
+                        <Info className="mt-0.5 h-5 w-5 shrink-0" />
+                        <div>
+                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                Review failed
+                            </p>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                The AI model returned malformed output. This is a known limitation of the free OpenRouter model — use the <strong>Re-analyze</strong> button at the top right to retry. Retries usually succeed.
+                            </p>
+                        </div>
                 )}
 
                 {/* ── Tabs ────────────────────────────────────────────── */}
