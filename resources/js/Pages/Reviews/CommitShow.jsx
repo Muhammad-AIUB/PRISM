@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     Check,
@@ -8,6 +8,7 @@ import {
     ExternalLink,
     GitCommit,
     Info,
+    RefreshCw,
     Wand2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -236,6 +237,15 @@ function FixesTab({ fixes }) {
 export default function CommitShow({ commitReview: cr }) {
     const [activeTab, setActiveTab] = useState('security');
     const [severity, setSeverity]   = useState('all');
+    const [reanalyzing, setReanalyzing] = useState(false);
+
+    const reanalyze = () => {
+        setReanalyzing(true);
+        router.post(`/commits/${cr.id}/re-analyze`, {}, {
+            preserveScroll: true,
+            onFinish: () => setReanalyzing(false),
+        });
+    };
 
     const issuesByLayer = useMemo(() => ({
         security:     cr?.security_issues     ?? [],
@@ -329,11 +339,39 @@ export default function CommitShow({ commitReview: cr }) {
                     </div>
                 )}
 
-                {cr.status !== 'completed' && (
+                {(cr.status === 'pending' || cr.status === 'analyzing') && (
                     <div className="card flex items-center gap-3 text-sm"
                         style={{ color: 'var(--warning)', borderColor: 'rgba(245,158,11,0.30)' }}>
                         <Info className="h-5 w-5 shrink-0" />
                         Review is still being generated. The page status will move to <strong>completed</strong> when it finishes.
+                    </div>
+                )}
+
+                {cr.status === 'failed' && (
+                    <div
+                        className="card flex flex-col gap-3 text-sm sm:flex-row sm:items-center"
+                        style={{ color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.30)' }}
+                    >
+                        <div className="flex items-start gap-3">
+                            <Info className="mt-0.5 h-5 w-5 shrink-0" />
+                            <div>
+                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                                    Review failed
+                                </p>
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                    The AI model returned malformed JSON. This is a known limitation of the free OpenRouter model — retries usually succeed.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={reanalyzing}
+                            onClick={reanalyze}
+                            className="btn btn-primary min-h-[44px] shrink-0 transition active:scale-95 sm:ml-auto"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${reanalyzing ? 'animate-spin' : ''}`} />
+                            {reanalyzing ? 'Retrying…' : 'Re-analyze'}
+                        </button>
                     </div>
                 )}
 

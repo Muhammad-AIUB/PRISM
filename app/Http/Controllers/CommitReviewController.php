@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessCommitReview;
+use App\Models\AuditLog;
 use App\Models\CommitReview;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class CommitReviewController extends Controller
@@ -46,5 +49,43 @@ class CommitReviewController extends Controller
                     : null,
             ],
         ]);
+    }
+
+    /**
+     * Re-run the AI review for a commit. Wipes previous result and dispatches
+     * a fresh ProcessCommitReview after the response is sent.
+     */
+    public function reAnalyze(CommitReview $commitReview)
+    {
+        $commitReview->load('repository');
+
+        abort_unless(
+            $commitReview->repository && $commitReview->repository->user_id === Auth::id(),
+            403
+        );
+
+        $commitReview->update([
+            'status'              => 'analyzing',
+            'overall_score'       => null,
+            'summary'             => null,
+            'security_issues'     => null,
+            'performance_issues'  => null,
+            'code_quality_issues' => null,
+            'suggested_fixes'     => null,
+        ]);
+
+        // Force a fresh diff fetch on retry.
+        Cache::forget("commit_diff_{$commitReview->repository_id}_{$commitReview->commit_sha}");
+
+        ProcessCommitReview::dispatchAfterResponse($commitReview);
+
+        AuditLog::record(
+            Auth::id(),
+            'review_reanalyzed',
+            "Re-analyzed commit {$commitReview->shortSha()} on {$commitReview->repository?->full_name}",
+            ['commit_review_id' => $commitReview->id]
+        );
+
+        return redirect()->back()->with('success', 'Re-analyzing commit…');
     }
 }

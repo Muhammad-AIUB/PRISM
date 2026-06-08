@@ -61,7 +61,8 @@ Route::middleware('auth')->group(function () {
 
     // ── Commit reviews ───────────────────────────────────────────────
     Route::middleware('throttle:api')->group(function () {
-        Route::get('/commits/{commitReview}', [CommitReviewController::class, 'show'])->name('commits.show');
+        Route::get('/commits/{commitReview}',             [CommitReviewController::class, 'show'])->name('commits.show');
+        Route::post('/commits/{commitReview}/re-analyze', [CommitReviewController::class, 'reAnalyze'])->name('commits.reanalyze');
     });
 
     // ── Settings ─────────────────────────────────────────────────────
