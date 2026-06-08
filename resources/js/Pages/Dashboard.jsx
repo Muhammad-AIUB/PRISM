@@ -365,16 +365,16 @@ export default function Dashboard({
                                                 <td className="whitespace-nowrap px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                                                     {row.repository?.full_name ?? '—'}
                                                 </td>
-                                                <td className="max-w-md px-5 py-3">
+                                                <td className="px-5 py-3" style={{ maxWidth: '24rem', width: '24rem' }}>
                                                     <Link
                                                         href={row.url}
-                                                        className="inline-flex items-center gap-2 truncate font-medium"
+                                                        className="flex w-full min-w-0 items-center gap-2 font-medium"
                                                         style={{ color: 'var(--text-primary)' }}
                                                     >
                                                         {row.kind === 'pr'
                                                             ? <GitPullRequest className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                                                             : <GitCommit className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />}
-                                                        <span className="truncate">
+                                                        <span className="block min-w-0 flex-1 truncate">
                                                             <span style={{ color: 'var(--text-muted)' }}>
                                                                 {row.kind === 'pr' ? `#${row.pr_number}` : row.short_sha}
                                                             </span>{' '}
