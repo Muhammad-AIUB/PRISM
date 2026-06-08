@@ -26,17 +26,22 @@ const MODE_OPTIONS = [
 
 export default function Settings({ repository }) {
     const { flash } = usePage().props;
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, transform, post, processing, errors } = useForm({
         review_mode:     repository.review_mode,
         review_branches: (repository.review_branches || ['main', 'master']).join(', '),
     });
 
+    // useForm.post() sends whatever's in `data` — the second arg is options,
+    // NOT data overrides. So convert the comma-separated string to an array
+    // via transform() right before the request goes out.
     const submit = (e) => {
         e.preventDefault();
-        const branchList = data.review_branches.split(',').map((b) => b.trim()).filter(Boolean);
+        transform((d) => ({
+            review_mode:     d.review_mode,
+            review_branches: d.review_branches.split(',').map((b) => b.trim()).filter(Boolean),
+        }));
         post(`/repositories/${repository.id}/settings`, {
             preserveScroll: true,
-            data: { review_mode: data.review_mode, review_branches: branchList },
         });
     };
 
