@@ -2,7 +2,7 @@ import BranchPicker from '@/Components/BranchPicker';
 import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { ArrowLeft, GitCommit, GitPullRequest, Save, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft, Check, GitCommit, GitPullRequest, Loader2, Save, Settings as SettingsIcon } from 'lucide-react';
 
 const MODE_OPTIONS = [
     {
@@ -27,7 +27,7 @@ const MODE_OPTIONS = [
 
 export default function Settings({ repository }) {
     const { flash } = usePage().props;
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, recentlySuccessful, errors } = useForm({
         review_mode:     repository.review_mode,
         review_branches: repository.review_branches || ['main', 'master'],
     });
@@ -140,10 +140,25 @@ export default function Settings({ repository }) {
                             </div>
                         )}
 
-                        <div className="mt-6 flex justify-end">
-                            <button type="submit" disabled={processing}
-                                className="btn btn-primary min-h-[44px] transition active:scale-95">
-                                <Save className="h-4 w-4" />
+                        <div className="mt-6 flex items-center justify-end gap-3">
+                            {/* Inline status — appears RIGHT next to the button so the user can't miss it */}
+                            {recentlySuccessful && (
+                                <span
+                                    className="inline-flex items-center gap-1.5 text-sm font-medium anim-fade-in"
+                                    style={{ color: 'var(--success)' }}
+                                >
+                                    <Check className="h-4 w-4" strokeWidth={3} />
+                                    Saved
+                                </span>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="btn btn-primary min-h-[44px] transition active:scale-95"
+                            >
+                                {processing
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Save className="h-4 w-4" />}
                                 {processing ? 'Saving…' : 'Save changes'}
                             </button>
                         </div>

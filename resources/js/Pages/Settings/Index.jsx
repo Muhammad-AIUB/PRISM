@@ -1,7 +1,7 @@
 import FlashBanner from '@/Components/FlashBanner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Bell, MessageSquare, Save, TestTube } from 'lucide-react';
+import { Bell, Check, Loader2, MessageSquare, Save, TestTube } from 'lucide-react';
 import { useState } from 'react';
 
 function Toggle({ checked, onChange, label, hint }) {
@@ -33,7 +33,7 @@ function Toggle({ checked, onChange, label, hint }) {
 export default function Index({ user }) {
     const { flash } = usePage().props;
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, recentlySuccessful, errors } = useForm({
         email_notifications: !!user.email_notifications,
         slack_webhook_url:   user.slack_webhook_url || '',
     });
@@ -148,13 +148,24 @@ export default function Index({ user }) {
                             )}
                         </div>
 
-                        <div className="mt-6 flex justify-end">
+                        <div className="mt-6 flex items-center justify-end gap-3">
+                            {recentlySuccessful && (
+                                <span
+                                    className="inline-flex items-center gap-1.5 text-sm font-medium anim-fade-in"
+                                    style={{ color: 'var(--success)' }}
+                                >
+                                    <Check className="h-4 w-4" strokeWidth={3} />
+                                    Saved
+                                </span>
+                            )}
                             <button
                                 type="submit"
                                 disabled={processing}
                                 className="btn btn-primary min-h-[44px] transition active:scale-95"
                             >
-                                <Save className="h-4 w-4" />
+                                {processing
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Save className="h-4 w-4" />}
                                 {processing ? 'Saving…' : 'Save changes'}
                             </button>
                         </div>
