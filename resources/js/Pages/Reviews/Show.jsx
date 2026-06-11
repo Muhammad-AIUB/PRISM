@@ -212,9 +212,22 @@ function FixCard({ fix, onCopy }) {
                         style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '0.125rem 0.5rem' }}
                     >
                         {fix.file || 'unknown'}
-                        {fix.line ? <span style={{ color: 'var(--text-muted)' }}>:{fix.line}</span> : null}
                     </span>
                 )}
+                {fix.line ? (
+                    <span
+                        className="inline-flex items-center gap-1 rounded font-mono text-[11px] font-semibold"
+                        style={{
+                            backgroundColor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                            color: 'var(--accent)',
+                            border: '1px solid color-mix(in srgb, var(--accent) 28%, transparent)',
+                            padding: '0.125rem 0.5rem',
+                        }}
+                        title="Apply this fix at this line"
+                    >
+                        Line {fix.line}
+                    </span>
+                ) : null}
                 <span
                     className="badge"
                     style={{
@@ -335,16 +348,32 @@ function IssueCard({ issue }) {
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                     {(issue.file || issue.line) && (
-                        <div
-                            className="mb-2 inline-flex items-center gap-1 rounded font-mono text-[11px]"
-                            style={{
-                                backgroundColor: 'var(--bg-hover)',
-                                color: 'var(--text-secondary)',
-                                padding: '0.125rem 0.5rem',
-                            }}
-                        >
-                            {issue.file || 'unknown'}
-                            {issue.line ? <span style={{ color: 'var(--text-muted)' }}>:{issue.line}</span> : null}
+                        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                            {issue.file && (
+                                <span
+                                    className="inline-flex items-center gap-1 rounded font-mono text-[11px]"
+                                    style={{
+                                        backgroundColor: 'var(--bg-hover)',
+                                        color: 'var(--text-secondary)',
+                                        padding: '0.125rem 0.5rem',
+                                    }}
+                                >
+                                    {issue.file}
+                                </span>
+                            )}
+                            {issue.line ? (
+                                <span
+                                    className="inline-flex items-center gap-1 rounded font-mono text-[11px] font-semibold"
+                                    style={{
+                                        backgroundColor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                                        color: 'var(--accent)',
+                                        border: '1px solid color-mix(in srgb, var(--accent) 28%, transparent)',
+                                        padding: '0.125rem 0.5rem',
+                                    }}
+                                >
+                                    Line {issue.line}
+                                </span>
+                            ) : null}
                         </div>
                     )}
                     <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{issue.comment}</p>
