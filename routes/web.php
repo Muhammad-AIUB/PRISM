@@ -70,6 +70,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings',             [SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings',            [SettingsController::class, 'update'])->name('settings.update');
         Route::post('/settings/test-slack', [SettingsController::class, 'testSlack'])->name('settings.test-slack');
+        Route::post('/settings/api-tokens',             [SettingsController::class, 'createApiToken'])->name('settings.api-tokens.create');
+        Route::delete('/settings/api-tokens/{tokenId}', [SettingsController::class, 'revokeApiToken'])->name('settings.api-tokens.revoke')->whereNumber('tokenId');
     });
 
     // ── Help ─────────────────────────────────────────────────────────

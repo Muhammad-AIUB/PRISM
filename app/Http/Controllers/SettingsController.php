@@ -24,7 +24,43 @@ class SettingsController extends Controller
                 'email_notifications' => (bool) $user->email_notifications,
                 'slack_webhook_url'   => $user->slack_webhook_url,
             ],
+            'api_tokens' => $user->tokens()->get(['id', 'name', 'last_used_at', 'created_at'])->map(fn ($t) => [
+                'id'           => $t->id,
+                'name'         => $t->name,
+                'last_used_at' => optional($t->last_used_at)->toIso8601String(),
+                'created_at'   => optional($t->created_at)->toIso8601String(),
+            ]),
+            // One-time plaintext token after generation (never retrievable again).
+            'new_api_token' => session('new_api_token'),
         ]);
+    }
+
+    /**
+     * Issue a new API token (for the MCP server or other integrations).
+     * The plaintext value is flashed to the session and shown exactly once.
+     */
+    public function createApiToken(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:64',
+        ]);
+
+        $token = Auth::user()->createToken($data['name']);
+
+        AuditLog::record(Auth::id(), 'api_token_created', "Created API token \"{$data['name']}\"");
+
+        return redirect()->back()
+            ->with('success', 'API token created — copy it now, it will not be shown again.')
+            ->with('new_api_token', $token->plainTextToken);
+    }
+
+    public function revokeApiToken(int $tokenId)
+    {
+        Auth::user()->tokens()->where('id', $tokenId)->delete();
+
+        AuditLog::record(Auth::id(), 'api_token_revoked', 'Revoked an API token', ['token_id' => $tokenId]);
+
+        return redirect()->back()->with('success', 'API token revoked');
     }
 
     public function update(Request $request)

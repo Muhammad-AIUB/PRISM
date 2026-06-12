@@ -1,0 +1,35 @@
+{
+  "name": "prism-code-review-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for PRism — AI code review results inside Claude Code, Claude Desktop, Cursor, and any MCP client",
+  "type": "module",
+  "bin": {
+    "prism-mcp": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "code-review",
+    "ai",
+    "github",
+    "prism"
+  ],
+  "author": "Muhammad Jubayer (https://www.mjubayer.dev)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Muhammad-AIUB/PRISM.git",
+    "directory": "mcp-server"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  }
+}

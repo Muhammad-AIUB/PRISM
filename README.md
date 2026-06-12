@@ -162,6 +162,13 @@ Visit `/security` in the app for full transparency.
 - 📖 **Comprehensive "How to Use" in-app guide** with FAQs and tips
 - 🦶 **Developer credit footer** (links to [mjubayer.dev](https://www.mjubayer.dev/))
 
+### MCP Server — AI Assistant Integration 🆕
+- 🔌 **[MCP server](mcp-server/)** — query your reviews from Claude Code, Claude Desktop, Cursor, or any MCP client
+- 🗣️ Ask *"what did PRism say about my last push?"* and get score, issues, and fixes inline
+- ✨ **Auto-apply fixes** — your AI assistant fetches PRism's suggested fixes and applies them to your files
+- 🔑 **Token-authenticated REST API** (`/api/v1`) via Laravel Sanctum — generate tokens in Settings
+- 🔁 Trigger re-analysis without leaving your editor
+
 ### Notifications
 - 📧 **Email notifications** via Resend (3000/month free)
 - 💬 **Slack notifications** with rich attachments, color-coded by score
@@ -209,7 +216,7 @@ Visit `/security` in the app for full transparency.
 | **Frontend** | Inertia.js + React 18 |
 | **Database** | PostgreSQL 16 (Neon.tech) |
 | **Cache & Queue** | Redis (Upstash) |
-| **AI** | OpenRouter (DeepSeek V4 Flash — free) |
+| **AI** | Groq (Llama 3.3 70B, native JSON mode) + OpenRouter fallback |
 | **Auth** | Laravel Socialite + GitHub OAuth |
 | **Email** | Resend |
 | **Styling** | Tailwind CSS + lucide-react |
