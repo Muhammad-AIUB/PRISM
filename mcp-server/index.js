@@ -12,7 +12,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const PRISM_URL = (process.env.PRISM_URL || 'https://prism.onrender.com').replace(/\/$/, '');
+const PRISM_URL = (process.env.PRISM_URL || 'https://prism-2o7j.onrender.com').replace(/\/$/, '');
 const TOKEN = process.env.PRISM_API_TOKEN;
 
 if (!TOKEN) {
