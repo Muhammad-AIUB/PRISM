@@ -264,6 +264,7 @@ Analyze the diff and return ONLY a valid JSON object with this exact structure:
   "overall_score": 0,
   "summary": ""
 }
+overall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.
 severity must be: critical, warning, or suggestion
 PROMPT;
 
