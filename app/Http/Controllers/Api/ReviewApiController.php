@@ -119,7 +119,7 @@ class ReviewApiController extends Controller
             'suggested_fixes'     => null,
         ]);
         Cache::forget("commit_diff_{$commitReview->repository_id}_{$commitReview->commit_sha}");
-        ProcessCommitReview::dispatchAfterResponse($commitReview);
+        ProcessCommitReview::dispatch($commitReview);
 
         AuditLog::record($request->user()->id, 'review_reanalyzed',
             "Re-analyzed commit {$commitReview->shortSha()} via API",
@@ -133,7 +133,7 @@ class ReviewApiController extends Controller
         $this->authorizeOwnership($request, $pullRequest->repository?->user_id);
 
         $pullRequest->update(['status' => 'analyzing']);
-        ProcessPullRequestReview::dispatchAfterResponse($pullRequest);
+        ProcessPullRequestReview::dispatch($pullRequest);
 
         AuditLog::record($request->user()->id, 'review_reanalyzed',
             "Re-analyzed PR #{$pullRequest->pr_number} via API",

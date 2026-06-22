@@ -25,7 +25,7 @@ services:
       - key: CACHE_DRIVER
         value: redis
       - key: QUEUE_CONNECTION
-        value: sync
+        value: database
       - key: SESSION_DRIVER
         value: database
       - key: REDIS_URL

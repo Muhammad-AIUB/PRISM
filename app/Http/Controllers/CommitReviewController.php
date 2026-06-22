@@ -77,7 +77,7 @@ class CommitReviewController extends Controller
         // Force a fresh diff fetch on retry.
         Cache::forget("commit_diff_{$commitReview->repository_id}_{$commitReview->commit_sha}");
 
-        ProcessCommitReview::dispatchAfterResponse($commitReview);
+        ProcessCommitReview::dispatch($commitReview);
 
         AuditLog::record(
             Auth::id(),
