@@ -46,3 +46,57 @@ services:
         value: onboarding@resend.dev
       - key: MAIL_FROM_NAME
         value: PRism AI
+
+  # ── NestJS API + AI review worker (slice A of the Laravel migration) ──
+  # Its own 512MB, separate from the PHP service. The BullMQ worker runs
+  # in-process because Render's free tier has no background-worker type —
+  # the same shape the Laravel container uses with supervisord.
+  #
+  # NOT LIVE until the reverse proxy points /webhook/github here. Deploying
+  # this service alone routes no traffic away from Laravel.
+  #
+  # PREREQUISITE: the Redis instance must be set to maxmemory-policy
+  # `noeviction`, or BullMQ jobs can be evicted and reviews never run.
+  - type: web
+    name: prism-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: prism-api
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Must be the SAME APP_KEY as the PHP service: it decrypts
+      # users.github_token, which the worker needs to call GitHub.
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: DB_URL
+        sync: false
+      - key: DB_SSLMODE
+        value: prefer
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_PREFIX
+        value: 'prism:'
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: QUEUE_PREFIX
+        value: prism-bull
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        value: onboarding@resend.dev
+      - key: MAIL_FROM_NAME
+        value: PRism AI
+      - key: API_RATE_LIMIT
+        value: 100

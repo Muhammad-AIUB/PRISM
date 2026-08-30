@@ -1,0 +1,176 @@
+{
+    "commit": {
+        "none": {
+            "languages": [],
+            "prompt": "You are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "php": {
+            "languages": [
+                "PHP"
+            ],
+            "prompt": "Detected languages: PHP\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints"
+        },
+        "javascript": {
+            "languages": [
+                "JavaScript"
+            ],
+            "prompt": "Detected languages: JavaScript\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "typescript": {
+            "languages": [
+                "TypeScript"
+            ],
+            "prompt": "Detected languages: TypeScript\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "python": {
+            "languages": [
+                "Python"
+            ],
+            "prompt": "Detected languages: Python\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Check for bare except clauses\n- Detect missing type hints\n- Flag print statements in production code\n- Check for SQL injection in raw queries"
+        },
+        "go": {
+            "languages": [
+                "Go"
+            ],
+            "prompt": "Detected languages: Go\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Verify error handling on every error return\n- Check for goroutine leaks\n- Detect missing context propagation"
+        },
+        "ruby": {
+            "languages": [
+                "Ruby"
+            ],
+            "prompt": "You are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "java": {
+            "languages": [
+                "Java"
+            ],
+            "prompt": "You are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "ruby_java": {
+            "languages": [
+                "Ruby",
+                "Java"
+            ],
+            "prompt": "You are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "php_javascript": {
+            "languages": [
+                "PHP",
+                "JavaScript"
+            ],
+            "prompt": "Detected languages: PHP, JavaScript\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "js_ts": {
+            "languages": [
+                "JavaScript",
+                "TypeScript"
+            ],
+            "prompt": "Detected languages: JavaScript, TypeScript\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "all_supported": {
+            "languages": [
+                "PHP",
+                "JavaScript",
+                "TypeScript",
+                "Python",
+                "Go"
+            ],
+            "prompt": "Detected languages: PHP, JavaScript, TypeScript, Python, Go\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)\n- Check for bare except clauses\n- Detect missing type hints\n- Flag print statements in production code\n- Check for SQL injection in raw queries\n- Verify error handling on every error return\n- Check for goroutine leaks\n- Detect missing context propagation"
+        },
+        "mixed_unruled": {
+            "languages": [
+                "Ruby",
+                "PHP",
+                "Java"
+            ],
+            "prompt": "Detected languages: Ruby, PHP, Java\n\nYou are a senior software engineer reviewing a commit.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean commit with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints"
+        }
+    },
+    "pull_request": {
+        "none": {
+            "languages": [],
+            "prompt": "You are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "php": {
+            "languages": [
+                "PHP"
+            ],
+            "prompt": "Detected languages: PHP\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints"
+        },
+        "javascript": {
+            "languages": [
+                "JavaScript"
+            ],
+            "prompt": "Detected languages: JavaScript\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "typescript": {
+            "languages": [
+                "TypeScript"
+            ],
+            "prompt": "Detected languages: TypeScript\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "python": {
+            "languages": [
+                "Python"
+            ],
+            "prompt": "Detected languages: Python\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Check for bare except clauses\n- Detect missing type hints\n- Flag print statements in production code\n- Check for SQL injection in raw queries"
+        },
+        "go": {
+            "languages": [
+                "Go"
+            ],
+            "prompt": "Detected languages: Go\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Verify error handling on every error return\n- Check for goroutine leaks\n- Detect missing context propagation"
+        },
+        "ruby": {
+            "languages": [
+                "Ruby"
+            ],
+            "prompt": "You are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "java": {
+            "languages": [
+                "Java"
+            ],
+            "prompt": "You are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "ruby_java": {
+            "languages": [
+                "Ruby",
+                "Java"
+            ],
+            "prompt": "You are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion"
+        },
+        "php_javascript": {
+            "languages": [
+                "PHP",
+                "JavaScript"
+            ],
+            "prompt": "Detected languages: PHP, JavaScript\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "js_ts": {
+            "languages": [
+                "JavaScript",
+                "TypeScript"
+            ],
+            "prompt": "Detected languages: JavaScript, TypeScript\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)"
+        },
+        "all_supported": {
+            "languages": [
+                "PHP",
+                "JavaScript",
+                "TypeScript",
+                "Python",
+                "Go"
+            ],
+            "prompt": "Detected languages: PHP, JavaScript, TypeScript, Python, Go\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints\n- Flag console.log statements left in production code\n- Check for missing error handling in async functions\n- Detect usage of `any` type in TypeScript\n- Check for missing key prop in React lists\n- Flag direct DOM manipulation in React\n- Detect potential memory leaks (uncleaned listeners)\n- Check for bare except clauses\n- Detect missing type hints\n- Flag print statements in production code\n- Check for SQL injection in raw queries\n- Verify error handling on every error return\n- Check for goroutine leaks\n- Detect missing context propagation"
+        },
+        "mixed_unruled": {
+            "languages": [
+                "Ruby",
+                "PHP",
+                "Java"
+            ],
+            "prompt": "Detected languages: Ruby, PHP, Java\n\nYou are a senior software engineer reviewing a pull request.\nAnalyze the diff and return ONLY a valid JSON object with this exact structure:\n{\n  \"security_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"performance_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"code_quality_issues\": [{\"file\": \"\", \"line\": 0, \"severity\": \"\", \"comment\": \"\"}],\n  \"overall_score\": 0,\n  \"summary\": \"\"\n}\noverall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean pull request with only minor suggestions should score 80-95.\nseverity must be: critical, warning, or suggestion\n\nApply these language-specific rules:\n- Detect N+1 query patterns (loops with model calls)\n- Check for missing form validation in controllers\n- Flag raw SQL queries without parameter binding\n- Verify authorization checks in sensitive endpoints\n- Check for hardcoded credentials\n- Detect missing return type hints"
+        }
+    }
+}
