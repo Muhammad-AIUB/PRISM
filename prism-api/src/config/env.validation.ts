@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { Type, plainToInstance } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -25,6 +25,12 @@ export class EnvironmentVariables {
   @IsEnum(NodeEnv)
   NODE_ENV: NodeEnv = NodeEnv.Development;
 
+  /**
+   * Render always injects PORT as a string. Relying on class-transformer's
+   * implicit conversion here silently failed validation and the service would
+   * not boot at all, so every numeric field converts explicitly.
+   */
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(65535)
@@ -120,10 +126,12 @@ export class EnvironmentVariables {
   @IsOptional()
   SESSION_COOKIE_NAME?: string;
 
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   SESSION_TTL_DAYS = 30;
 
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   API_RATE_LIMIT = 100;

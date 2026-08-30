@@ -32,6 +32,7 @@ import {
 import { AuthWebModule } from './modules/auth/auth-web.module';
 import { HealthModule } from './modules/health/health.module';
 import { ReviewsModule } from './modules/api-v1/reviews/reviews.module';
+import { RepositoriesModule } from './modules/repositories/repositories.module';
 import { ReviewModule } from './modules/review/review.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { RedisModule } from './redis/redis.module';
@@ -132,6 +133,7 @@ import { RedisModule } from './redis/redis.module';
     AuthWebModule,
     HealthModule,
     ReviewsModule,
+    RepositoriesModule,
     ReviewModule,
     WebhookModule,
   ],

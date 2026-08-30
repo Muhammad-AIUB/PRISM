@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
 import { CommitReview, PullRequest, Repository } from '../../database/entities';
+import { watchedBranchesFor } from '../../database/repository.helpers';
 import { ReviewQueueService } from '../review/review-queue.service';
 
 /**
@@ -154,7 +155,7 @@ export class WebhookService {
       return { status: 200, body: { message: 'Repository set to PR-only mode' } };
     }
 
-    if (!this.watchedBranches(repository).includes(branch)) {
+    if (!watchedBranchesFor(repository.reviewBranches).includes(branch)) {
       return { status: 200, body: { message: `Branch not watched: ${branch}` } };
     }
 
@@ -206,17 +207,6 @@ export class WebhookService {
     await this.queue.enqueueCommitReview(review.id);
 
     return { status: 200, body: { message: 'Commit review queued', review_id: review.id } };
-  }
-
-  /** Port of Repository::watchedBranches(). */
-  private watchedBranches(repository: Repository): string[] {
-    const branches = repository.reviewBranches;
-
-    if (!Array.isArray(branches) || branches.length === 0) {
-      return ['main', 'master'];
-    }
-
-    return branches.map((branch) => String(branch)).filter((branch) => branch !== '');
   }
 
   /**
