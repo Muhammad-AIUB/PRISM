@@ -120,9 +120,17 @@ GET|POST /repositories/**                  → nest
 GET|POST|DELETE /settings/**               → nest
 GET|PATCH|DELETE /profile                  → nest
 GET|POST /reviews/**, /commits/**          → nest
+GET  /security, /security/**               → nest
+GET  /help/how-to-use                      → nest
+GET  /demo, /demo/review/:id               → nest
 GET  /health                               → nest
-*                                          → laravel   # security, help, demo
+*                                          → laravel   # Breeze password auth only
 ```
+
+Every controller in `app/Http/Controllers` except the Breeze password-auth set
+now has a NestJS equivalent. What is left on Laravel is register / login /
+forgot-password / reset-password / verify-email / confirm-password, which the
+GitHub OAuth flow does not use.
 
 Rollback for any slice is a one-line proxy change, no redeploy of either app.
 

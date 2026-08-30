@@ -169,6 +169,43 @@ export class GithubClientService {
     }
   }
 
+  /**
+   * DELETE /repos/{full_name}/hooks/{id} — run before wiping a user's data so
+   * GitHub stops delivering to a repository we will no longer recognise.
+   *
+   * Never throws: this runs inside an account deletion the user has already
+   * confirmed, and a GitHub outage must not leave that half-done.
+   */
+  async deleteWebhook(token: string, fullName: string, webhookId: number): Promise<void> {
+    try {
+      const response = await fetch(`${API_ROOT}/repos/${fullName}/hooks/${webhookId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'PRism',
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Failed to uninstall webhook on data deletion ${JSON.stringify({
+            repo: fullName,
+            status: response.status,
+          })}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to uninstall webhook on data deletion ${JSON.stringify({
+          repo: fullName,
+          error: this.messageOf(error),
+        })}`,
+      );
+    }
+  }
+
   private async requestJson<T>(url: string, token: string, timeoutMs?: number): Promise<T | null> {
     try {
       const response = await fetch(url, {

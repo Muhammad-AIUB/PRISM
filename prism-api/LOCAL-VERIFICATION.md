@@ -90,6 +90,11 @@ this way so far:
 | Re-analyze (web) drops the review row and re-queues | pass |
 | PDF export | valid `%PDF-1.3 … %%EOF`, correct filename, both with and without a review |
 | Another user's session on someone's PR, commit, export or repo settings | 403 |
+| `/security` anonymous, and with a forged cookie | 200 with `is_authenticated: false`, no 500 |
+| `/security/my-data` token preview | first 4 / last 4 / length of the decrypted token |
+| Full data deletion with `confirm: DELETE` | user, repositories and pull requests cascade away; another user's rows untouched; session immediately 401; GitHub webhook uninstall attempted first |
+| Data deletion without the exact confirmation | 422, nothing deleted |
+| `/demo`, `/demo/review/:id` | public, 404 for an unknown id |
 
 ## 5. Crypt interop
 
