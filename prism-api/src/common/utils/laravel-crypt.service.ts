@@ -1,4 +1,10 @@
-import { createDecipheriv, createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from 'node:crypto';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -31,6 +37,36 @@ export class LaravelCryptService {
         `APP_KEY must decode to 32 bytes for AES-256-CBC, got ${this.key.length}.`,
       );
     }
+  }
+
+  /**
+   * Writes a value Laravel's `encrypted` cast can read back.
+   *
+   * Required as soon as NestJS owns GitHub OAuth: it stores
+   * users.github_token, and the Laravel app (and its queue worker) still read
+   * that column through the cast. A plaintext write there would surface as
+   * "The MAC is invalid." on the PHP side.
+   *
+   * Laravel's Encrypter emits base64(json({iv, value, mac, tag})) where the
+   * inner value is PHP-serialised BEFORE encryption and `tag` is empty for the
+   * non-AEAD default cipher.
+   */
+  encrypt(plaintext: string): string {
+    const iv = randomBytes(16);
+    const cipher = createCipheriv('aes-256-cbc', this.key, iv);
+
+    const value = Buffer.concat([
+      cipher.update(Buffer.from(this.serializeString(plaintext), 'utf8')),
+      cipher.final(),
+    ]).toString('base64');
+
+    const encodedIv = iv.toString('base64');
+    const mac = createHmac('sha256', this.key).update(encodedIv + value).digest('hex');
+
+    return Buffer.from(
+      JSON.stringify({ iv: encodedIv, value, mac, tag: '' }),
+      'utf8',
+    ).toString('base64');
   }
 
   decrypt(payload: string | null): string | null {
@@ -67,6 +103,15 @@ export class LaravelCryptService {
     const actual = Buffer.from(payload.mac, 'hex');
 
     return expected.length === actual.length && timingSafeEqual(expected, actual);
+  }
+
+  /**
+   * PHP's serialize() for a string: s:<byte length>:"<value>";
+   * The length is in BYTES, not characters — a multi-byte token would produce
+   * an unreadable payload if this counted characters.
+   */
+  private serializeString(value: string): string {
+    return `s:${Buffer.byteLength(value, 'utf8')}:"${value}";`;
   }
 
   private unserializeString(value: string): string {

@@ -4,8 +4,26 @@ export const appConfig = registerAs('app', () => ({
   env: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3000),
   url: process.env.APP_URL ?? '',
+  /**
+   * Where the browser should land after OAuth. Separate from APP_URL because
+   * during the migration the Next.js frontend and this API are different
+   * origins; falls back to APP_URL while they are still the same host.
+   */
+  frontendUrl: process.env.FRONTEND_URL ?? '',
   key: process.env.APP_KEY ?? '',
   apiRateLimit: Number(process.env.API_RATE_LIMIT ?? 100),
+}));
+
+export const githubConfig = registerAs('github', () => ({
+  clientId: process.env.GITHUB_CLIENT_ID ?? '',
+  clientSecret: process.env.GITHUB_CLIENT_SECRET ?? '',
+  redirect: process.env.GITHUB_REDIRECT_URI ?? '',
+}));
+
+export const sessionConfig = registerAs('session', () => ({
+  jwtSecret: process.env.JWT_SECRET ?? '',
+  cookieName: process.env.SESSION_COOKIE_NAME ?? 'prism_session',
+  ttlDays: Number(process.env.SESSION_TTL_DAYS ?? 30),
 }));
 
 export const databaseConfig = registerAs('database', () => ({

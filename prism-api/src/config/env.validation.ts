@@ -7,6 +7,7 @@ import {
   IsString,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -87,6 +88,41 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   MAIL_FROM_NAME?: string;
+
+  @IsString()
+  @IsOptional()
+  FRONTEND_URL?: string;
+
+  // ── GitHub OAuth (same app registration as Laravel uses) ──
+  @IsString()
+  @IsNotEmpty()
+  GITHUB_CLIENT_ID!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  GITHUB_CLIENT_SECRET!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  GITHUB_REDIRECT_URI!: string;
+
+  /**
+   * Signs the browser session JWT. Unrelated to APP_KEY: rotating this logs
+   * everyone out, rotating APP_KEY would make every stored github_token
+   * unreadable, so they must not share a value.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(32)
+  JWT_SECRET!: string;
+
+  @IsString()
+  @IsOptional()
+  SESSION_COOKIE_NAME?: string;
+
+  @IsInt()
+  @Min(1)
+  SESSION_TTL_DAYS = 30;
 
   @IsInt()
   @Min(1)

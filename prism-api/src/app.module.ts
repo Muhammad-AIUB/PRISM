@@ -12,9 +12,11 @@ import {
   aiConfig,
   appConfig,
   databaseConfig,
+  githubConfig,
   mailConfig,
   queueConfig,
   redisConfig,
+  sessionConfig,
 } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import {
@@ -27,6 +29,7 @@ import {
   ReviewComment,
   User,
 } from './database/entities';
+import { AuthWebModule } from './modules/auth/auth-web.module';
 import { HealthModule } from './modules/health/health.module';
 import { ReviewsModule } from './modules/api-v1/reviews/reviews.module';
 import { ReviewModule } from './modules/review/review.module';
@@ -38,7 +41,16 @@ import { RedisModule } from './redis/redis.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
-      load: [appConfig, databaseConfig, redisConfig, queueConfig, aiConfig, mailConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        redisConfig,
+        queueConfig,
+        aiConfig,
+        mailConfig,
+        githubConfig,
+        sessionConfig,
+      ],
       validate: validateEnv,
     }),
 
@@ -117,6 +129,7 @@ import { RedisModule } from './redis/redis.module';
     RedisModule,
     CryptModule,
     AuthModule,
+    AuthWebModule,
     HealthModule,
     ReviewsModule,
     ReviewModule,

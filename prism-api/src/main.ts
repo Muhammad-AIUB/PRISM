@@ -17,6 +17,9 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+// esModuleInterop is off in this project, so cookie-parser (a CommonJS module
+// with a callable export) is brought in with the import-require form.
+import cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
 import { LaravelExceptionFilter } from './common/filters/laravel-exception.filter';
 
@@ -37,6 +40,10 @@ async function bootstrap(): Promise<void> {
   app.set('trust proxy', true);
 
   app.use(helmet({ contentSecurityPolicy: false }));
+
+  // The browser session JWT and the OAuth state both travel as httpOnly
+  // cookies, so they have to be parsed before any guard runs.
+  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({

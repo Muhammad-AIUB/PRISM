@@ -100,3 +100,20 @@ services:
         value: PRism AI
       - key: API_RATE_LIMIT
         value: 100
+      # Same GitHub OAuth app as the PHP service. GITHUB_REDIRECT_URI only
+      # points here once web auth is cut over; until then it stays on Laravel.
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        sync: false
+      # Session JWT signing key. Must NOT be set to the same value as APP_KEY.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_COOKIE_NAME
+        value: prism_session
+      - key: SESSION_TTL_DAYS
+        value: 30
+      - key: FRONTEND_URL
+        sync: false
