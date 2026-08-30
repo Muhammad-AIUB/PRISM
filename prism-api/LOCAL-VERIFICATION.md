@@ -85,6 +85,11 @@ this way so far:
 | Partial `POST /settings` leaves untouched fields alone | pass |
 | A non-Slack webhook URL is refused | pass |
 | Validation failures | 422 `{message, errors}`, Laravel's envelope |
+| Dashboard totals, both feeds and the timeline | pass |
+| Review, commit and diff pages | pass; diff passes GitHub's status through |
+| Re-analyze (web) drops the review row and re-queues | pass |
+| PDF export | valid `%PDF-1.3 … %%EOF`, correct filename, both with and without a review |
+| Another user's session on someone's PR, commit, export or repo settings | 403 |
 
 ## 5. Crypt interop
 

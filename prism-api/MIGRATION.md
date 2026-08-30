@@ -86,13 +86,13 @@ the two, the worker itself was ported to BullMQ (slice A, done).
 The two queues now run side by side and share no rows: Laravel consumes the
 `jobs` table, NestJS consumes Redis. They cannot contend.
 
-**Consequence:** Laravel's `queue:work` must STAY RUNNING until slice B. The
-two *web* re-analyze routes (`/reviews/{pr}/re-analyze`,
-`/commits/{id}/re-analyze`) are session-authenticated, still live on Laravel,
-and still dispatch onto the database queue. Stopping Laravel's worker before
-those move would make re-analyze silently do nothing.
+**Resolved.** Every route that starts a review now runs on BullMQ: webhook
+ingestion, both `/api/v1/**/re-analyze` routes, and — since the web auth guard
+landed — both session-authenticated web re-analyze routes.
 
-The two `/api/v1/**/re-analyze` routes ARE served by NestJS now.
+Laravel's `queue:work` still has to run until the proxy actually points those
+routes at NestJS, because until then Laravel is the one receiving them. Once
+it does, no path enqueues a Laravel job and the worker can be retired.
 
 ### Sessions cannot be shared
 Laravel sessions are PHP-serialised, encrypted with `APP_KEY`, in the
@@ -114,8 +114,14 @@ GET  /api/v1/commits/:id                   → nest
 GET  /api/v1/pull-requests/:id             → nest
 POST /api/v1/**/re-analyze                 → nest
 POST /webhook/github                       → nest      # slice A
+GET  /auth/github, /auth/github/callback   → nest      # slice B
+GET  /dashboard                            → nest
+GET|POST /repositories/**                  → nest
+GET|POST|DELETE /settings/**               → nest
+GET|PATCH|DELETE /profile                  → nest
+GET|POST /reviews/**, /commits/**          → nest
 GET  /health                               → nest
-*                                          → laravel
+*                                          → laravel   # security, help, demo
 ```
 
 Rollback for any slice is a one-line proxy change, no redeploy of either app.
