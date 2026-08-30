@@ -71,9 +71,19 @@ export class LaravelExceptionFilter implements ExceptionFilter {
       };
     }
 
-    return {
+    const body: LaravelErrorBody = {
       message: typeof rawMessage === 'string' ? rawMessage : exception.message,
     };
+
+    // Services (and the validation pipe) supply `errors` directly for 422s;
+    // passing it through is what keeps field-level form errors working.
+    const rawErrors = record['errors'];
+
+    if (rawErrors && typeof rawErrors === 'object' && !Array.isArray(rawErrors)) {
+      body.errors = rawErrors as Record<string, string[]>;
+    }
+
+    return body;
   }
 
   /**

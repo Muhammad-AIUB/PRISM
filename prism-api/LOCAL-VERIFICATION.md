@@ -79,6 +79,12 @@ this way so far:
 | Retry backoff | first retry scheduled exactly 60s out, matching Laravel's `[60, 180, 600]` |
 | Every authenticated route without a session | 401 `{"message":"Unauthenticated."}` |
 | `bigint` ids in JSON | numbers, not strings |
+| A token issued by `POST /settings/api-tokens` authenticates `GET /api/v1/me` | pass |
+| Laravel's own `Sanctum::findToken()` resolves that same token | pass — name, user and abilities all match |
+| Revoking it makes the next call 401 | pass |
+| Partial `POST /settings` leaves untouched fields alone | pass |
+| A non-Slack webhook URL is refused | pass |
+| Validation failures | 422 `{message, errors}`, Laravel's envelope |
 
 ## 5. Crypt interop
 

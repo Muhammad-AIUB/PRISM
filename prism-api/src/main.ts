@@ -21,6 +21,7 @@ import helmet from 'helmet';
 // with a callable export) is brought in with the import-require form.
 import cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
+import { laravelValidationException } from './common/validation/laravel-validation';
 import { LaravelExceptionFilter } from './common/filters/laravel-exception.filter';
 
 async function bootstrap(): Promise<void> {
@@ -51,6 +52,11 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: false },
+      // Nest defaults to 400 with { message: string[] }. Laravel answers 422
+      // with { message, errors: { field: [...] } }, and the frontend's form
+      // components read `errors` — so the default shape silently breaks every
+      // form's inline error display.
+      exceptionFactory: laravelValidationException,
     }),
   );
 

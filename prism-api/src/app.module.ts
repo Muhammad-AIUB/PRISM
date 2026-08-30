@@ -32,8 +32,10 @@ import {
 import { AuthWebModule } from './modules/auth/auth-web.module';
 import { HealthModule } from './modules/health/health.module';
 import { ReviewsModule } from './modules/api-v1/reviews/reviews.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { RepositoriesModule } from './modules/repositories/repositories.module';
 import { ReviewModule } from './modules/review/review.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { RedisModule } from './redis/redis.module';
 
@@ -134,6 +136,8 @@ import { RedisModule } from './redis/redis.module';
     HealthModule,
     ReviewsModule,
     RepositoriesModule,
+    SettingsModule,
+    ProfileModule,
     ReviewModule,
     WebhookModule,
   ],
