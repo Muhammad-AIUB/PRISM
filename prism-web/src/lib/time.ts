@@ -5,7 +5,15 @@
  * ("just now", "3m ago", "2d ago", then a plain date) are what the tables show
  * today, and switching formatter would change every timestamp on screen.
  */
-export function relativeTime(iso: string | null | undefined): string {
+/**
+ * `fallback` is what an older-than-a-week timestamp becomes. The tables use a
+ * bare date; the activity log uses date and time, since two events on the same
+ * day are otherwise indistinguishable. Both were in the originals.
+ */
+export function relativeTime(
+  iso: string | null | undefined,
+  fallback: 'date' | 'datetime' = 'date',
+): string {
   if (!iso) {
     return '—';
   }
@@ -34,5 +42,16 @@ export function relativeTime(iso: string | null | undefined): string {
     return `${Math.floor(seconds / 86_400)}d ago`;
   }
 
-  return date.toLocaleDateString();
+  return fallback === 'datetime' ? date.toLocaleString() : date.toLocaleDateString();
+}
+
+/** Absolute timestamp, used for the `title` tooltips on relative times. */
+export function absoluteTime(iso: string | null | undefined): string {
+  if (!iso) {
+    return '';
+  }
+
+  const date = new Date(iso);
+
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
 }
