@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 /**
  * Server-side calls into prism-api.
@@ -90,6 +90,19 @@ export async function apiGetAuthed<T>(path: string): Promise<T> {
 
   if (response.status === 401) {
     redirect('/login');
+  }
+
+  /**
+   * A missing row, and one belonging to someone else, both render the
+   * not-found page. Letting these fall through to parse() threw an ApiError
+   * and produced a 500 for what is really "there is nothing here for you".
+   *
+   * 403 is folded in on purpose: a distinct "forbidden" screen would confirm
+   * that a given review id exists, which is a small leak with no upside for
+   * the person seeing it.
+   */
+  if (response.status === 404 || response.status === 403) {
+    notFound();
   }
 
   return parse<T>(response);
