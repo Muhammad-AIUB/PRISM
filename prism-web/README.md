@@ -28,10 +28,14 @@ Start Postgres, Redis and prism-api first — see
 ```bash
 npm install
 npm run build
-PRISM_API_ORIGIN=http://127.0.0.1:3999 APP_URL=http://localhost:3001 npm start
+PRISM_API_ORIGIN=http://127.0.0.1:3999 APP_URL=http://localhost:3001 PORT=3001 npm start
 ```
 
-`npm run dev` for the watch server on the same port.
+`npm run dev` runs the watch server on 3001.
+
+`npm start` takes its port from `$PORT` rather than hardcoding one — a host
+that assigns the port needs the app to honour it, or it binds a port nobody is
+listening on.
 
 ## Layout
 
