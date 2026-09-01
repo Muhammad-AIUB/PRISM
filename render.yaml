@@ -14,7 +14,10 @@ services:
     region: singapore
     branch: main
     rootDir: prism-api
-    buildCommand: npm ci && npm run build
+    # --include=dev is required, not optional. NODE_ENV=production is set below
+    # and npm honours it by skipping devDependencies — which is where
+    # @nestjs/cli lives, so `nest build` would not exist and the build fails.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /health
     envVars:
@@ -85,7 +88,9 @@ services:
     region: singapore
     branch: main
     rootDir: prism-web
-    buildCommand: npm ci && npm run build
+    # Same reason as prism-api: tailwindcss, postcss, autoprefixer and
+    # typescript are devDependencies, and `next build` needs all four.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV

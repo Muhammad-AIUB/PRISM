@@ -2,7 +2,7 @@
   "name": "prism-web",
   "version": "0.1.0",
   "private": true,
-  "description": "PRism frontend — Next.js port of the Inertia/React app (strangler migration).",
+  "description": "PRism frontend \u2014 Next.js port of the Inertia/React app (strangler migration).",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
@@ -27,5 +27,8 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.11"
   }
 }

@@ -1,3 +1,6 @@
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 /** @type {import('next').NextConfig} */
 
 /**
@@ -17,9 +20,10 @@ const apiOrigin = process.env.PRISM_API_ORIGIN ?? 'http://127.0.0.1:3999';
 const nextConfig = {
   reactStrictMode: true,
 
-  // The repo has lockfiles at the root (Laravel/Vite) and here. Without this
-  // Next picks the root one and traces the whole PHP tree into the build.
-  outputFileTracingRoot: import.meta.dirname,
+  // Pin tracing to this package. Derived the long way round rather than with
+  // import.meta.dirname, which needs Node >= 20.11 — not worth depending on
+  // the host's Node version for one path.
+  outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
 
   async rewrites() {
     return [
