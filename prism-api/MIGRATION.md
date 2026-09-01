@@ -1,8 +1,23 @@
-# PRism: Laravel → NestJS migration
+# PRism: Laravel → NestJS migration — COMPLETE
 
-Strangler-fig migration. Laravel and NestJS run side by side against **one**
-Postgres database and **one** Redis; a reverse proxy moves routes across one
-slice at a time. No dual-write, no data copy, no cutover weekend.
+This records a migration that is finished. The Laravel application has been
+deleted; `prism-api` (NestJS) and `prism-web` (Next.js) are the whole app.
+
+It was done as a strangler fig — both stacks running against **one** Postgres
+and **one** Redis, moving one slice at a time. No dual-write, no data copy, no
+cutover weekend. The notes below are kept because they explain *why* several
+pieces of this codebase look the way they do, and those reasons still hold.
+
+**Still true after the deletion, and the reason the compatibility work stays:**
+
+- `users.github_token` rows in the production database were written by PHP.
+  `LaravelCryptService` reads them, and its format cannot drift.
+- API tokens in `personal_access_tokens` were issued by Sanctum and are still
+  in use by deployed MCP servers. The format cannot drift either.
+- The schema is Laravel's, captured in `schema.sql`. TypeORM never creates or
+  alters a table.
+- The `*_issues` columns, the CHECK constraints behind Laravel's `enum()`, and
+  the ISO-8601 timestamp format are all still what they were.
 
 ---
 
@@ -23,9 +38,10 @@ So this is two migrations, not one, and they must be sequenced:
 | `/dashboard`, `/reviews/*`, `/settings`, … | Inertia page responses | **No** — needs the SPA decoupling first |
 | `/auth/github/*`, Breeze auth | Session + Inertia redirects | **No** — see *Sessions* below |
 
-**Slice 1 (this repo, done): the five `GET /api/v1/*` endpoints + `/health`.**
-They are the only surface with a versioned contract and an external consumer,
-which makes them both the safest and the most valuable thing to move first.
+Every one of these surfaces has since been ported. The table is kept because
+it explains the ordering: the JSON API moved first (a versioned contract with
+an external consumer), then the AI worker, then auth, then the rest of the web
+routes, and the Inertia frontend was replaced last.
 
 ---
 

@@ -1,62 +1,12 @@
 services:
-  - type: web
-    name: prism
-    runtime: docker
-    plan: free
-    region: singapore
-    branch: main
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: false
-      - key: APP_KEY
-        sync: false
-      - key: APP_URL
-        sync: false
-      - key: LOG_CHANNEL
-        value: stack
-      - key: LOG_LEVEL
-        value: info
-      - key: DB_CONNECTION
-        value: pgsql
-      - key: DB_URL
-        sync: false
-      - key: CACHE_DRIVER
-        value: redis
-      - key: QUEUE_CONNECTION
-        value: database
-      - key: SESSION_DRIVER
-        value: database
-      - key: REDIS_URL
-        sync: false
-      - key: GITHUB_CLIENT_ID
-        sync: false
-      - key: GITHUB_CLIENT_SECRET
-        sync: false
-      - key: GITHUB_REDIRECT_URI
-        sync: false
-      - key: OPENROUTER_API_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: MAIL_MAILER
-        value: resend
-      - key: MAIL_FROM_ADDRESS
-        value: onboarding@resend.dev
-      - key: MAIL_FROM_NAME
-        value: PRism AI
-
-  # ── NestJS API + AI review worker (slice A of the Laravel migration) ──
-  # Its own 512MB, separate from the PHP service. The BullMQ worker runs
-  # in-process because Render's free tier has no background-worker type —
-  # the same shape the Laravel container uses with supervisord.
+  # ── NestJS API + AI review worker ────────────────────────────────────
+  # HTTP server and the BullMQ worker run in one process: Render's free tier
+  # has no background-worker service type. concurrency is 1, which is what
+  # keeps peak memory predictable inside 512MB.
   #
-  # NOT LIVE until the reverse proxy points /webhook/github here. Deploying
-  # this service alone routes no traffic away from Laravel.
-  #
-  # PREREQUISITE: the Redis instance must be set to maxmemory-policy
-  # `noeviction`, or BullMQ jobs can be evicted and reviews never run.
+  # PREREQUISITE: the Redis instance must have maxmemory-policy `noeviction`.
+  # Under an eviction policy BullMQ's job keys can be dropped silently and
+  # reviews simply never run.
   - type: web
     name: prism-api
     runtime: node
@@ -70,8 +20,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Must be the SAME APP_KEY as the PHP service: it decrypts
-      # users.github_token, which the worker needs to call GitHub.
+      # Decrypts users.github_token. Every token already in the database was
+      # written with this key by the Laravel app — changing it makes all of
+      # them permanently unreadable.
       - key: APP_KEY
         sync: false
       - key: APP_URL
@@ -84,8 +35,6 @@ services:
         sync: false
       - key: REDIS_PREFIX
         value: 'prism:'
-      - key: QUEUE_CONNECTION
-        value: database
       - key: QUEUE_PREFIX
         value: prism-bull
       - key: GROQ_API_KEY
@@ -100,15 +49,17 @@ services:
         value: PRism AI
       - key: API_RATE_LIMIT
         value: 100
-      # Same GitHub OAuth app as the PHP service. GITHUB_REDIRECT_URI only
-      # points here once web auth is cut over; until then it stays on Laravel.
+      # The same GitHub OAuth app the PHP service used. GITHUB_REDIRECT_URI
+      # must now point at this service's /auth/github/callback and be
+      # registered on the OAuth app.
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
       - key: GITHUB_REDIRECT_URI
         sync: false
-      # Session JWT signing key. Must NOT be set to the same value as APP_KEY.
+      # Signs the browser session JWT. NOT the same value as APP_KEY: rotating
+      # this only signs everyone out, rotating APP_KEY loses every stored token.
       - key: JWT_SECRET
         generateValue: true
       - key: SESSION_COOKIE_NAME
@@ -117,3 +68,34 @@ services:
         value: 30
       - key: FRONTEND_URL
         sync: false
+
+  # ── Next.js frontend ─────────────────────────────────────────────────
+  # The session cookie is set by prism-api, and a browser only returns a
+  # cookie to the origin that set it. So these two have to answer on ONE
+  # hostname or sign-in appears to work and every later request is anonymous.
+  #
+  # Put a proxy in front of both, routing /auth/*, /api/v1/* and
+  # /webhook/github to prism-api and everything else here. Until that exists,
+  # PRISM_API_ORIGIN plus the rewrites in next.config.mjs do the same job with
+  # the browser only ever talking to this service.
+  - type: web
+    name: prism-web
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: prism-web
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Server-side only — deliberately no NEXT_PUBLIC_ prefix, so the API
+      # origin never reaches the browser.
+      - key: PRISM_API_ORIGIN
+        sync: false
+      - key: APP_URL
+        sync: false
+      # Must match SESSION_COOKIE_NAME on prism-api or the session is never found.
+      - key: SESSION_COOKIE_NAME
+        value: prism_session

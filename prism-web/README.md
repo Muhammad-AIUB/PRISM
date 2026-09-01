@@ -22,8 +22,8 @@ never reach the browser.
 ## Running it
 
 Start Postgres, Redis and prism-api first — see
-`../prism-api/LOCAL-VERIFICATION.md`, and note the warning there about the
-repository's `.env` pointing at the production database.
+`../prism-api/LOCAL-VERIFICATION.md`. Note the warning there: the repository's
+`.env` holds production credentials and nothing local should read it.
 
 ```bash
 npm install
@@ -52,7 +52,7 @@ lets each page supply its own sticky header.
 
 ## Styling
 
-`src/app/globals.css` is carried over from the Laravel app unchanged, and
+`src/app/globals.css` is carried over from the Inertia app unchanged, and
 `tailwind.config.ts` keeps the same token names (`bg-card`, `fg-muted`,
 `border-base`, `accent`, …). Theme switching is a `light`/`dark` class on
 `<html>`, applied by an inline script in the root layout **before first paint**

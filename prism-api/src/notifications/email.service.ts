@@ -2,19 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Port of sendEmail() from both jobs, over Resend's REST API (Laravel uses the
- * same provider via MAIL_MAILER=resend).
+ * Port of sendEmail() from both jobs, over Resend's REST API — the same
+ * provider the PHP app sent through.
  *
  * The two jobs send different things and that is preserved:
  *   - commits go out as plain text, built by Mail::raw
  *   - pull requests use the ReviewCompletedMail markdown mailable
  *
  * KNOWN DIVERGENCE: the PR mail's HTML is produced here by a self-contained
- * template rather than by Laravel's published markdown-mail components
- * (resources/views/vendor/mail). Every piece of content — subject, greeting,
- * score, summary, repository, author, branches, button target — is identical;
- * the surrounding table markup and CSS are not byte-for-byte Laravel's.
- * Reproducing that theme in Node was judged not worth the coupling.
+ * template rather than by the PHP app's published markdown-mail components.
+ * Every piece of content — subject, greeting, score, summary, repository,
+ * author, branches, button target — is identical; the surrounding table markup
+ * and CSS are not. Reproducing that theme was judged not worth the coupling.
  */
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const TIMEOUT_MS = 15_000;

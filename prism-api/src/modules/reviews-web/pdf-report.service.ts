@@ -5,7 +5,7 @@ import * as pdfMake from 'pdfmake';
 import type { PullRequest, Review, ReviewIssue } from '../../database/entities';
 
 /**
- * Replaces Barryvdh\DomPDF rendering resources/views/pdf/review.blade.php.
+ * Replaces the Barryvdh\DomPDF Blade template the PHP app rendered.
  *
  * WHY NOT A HEADLESS BROWSER: Puppeteer would reproduce the Blade template
  * exactly, but Chromium needs 200-300MB of RAM on a box that already runs the
@@ -13,7 +13,8 @@ import type { PullRequest, Review, ReviewIssue } from '../../database/entities';
  * caused the php-fpm OOM crash-loop (commit 5eca1c6). pdfmake is pure JS and
  * costs a few MB.
  *
- * The trade: this is a close reproduction of the template, not a pixel match.
+ * The trade: this is a close reproduction of the original template, not a
+ * pixel match.
  * Same content, same section order, same score and severity colour coding,
  * different font (Roboto rather than DejaVu Sans) and slightly different
  * spacing.

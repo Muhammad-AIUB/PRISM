@@ -1,17 +1,21 @@
 name: Keep Render awake
 
 # Render's free tier spins a web service down after 15 minutes of inactivity,
-# and the next visitor then waits ~50s for a cold start. Pinging the lightweight
-# Laravel health endpoint (/up) every 10 minutes keeps the instance warm.
+# and the next visitor then waits ~50s for a cold start. Both services are
+# pinged every 10 minutes to keep them warm.
 #
-# Note: GitHub's scheduled runs can be delayed several minutes under load, which
-# is why the interval is 10 min (not 14) — it leaves margin against the 15-min
+# prism-api matters most: a GitHub webhook that arrives at a spun-down service
+# waits for the cold start and can exceed GitHub's 10s delivery timeout, so the
+# review never gets queued.
+#
+# The interval is 10 min rather than 14 because GitHub's scheduled runs can be
+# delayed several minutes under load — that leaves margin against the 15-minute
 # spin-down even when a run is late.
 
 on:
   schedule:
     - cron: '*/10 * * * *'
-  workflow_dispatch: {}   # allows a manual ping from the Actions tab
+  workflow_dispatch: {} # allows a manual ping from the Actions tab
 
 # A late run shouldn't pile up behind an in-flight one.
 concurrency:
@@ -22,17 +26,29 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping health endpoint
+      - name: Ping both services
         env:
-          # Override in repo Settings → Secrets and variables → Actions → Variables
-          # if your Render URL differs from the default below.
-          PRISM_URL: ${{ vars.PRISM_URL || 'https://prism-2o7j.onrender.com' }}
+          # Override in repo Settings → Secrets and variables → Actions → Variables.
+          PRISM_API_URL: ${{ vars.PRISM_API_URL || 'https://prism-api.onrender.com' }}
+          PRISM_WEB_URL: ${{ vars.PRISM_WEB_URL || 'https://prism-web.onrender.com' }}
         run: |
-          echo "Pinging ${PRISM_URL}/up"
-          code=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-all-errors --max-time 90 "${PRISM_URL}/up")
-          echo "HTTP $code"
-          # 2xx/3xx = awake. Anything else fails the run so you get notified.
-          if [ "$code" -lt 200 ] || [ "$code" -ge 400 ]; then
-            echo "::error::Health check returned $code"
-            exit 1
-          fi
+          failed=0
+
+          ping() {
+            local name="$1" url="$2"
+            echo "Pinging $name at $url"
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-all-errors --max-time 90 "$url")
+            echo "  HTTP $code"
+            # 2xx/3xx = awake. Anything else is reported so you get notified.
+            if [ "$code" -lt 200 ] || [ "$code" -ge 400 ]; then
+              echo "::error::$name returned $code"
+              failed=1
+            fi
+          }
+
+          # /health is the API's real probe: it checks the database and Redis,
+          # so a 200 here means the worker can actually do its job.
+          ping "prism-api" "${PRISM_API_URL}/health"
+          ping "prism-web" "${PRISM_WEB_URL}/login"
+
+          exit $failed

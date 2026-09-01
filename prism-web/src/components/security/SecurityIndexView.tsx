@@ -262,7 +262,7 @@ export default function SecurityIndexView({
                     <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
                         <div className="card p-5 sm:p-6 lg:col-span-3">
                             <ul className="space-y-4">
-                                <TimelineStep icon="🔐" title="AES-256 encrypted using Laravel Crypt before storage" />
+                                <TimelineStep icon="🔐" title="AES-256 encrypted with a verified MAC before storage" />
                                 <TimelineStep icon="🛡️" title="Database itself is password-protected and TLS-encrypted (Neon)" />
                                 <TimelineStep icon="🚫" title="Token NEVER appears in logs or error reports" />
                                 <TimelineStep icon="🚫" title="Token NEVER sent to the AI provider (OpenRouter)" />

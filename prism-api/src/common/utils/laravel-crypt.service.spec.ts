@@ -6,15 +6,16 @@ import { LaravelCryptService } from './laravel-crypt.service';
 /**
  * Cross-runtime parity for users.github_token.
  *
- * The fixtures are produced by Laravel's real Encrypter
- * (test/verify-crypt-interop.php), so this asserts PHP -> TS. The opposite
- * direction, TS -> PHP, is asserted by that same script and has to keep
- * working: NestJS owns GitHub OAuth from slice B, and the Laravel app and its
- * queue worker still read that column through the `encrypted` cast.
+ * The fixtures were produced by Laravel's real Encrypter, so this asserts
+ * PHP -> TS against genuine output rather than a reimplementation.
  *
- * Regenerate both with:
- *   npx ts-node test/emit-crypt-payloads.ts
- *   php test/verify-crypt-interop.php
+ * This still matters with Laravel gone: every github_token already in the
+ * production database was written by it, and these rows have to stay readable.
+ * The TS -> PHP direction was verified before the PHP was deleted (7/7 samples,
+ * including empty, multibyte and embedded quotes) and no longer has a second
+ * runtime to check against.
+ *
+ * The fixtures are frozen — the generator needed vendor/autoload.php.
  */
 interface CryptFixtures {
   app_key: string;

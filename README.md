@@ -6,8 +6,8 @@
 
 *An intelligent, self-hostable alternative to CodeRabbit and Greptile — built with engineering depth, not just features.*
 
-[![Laravel](https://img.shields.io/badge/Laravel-11-FF2D20?logo=laravel)](https://laravel.com)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
+[![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs)](https://nestjs.com)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs)](https://nextjs.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-Upstash-DC382D?logo=redis)](https://upstash.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -90,15 +90,15 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
                              │ webhook (HMAC + IP verified)
                              ▼
         ┌────────────────────────────────────────┐
-        │  Laravel App (Inertia.js + React)      │
+        │  prism-api (NestJS)                    │
         │  ├─ Webhook Controller                 │
         │  ├─ Rate Limiter (60/min per IP)       │
-        │  └─ Security Headers Middleware        │
+        │  └─ Security Headers (helmet)          │
         └────────────────┬───────────────────────┘
-                         │ dispatch job
+                         │ enqueue job
                          ▼
         ┌────────────────────────────────────────┐
-        │  Queue Worker (Redis-backed)           │
+        │  BullMQ Worker (same process, Redis)   │
         │  ├─ Fetch diff (cached 1hr)            │
         │  ├─ Detect languages                   │
         │  ├─ Build language-specific prompt     │
@@ -117,8 +117,8 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
                  │
                  ▼
         ┌──────────────────┐
-        │  React Dashboard │
-        │  + Review Page   │
+        │  prism-web       │
+        │  (Next.js)       │
         └──────────────────┘
 ```
 
@@ -128,7 +128,7 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
 
 PRism takes user trust seriously. Every aspect of data handling is transparent and user-controlled:
 
-- **AES-256 encryption** — GitHub tokens encrypted at rest using Laravel Crypt
+- **AES-256 encryption** — GitHub tokens encrypted at rest (AES-256-CBC, MAC-verified)
 - **No source code stored** — only diffs are analyzed, never your full codebase
 - **Diffs auto-deleted** after 1 hour cache expiry
 - **Open source** — every line of data-handling code is publicly auditable
@@ -166,7 +166,7 @@ Visit `/security` in the app for full transparency.
 - 🔌 **[MCP server](mcp-server/)** — query your reviews from Claude Code, Claude Desktop, Cursor, or any MCP client
 - 🗣️ Ask *"what did PRism say about my last push?"* and get score, issues, and fixes inline
 - ✨ **Auto-apply fixes** — your AI assistant fetches PRism's suggested fixes and applies them to your files
-- 🔑 **Token-authenticated REST API** (`/api/v1`) via Laravel Sanctum — generate tokens in Settings
+- 🔑 **Token-authenticated REST API** (`/api/v1`) — generate tokens in Settings
 - 🔁 Trigger re-analysis without leaving your editor
 
 ### Notifications
@@ -175,7 +175,7 @@ Visit `/security` in the app for full transparency.
 - ⚙️ **User-controlled preferences** — opt in/out per channel
 
 ### Security
-- 🔐 **AES-256 encrypted GitHub tokens** at rest (Laravel Crypt)
+- 🔐 **AES-256 encrypted GitHub tokens** at rest (AES-256-CBC, MAC-verified)
 - ✅ **HMAC-SHA256 webhook signature verification**
 - 🛡️ **GitHub IP whitelist** with CIDR matching (cached 24h)
 - 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min, auth 10/min
@@ -212,16 +212,16 @@ Visit `/security` in the app for full transparency.
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Laravel 11, PHP 8.4 |
-| **Frontend** | Inertia.js + React 18 |
+| **Backend** | NestJS 11, TypeScript (strict) |
+| **Frontend** | Next.js 15 (App Router), React 19 |
 | **Database** | PostgreSQL 16 (Neon.tech) |
-| **Cache & Queue** | Redis (Upstash) |
+| **Cache & Queue** | Redis (Upstash) — BullMQ for the review queue |
 | **AI** | Groq (Llama 3.3 70B, native JSON mode) + OpenRouter fallback |
-| **Auth** | Laravel Socialite + GitHub OAuth |
+| **Auth** | GitHub OAuth; JWT session cookie for the browser, Sanctum-format tokens for the API |
 | **Email** | Resend |
 | **Styling** | Tailwind CSS + lucide-react |
 | **Charts** | Chart.js + react-chartjs-2 |
-| **PDF** | barryvdh/laravel-dompdf |
+| **PDF** | pdfmake |
 
 ---
 
@@ -231,7 +231,7 @@ Visit `/security` in the app for full transparency.
 
 | Problem | Solution | Impact |
 |---|---|---|
-| GitHub tokens stored in plaintext | Laravel `encrypted` cast (AES-256) | Tokens unreadable even with DB dump |
+| GitHub tokens stored in plaintext | AES-256-CBC with a verified MAC | Tokens unreadable even with a DB dump |
 | Webhook endpoint open to abuse | HMAC verify + GitHub IP whitelist + rate limit | Triple-layer DDoS & spoof protection |
 | Repeated GitHub API calls | Redis caching with TTL | ~80% reduction in upstream calls |
 | Job failure cascades | `tries=3`, exponential backoff, `failed()` handler | Auto-recovery without data loss |
@@ -247,8 +247,8 @@ Visit `/security` in the app for full transparency.
 ### Architectural Decisions
 
 - **Service-based monolith over microservices** — appropriate for current scale; clear bounded contexts allow extraction later if needed
-- **Inertia.js over separate API + SPA** — single deploy, single auth flow, no CORS pain
-- **Sync queue for dev, Redis queue for prod** — same code path, different driver
+- **Separate API and frontend behind one hostname** — the session cookie stays first-party and every API call is made server-side, so the API origin and the user's GitHub token never reach the browser
+- **BullMQ worker in the API process** — Render's free tier has no background-worker type; concurrency 1 keeps peak memory predictable inside 512MB
 - **Self-hostable from day one** — no vendor lock-in, runs on free tier infrastructure
 
 ---
@@ -306,7 +306,7 @@ Implement dual authentication letting users choose:
 - [ ] **Public API** — let developers integrate PRism into their own tools
 
 ### Performance & Scale (when traffic justifies)
-- [ ] **Horizontal queue scaling** — multiple workers with Laravel Horizon
+- [ ] **Horizontal queue scaling** — multiple BullMQ workers
 - [ ] **Read replicas** for analytics queries
 - [ ] **CDN for static assets** — Cloudflare integration
 - [ ] **Database partitioning** by `created_at` for review_comments table

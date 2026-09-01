@@ -1,29 +1,25 @@
 *.log
 .DS_Store
+Thumbs.db
+
+# Local environment. .env still holds the credentials the deployed services
+# need (database, Redis, GitHub OAuth, AI and mail keys) — do not commit it.
 .env
 .env.backup
 .env.production
-.phpactor.json
-.phpunit.result.cache
+
 /.codex
 /.cursor/
 /.idea
 /.nova
-/.phpunit.cache
 /.vscode
 /.zed
-/auth.json
-/node_modules
-/mcp-server/node_modules
+
+# Each package keeps its own dependencies and build output.
+node_modules
+/prism-api/dist
+/prism-web/.next
+/prism-web/out
 /mcp-server/package-lock.json
-/public/build
-/public/fonts-manifest.dev.json
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
-_ide_helper.php
-Homestead.json
-Homestead.yaml
-Thumbs.db
+*.tsbuildinfo
+next-env.d.ts

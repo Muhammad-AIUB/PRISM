@@ -9,21 +9,13 @@ So: boot it against a real Postgres and Redis before believing it works.
 
 ---
 
-## ⚠️ Read this before running any artisan command
+## ⚠️ The repository .env points at production
 
-The repository's `.env` points `DB_HOST` at the **production Neon database**
-and `REDIS_URL` at the **production Redis**. `php artisan migrate` with that
-file loaded will run migrations against production.
-
-Laravel's Dotenv does not override variables that already exist in the
-environment, so exporting them in your shell wins. **Confirm the resolved host
-before migrating**, every time:
-
-```bash
-php artisan tinker --execute="echo config('database.connections.pgsql.host').':'.config('database.connections.pgsql.port');"
-```
-
-Only continue if that prints `127.0.0.1:55432`.
+`.env` in the repository root still holds the **production** database and Redis
+credentials — it is what the deployed services are configured from. Nothing in
+this guide reads it, and nothing here should: every command below passes its
+own connection string explicitly. Check what you are about to run actually
+says `127.0.0.1:55432` before running it.
 
 ---
 
@@ -42,13 +34,15 @@ docker run -d --name prism-redis \
   -p 56379:6379 redis:7-alpine redis-server --maxmemory-policy noeviction
 ```
 
-## 2. Create the schema with Laravel's own migrations
+## 2. Create the schema
 
-TypeORM has `synchronize: false` and always will — Laravel's migrations own
-this schema. Run them (after the safety check above) from the repository root:
+TypeORM runs with `synchronize: false` and always will, so the schema has to be
+applied by hand. `schema.sql` was captured with `pg_dump` from a database built
+by the original Laravel migrations, before those were deleted, and is now the
+source of truth:
 
 ```bash
-DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=prism DB_USERNAME=prism DB_PASSWORD=prism DB_SSLMODE=disable DB_URL= php artisan migrate --force
+docker exec -i prism-pg psql -U prism -d prism -v ON_ERROR_STOP=1 < prism-api/schema.sql
 ```
 
 ## 3. Boot the API
@@ -96,16 +90,16 @@ this way so far:
 | Data deletion without the exact confirmation | 422, nothing deleted |
 | `/demo`, `/demo/review/:id` | public, 404 for an unknown id |
 
-## 5. Crypt interop
+## 5. Crypt fixtures
 
-Run this whenever `LaravelCryptService` changes. NestJS writes
-`users.github_token` and Laravel still reads it through the `encrypted` cast,
-so both directions have to keep working:
+`LaravelCryptService` reads and writes `users.github_token` in the format the
+original PHP used, because every token already in the production database was
+written that way. `test/fixtures/laravel-encrypted.json` holds payloads
+produced by that implementation, and `npm test` decrypts them.
 
-```bash
-npx ts-node test/emit-crypt-payloads.ts
-php test/verify-crypt-interop.php
-```
+Those fixtures are frozen — the generator needed the PHP that is now gone. Both
+directions were verified against the real implementation before it was deleted
+(7/7 samples, including empty, multibyte and embedded quotes).
 
 ## 6. Tear down
 
