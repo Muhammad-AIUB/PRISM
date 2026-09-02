@@ -220,8 +220,8 @@ export default function CommitShowView({
                   Review failed
                 </p>
                 <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  The AI model returned malformed JSON. This is a known limitation of the free
-                  OpenRouter model — retries usually succeed.
+                  The AI model returned malformed JSON. This happens occasionally with
+                  free-tier models — retries usually succeed.
                 </p>
               </div>
             </div>

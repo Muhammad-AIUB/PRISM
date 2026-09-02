@@ -48,7 +48,6 @@ export const queueConfig = registerAs('queue', () => ({
 
 export const aiConfig = registerAs('ai', () => ({
   groqKey: process.env.GROQ_API_KEY ?? '',
-  openRouterKey: process.env.OPENROUTER_API_KEY ?? '',
 }));
 
 export const mailConfig = registerAs('mail', () => ({

@@ -620,7 +620,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="🔐"
                             title="Is my code sent anywhere?"
-                            body={<>Your code diff is sent to OpenRouter (a free AI gateway) for analysis. It's not stored after the analysis completes. PRism itself only stores the review results, not your source code.</>}
+                            body={<>Your code diff is sent to Groq for analysis. It&apos;s not stored after the analysis completes. PRism itself only stores the review results, not your source code.</>}
                         />
                         <AccordionItem
                             icon="🌐"
@@ -650,7 +650,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="💸"
                             title="Is PRism free?"
-                            body={<>Yes, PRism is completely free and open-source. It runs on free-tier infrastructure with the OpenRouter free AI model.</>}
+                            body={<>Yes, PRism is completely free and open-source. It runs on free-tier infrastructure using Groq&apos;s free AI models.</>}
                         />
                     </div>
                 </section>

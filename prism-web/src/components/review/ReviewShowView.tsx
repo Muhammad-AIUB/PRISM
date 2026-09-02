@@ -283,9 +283,9 @@ export default function ReviewShowView({
                 Review failed
               </p>
               <p className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                The AI model returned malformed output. This is a known limitation of the free
-                OpenRouter model — use the <strong>Re-analyze</strong> button at the top right to
-                retry. Retries usually succeed.
+                The AI model returned malformed output. This happens occasionally with
+                free-tier models — use the <strong>Re-analyze</strong> button at the top right
+                to retry. Retries usually succeed.
               </p>
             </div>
           </div>

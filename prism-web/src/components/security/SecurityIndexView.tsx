@@ -265,7 +265,7 @@ export default function SecurityIndexView({
                                 <TimelineStep icon="🔐" title="AES-256 encrypted with a verified MAC before storage" />
                                 <TimelineStep icon="🛡️" title="Database itself is password-protected and TLS-encrypted (Neon)" />
                                 <TimelineStep icon="🚫" title="Token NEVER appears in logs or error reports" />
-                                <TimelineStep icon="🚫" title="Token NEVER sent to the AI provider (OpenRouter)" />
+                                <TimelineStep icon="🚫" title="Token NEVER sent to the AI provider (Groq)" />
                                 <TimelineStep icon="⚡" title="Decrypted in-memory only when calling the GitHub API" />
                                 <TimelineStep icon="🔄" title="You can revoke access from GitHub anytime" />
                             </ul>
@@ -331,7 +331,7 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                         <div className="relative">
                             <FlowStep step="1" title="You open a PR on GitHub"               sub="Webhook triggered (HMAC verified)" />
                             <FlowStep step="2" title="PRism fetches ONLY the diff"            sub="Not your full codebase" />
-                            <FlowStep step="3" title="Diff is sent to OpenRouter for review"  sub="Free AI provider, no data retention by them" />
+                            <FlowStep step="3" title="Diff is sent to Groq for review"  sub="Free AI provider, no data retention by them" />
                             <FlowStep step="4" title="AI returns review as structured JSON"   sub="Only the analysis, not your code" />
                             <FlowStep step="5" title="Review stored in PRism database"        sub="Original code is NOT stored" />
                             <FlowStep step="6" title="Diff cached for 1 hour, then auto-deleted" sub="For re-analysis only" />

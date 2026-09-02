@@ -48,7 +48,7 @@ docker exec -i prism-pg psql -U prism -d prism -v ON_ERROR_STOP=1 < prism-api/sc
 ## 3. Boot the API
 
 ```bash
-NODE_ENV=development PORT=3999 APP_URL=http://localhost:3999 APP_KEY='base64:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=' DB_URL='postgres://prism:prism@127.0.0.1:55432/prism' DB_SSLMODE=disable REDIS_URL='redis://127.0.0.1:56379' OPENROUTER_API_KEY=dummy GITHUB_CLIENT_ID=dummy GITHUB_CLIENT_SECRET=dummy GITHUB_REDIRECT_URI=http://localhost:3999/auth/github/callback JWT_SECRET='0123456789012345678901234567890123456789' node dist/main.js
+NODE_ENV=development PORT=3999 APP_URL=http://localhost:3999 APP_KEY='base64:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=' DB_URL='postgres://prism:prism@127.0.0.1:55432/prism' DB_SSLMODE=disable REDIS_URL='redis://127.0.0.1:56379' GROQ_API_KEY=dummy GITHUB_CLIENT_ID=dummy GITHUB_CLIENT_SECRET=dummy GITHUB_REDIRECT_URI=http://localhost:3999/auth/github/callback JWT_SECRET='0123456789012345678901234567890123456789' node dist/main.js
 ```
 
 That APP_KEY is a fixed throwaway for local use — never a real one.

@@ -1,7 +1,12 @@
 # Slice A — AI worker + webhook ingestion: Laravel → NestJS
 
 Date: 2026-08-30
-Status: approved design, pending implementation plan
+Status: implemented. Kept as the record of what the port set out to preserve.
+
+> **Superseded in one place:** this describes a Groq -> OpenRouter fallback
+> chain, because that is what the PHP had and the port reproduced it exactly.
+> OpenRouter was removed afterwards at the maintainer's request, so the chain
+> is now Groq's two models alone. Everything else here still holds.
 
 ## Goal
 

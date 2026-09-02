@@ -3,14 +3,21 @@ import { ConfigService } from '@nestjs/config';
 import { extractJson, type ExtractedJson } from './json-extractor';
 
 /**
- * Port of the AI call helpers duplicated across both Laravel jobs.
+ * The AI calls both review pipelines make.
  *
- * The chain is Groq first (native JSON mode, near-zero parse failures), then
- * the OpenRouter free models as a last resort. Model ids, ordering,
- * temperature and timeouts are all part of the observable behaviour — commit
- * 'f24ed15' introduced this chain precisely because the free models fail JSON
- * parsing at different rates, so a chain lands a parseable result ~95% of the
- * time. Do not reorder or "modernise" the list without re-measuring that.
+ * Groq only. The original had an OpenRouter fallback chain behind it, removed
+ * on request — so the chain is now the two Groq models below, tried in order.
+ * The larger one answers first; the smaller is there for when it is rate
+ * limited or errors.
+ *
+ * That makes Groq's native JSON mode load-bearing rather than merely nice:
+ * with `response_format: json_object` these models rarely emit unparseable
+ * output, which is what the removed fallback used to cover. When both models
+ * do fail to return parseable JSON, the caller degrades gracefully rather
+ * than failing the job — see the runners.
+ *
+ * Model ids, ordering, temperature and timeouts are observable behaviour.
+ * Do not reorder or "modernise" the list without re-measuring parse rates.
  */
 export type AiCallContext = 'commit_review' | 'pr_review';
 
@@ -20,25 +27,15 @@ export interface RawAiResult {
 }
 
 export interface FallbackAiResult extends RawAiResult {
-  /** Groq results are labelled "groq/<model>" so callAi can route back. */
+  /** Labelled "groq/<model>" — the format stored in ai_model_used. */
   model: string | null;
 }
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-
 const GROQ_TIMEOUT_MS = 60_000;
-const OPENROUTER_TIMEOUT_MS = 120_000;
 
-/** Groq models (primary), in order. */
+/** Tried in order. */
 const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
-
-/** OpenRouter free models (fallback), in order. */
-const OPENROUTER_MODELS = [
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'deepseek/deepseek-v4-flash:free',
-  'qwen/qwen-2.5-72b-instruct:free',
-];
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string } }[];
@@ -56,9 +53,9 @@ export class AiClientService {
   constructor(private readonly configService: ConfigService) {}
 
   /**
-   * Port of callAiWithFallback(). Returns the first parseable result, or the
-   * last model's raw text when every model failed — the caller uses that raw
-   * text for the graceful-degradation summary rather than failing the job.
+   * Returns the first parseable result, or the last model's raw text when
+   * every model failed — the caller uses that raw text for the
+   * graceful-degradation summary rather than failing the job outright.
    */
   async callWithFallback(
     system: string,
@@ -72,36 +69,17 @@ export class AiClientService {
     let lastModel: string | null = null;
     let lastRaw: string | null = null;
 
-    // 1) Groq chain. Skipped entirely when no key is configured, exactly as
-    //    the PHP does — an absent key silently degrades to OpenRouter.
-    if (this.groqKey()) {
-      for (const model of GROQ_MODELS) {
-        const result = await this.callGroqRaw(model, strongSystem, user, context);
-        lastModel = `groq/${model}`;
-        lastRaw = result.raw;
-
-        if (result.parsed) {
-          return { model: lastModel, parsed: result.parsed, raw: result.raw };
-        }
-
-        this.logger.warn(
-          `Groq model returned unparseable output, trying next: ${model} — ${(result.raw ?? '').slice(0, 200)}`,
-        );
-      }
-    }
-
-    // 2) OpenRouter chain.
-    for (const model of OPENROUTER_MODELS) {
-      const result = await this.callOpenRouterRaw(model, strongSystem, user, context);
-      lastModel = model;
+    for (const model of GROQ_MODELS) {
+      const result = await this.callGroqRaw(model, strongSystem, user, context);
+      lastModel = `groq/${model}`;
       lastRaw = result.raw;
 
       if (result.parsed) {
-        return { model, parsed: result.parsed, raw: result.raw };
+        return { model: lastModel, parsed: result.parsed, raw: result.raw };
       }
 
       this.logger.warn(
-        `AI model returned unparseable output, trying next: ${model} — ${(result.raw ?? '').slice(0, 200)}`,
+        `Groq model returned unparseable output, trying next: ${model} — ${(result.raw ?? '').slice(0, 200)}`,
       );
     }
 
@@ -109,12 +87,9 @@ export class AiClientService {
   }
 
   /**
-   * Port of callAi(). Used for the second (fixes) pass, which reuses whichever
-   * model succeeded on the first pass.
-   *
-   * The OpenRouter branch deliberately sends NO temperature — the first-pass
-   * helpers send 0.2 and this one does not. That asymmetry is in the Laravel
-   * source and is preserved.
+   * Used for the second (fixes) pass, which reuses whichever model succeeded
+   * on the first. The "groq/" prefix is stripped because that label is the
+   * stored form, not the API's model id.
    */
   async call(
     model: string,
@@ -122,38 +97,17 @@ export class AiClientService {
     user: string,
     context: AiCallContext,
   ): Promise<ExtractedJson | null> {
-    if (model.startsWith('groq/')) {
-      const result = await this.callGroqRaw(model.slice(5), system, user, context);
-
-      return result.parsed;
-    }
-
-    const response = await this.post(
-      OPENROUTER_ENDPOINT,
-      this.openRouterKey(),
-      {
-        model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      },
-      OPENROUTER_TIMEOUT_MS,
-      { context, model, provider: 'openrouter' },
+    const result = await this.callGroqRaw(
+      model.startsWith('groq/') ? model.slice(5) : model,
+      system,
+      user,
+      context,
     );
 
-    if (!response.ok) {
-      this.logger.warn(
-        `OpenRouter (${context}) failed: ${response.status} ${(response.body ?? '').slice(0, 500)}`,
-      );
-
-      return null;
-    }
-
-    return extractJson(this.contentOf(response.json));
+    return result.parsed;
   }
 
-  /** Port of callGroqRaw(). Native JSON mode via response_format. */
+  /** Single call with Groq's native JSON mode. */
   private async callGroqRaw(
     model: string,
     system: string,
@@ -161,8 +115,6 @@ export class AiClientService {
     context: AiCallContext,
   ): Promise<RawAiResult> {
     const response = await this.post(
-      GROQ_ENDPOINT,
-      this.groqKey(),
       {
         model,
         temperature: 0.2,
@@ -172,8 +124,7 @@ export class AiClientService {
           { role: 'user', content: user },
         ],
       },
-      GROQ_TIMEOUT_MS,
-      { context, model, provider: 'groq' },
+      { context, model },
     );
 
     if (!response.ok) {
@@ -181,38 +132,7 @@ export class AiClientService {
         `Groq call failed: ${response.status} ${(response.body ?? '').slice(0, 500)}`,
       );
 
-      // Laravel returns the raw HTTP body here, not the message content.
-      return { parsed: null, raw: response.body };
-    }
-
-    const content = this.contentOf(response.json);
-
-    return { parsed: extractJson(content), raw: content };
-  }
-
-  /** Port of callAiRaw(). OpenRouter, temperature 0.2. */
-  private async callOpenRouterRaw(
-    model: string,
-    system: string,
-    user: string,
-    context: AiCallContext,
-  ): Promise<RawAiResult> {
-    const response = await this.post(
-      OPENROUTER_ENDPOINT,
-      this.openRouterKey(),
-      {
-        model,
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      },
-      OPENROUTER_TIMEOUT_MS,
-      { context, model, provider: 'openrouter' },
-    );
-
-    if (!response.ok) {
+      // The raw HTTP body, not the message content — there is no content.
       return { parsed: null, raw: response.body };
     }
 
@@ -222,30 +142,26 @@ export class AiClientService {
   }
 
   /**
-   * One HTTP round trip plus the `ai_call` structured log line the Laravel jobs
-   * emit. A network error or timeout is reported as a non-ok result rather than
-   * thrown, so the caller falls through to the next model instead of failing
-   * the whole job — matching Laravel's HTTP client behaviour here.
+   * One HTTP round trip plus the `ai_call` structured log line. A network
+   * error or timeout is reported as a non-ok result rather than thrown, so the
+   * caller falls through to the next model instead of failing the whole job.
    */
   private async post(
-    endpoint: string,
-    apiKey: string,
     payload: Record<string, unknown>,
-    timeoutMs: number,
-    meta: { context: AiCallContext; model: string; provider: string },
+    meta: { context: AiCallContext; model: string },
   ): Promise<{ ok: boolean; status: number; body: string | null; json: ChatCompletionResponse }> {
     const start = Date.now();
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(GROQ_ENDPOINT, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${this.groqKey()}`,
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
       });
 
       const body = await response.text();
@@ -262,7 +178,7 @@ export class AiClientService {
       this.logger.log(
         `ai_call ${JSON.stringify({
           context: meta.context,
-          provider: meta.provider,
+          provider: 'groq',
           model: meta.model,
           status: response.status,
           duration_ms: Date.now() - start,
@@ -278,7 +194,7 @@ export class AiClientService {
       this.logger.log(
         `ai_call ${JSON.stringify({
           context: meta.context,
-          provider: meta.provider,
+          provider: 'groq',
           model: meta.model,
           status: 0,
           duration_ms: Date.now() - start,
@@ -296,9 +212,5 @@ export class AiClientService {
 
   private groqKey(): string {
     return this.configService.get<string>('ai.groqKey') ?? '';
-  }
-
-  private openRouterKey(): string {
-    return this.configService.get<string>('ai.openRouterKey') ?? '';
   }
 }

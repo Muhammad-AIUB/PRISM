@@ -40,9 +40,9 @@ services:
         value: 'prism:'
       - key: QUEUE_PREFIX
         value: prism-bull
+      # Required: Groq is the only AI provider. Without it the service refuses
+      # to boot rather than failing every review one at a time.
       - key: GROQ_API_KEY
-        sync: false
-      - key: OPENROUTER_API_KEY
         sync: false
       - key: RESEND_API_KEY
         sync: false

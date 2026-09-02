@@ -102,7 +102,7 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
         │  ├─ Fetch diff (cached 1hr)            │
         │  ├─ Detect languages                   │
         │  ├─ Build language-specific prompt     │
-        │  ├─ Call OpenRouter AI                 │
+        │  ├─ Call Groq (2-model chain)          │
         │  ├─ Parse & score                      │
         │  └─ Generate auto-fixes (2nd AI call)  │
         └────────┬──────────────┬────────────────┘
@@ -216,7 +216,7 @@ Visit `/security` in the app for full transparency.
 | **Frontend** | Next.js 15 (App Router), React 19 |
 | **Database** | PostgreSQL 16 (Neon.tech) |
 | **Cache & Queue** | Redis (Upstash) — BullMQ for the review queue |
-| **AI** | Groq (Llama 3.3 70B, native JSON mode) + OpenRouter fallback |
+| **AI** | Groq (Llama 3.3 70B, then 3.1 8B — native JSON mode) |
 | **Auth** | GitHub OAuth; JWT session cookie for the browser, Sanctum-format tokens for the API |
 | **Email** | Resend |
 | **Styling** | Tailwind CSS + lucide-react |
@@ -327,10 +327,10 @@ These are the deliberate trade-offs made during development — not bugs, choice
 
 | Decision | Trade-off | Why |
 |---|---|---|
-| Sync queue in dev, async in prod | Slower dev feedback | Same code path, simpler debugging |
+| Worker in the API process | No independent scaling | Render's free tier has no background-worker type; concurrency 1 keeps memory predictable |
 | OAuth-only login | No traditional signup | Eliminates password storage entirely |
 | Service-based monolith | Not microservices | Right size for stage; can extract later |
-| OpenRouter free tier | Occasional model deprecation | Zero cost; abstracted behind config |
+| Groq free tier, no second provider | A bad response has no fallback to catch it | Zero cost; native JSON mode makes unparseable output rare, and a failed review degrades gracefully rather than erroring |
 | Bypass IP whitelist in non-prod | Tunnels keep working | Locks down only in real production |
 | In-house CIDR matching | Could use Symfony IpUtils | Reduces dependency footprint |
 

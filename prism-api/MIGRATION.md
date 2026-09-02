@@ -194,7 +194,7 @@ Rollback for any slice is a one-line proxy change, no redeploy of either app.
 
 ### Phase 4 — the AI worker (largest slice) — code complete, not yet deployed
 - [x] Port `ProcessCommitReview` / `ProcessPullRequestReview` to BullMQ
-- [x] Port the Groq/OpenRouter client and prompt construction
+- [x] Port the Groq/Groq client and prompt construction
 - [x] Port GitHub API calls (diff fetch, comment posting)
 - [x] Run both workers against **different queues** (Laravel: `jobs` table;
       NestJS: Redis) — they cannot contend
