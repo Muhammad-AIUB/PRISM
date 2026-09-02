@@ -70,18 +70,22 @@ export class EnvironmentVariables {
   QUEUE_PREFIX?: string;
 
   /**
-   * Optional on purpose: Laravel skips the whole Groq chain when the key is
-   * absent and degrades to OpenRouter. Making it required here would change
-   * that behaviour from "quietly slower" to "will not boot".
+   * Optional on purpose: an absent key skips the whole Groq chain and degrades
+   * to OpenRouter. Requiring it would turn "quietly slower" into "will not
+   * boot".
    */
   @IsString()
   @IsOptional()
   GROQ_API_KEY?: string;
 
-  /** The last line of the fallback chain — without it there is no AI at all. */
+  /**
+   * Optional, like GROQ_API_KEY. Either one alone is enough to review code —
+   * see the combined check in validateEnv, which is what actually guards
+   * against booting with no AI provider at all.
+   */
   @IsString()
-  @IsNotEmpty()
-  OPENROUTER_API_KEY!: string;
+  @IsOptional()
+  OPENROUTER_API_KEY?: string;
 
   @IsString()
   @IsOptional()
@@ -150,6 +154,21 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
       .map((e) => `  - ${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`)
       .join('\n');
     throw new Error(`Invalid environment configuration:\n${detail}`);
+  }
+
+  /**
+   * Either provider alone is enough — Groq is tried first, OpenRouter is the
+   * fallback — but with neither there is no way to review anything, and every
+   * job would fail one at a time at runtime instead of loudly at boot.
+   *
+   * Checked here rather than per-field because the requirement is on the pair,
+   * and no single field decorator can express it.
+   */
+  if (!config.GROQ_API_KEY && !config.OPENROUTER_API_KEY) {
+    throw new Error(
+      'Invalid environment configuration:\n' +
+        '  - No AI provider configured. Set GROQ_API_KEY or OPENROUTER_API_KEY (either alone works).',
+    );
   }
 
   return config;
