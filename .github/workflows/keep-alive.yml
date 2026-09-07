@@ -25,19 +25,37 @@ concurrency:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Ping both services
         env:
+          # Render appends a random suffix when the plain service name is already
+          # taken, so these are NOT prism-api/prism-web.onrender.com — those names
+          # belong to another account and answer 503 (x-render-routing:
+          # suspend-by-user). Pinging them kept every scheduled run red.
           # Override in repo Settings → Secrets and variables → Actions → Variables.
-          PRISM_API_URL: ${{ vars.PRISM_API_URL || 'https://prism-api.onrender.com' }}
-          PRISM_WEB_URL: ${{ vars.PRISM_WEB_URL || 'https://prism-web.onrender.com' }}
+          PRISM_API_URL: ${{ vars.PRISM_API_URL || 'https://prism-api-wmam.onrender.com' }}
+          PRISM_WEB_URL: ${{ vars.PRISM_WEB_URL || 'https://prism-web-fgts.onrender.com' }}
         run: |
           failed=0
+          body="${RUNNER_TEMP:-/tmp}/ping-body"
 
           ping() {
-            local name="$1" url="$2"
+            local name="$1" url="$2" code rc
             echo "Pinging $name at $url"
-            code=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-all-errors --max-time 90 "$url")
+            # The body goes to a real file, not /dev/null: with --retry, curl
+            # rewinds its output between attempts and exits 23 (write error) if
+            # it cannot. Under `bash -e` that aborted the step before anything
+            # was reported — a 503 surfaced as "exit code 23" and the second
+            # service was never pinged at all.
+            code=$(curl -sS -o "$body" -w '%{http_code}' \
+                     --retry 3 --retry-all-errors --retry-delay 5 \
+                     --max-time 150 "$url") && rc=0 || rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "::error::$name unreachable — curl exited $rc"
+              failed=1
+              return 0
+            fi
             echo "  HTTP $code"
             # 2xx/3xx = awake. Anything else is reported so you get notified.
             if [ "$code" -lt 200 ] || [ "$code" -ge 400 ]; then
