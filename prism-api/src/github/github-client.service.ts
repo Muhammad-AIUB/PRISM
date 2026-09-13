@@ -11,18 +11,26 @@ import { Injectable, Logger } from '@nestjs/common';
  */
 const API_ROOT = 'https://api.github.com';
 const DIFF_ACCEPT = 'application/vnd.github.v3.diff';
-const REQUEST_TIMEOUT_MS = 30_000;
+
+/** Exported: the BullMQ job budget is derived from it. See review.queue.ts. */
+export const REQUEST_TIMEOUT_MS = 30_000;
 
 @Injectable()
 export class GithubClientService {
   private readonly logger = new Logger(GithubClientService.name);
 
   /** GET /repos/{full_name}/pulls/{pr_number} as a unified diff. */
-  async fetchPullRequestDiff(token: string, fullName: string, prNumber: number): Promise<string> {
+  async fetchPullRequestDiff(
+    token: string,
+    fullName: string,
+    prNumber: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
     const response = await this.request(
       `${API_ROOT}/repos/${fullName}/pulls/${prNumber}`,
       token,
       DIFF_ACCEPT,
+      signal,
     );
 
     if (!response.ok) {
@@ -33,11 +41,17 @@ export class GithubClientService {
   }
 
   /** GET /repos/{full_name}/commits/{sha} as a unified diff. */
-  async fetchCommitDiff(token: string, fullName: string, sha: string): Promise<string> {
+  async fetchCommitDiff(
+    token: string,
+    fullName: string,
+    sha: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
     const response = await this.request(
       `${API_ROOT}/repos/${fullName}/commits/${sha}`,
       token,
       DIFF_ACCEPT,
+      signal,
     );
 
     if (!response.ok) {
@@ -53,11 +67,13 @@ export class GithubClientService {
     fullName: string,
     prNumber: number,
     body: string,
+    signal?: AbortSignal,
   ): Promise<void> {
     await this.postComment(
       `${API_ROOT}/repos/${fullName}/issues/${prNumber}/comments`,
       token,
       body,
+      signal,
     );
   }
 
@@ -67,11 +83,13 @@ export class GithubClientService {
     fullName: string,
     sha: string,
     body: string,
+    signal?: AbortSignal,
   ): Promise<void> {
     await this.postComment(
       `${API_ROOT}/repos/${fullName}/commits/${sha}/comments`,
       token,
       body,
+      signal,
     );
   }
 
@@ -262,7 +280,12 @@ export class GithubClientService {
     return error instanceof Error ? error.message : String(error);
   }
 
-  private async postComment(url: string, token: string, body: string): Promise<void> {
+  private async postComment(
+    url: string,
+    token: string,
+    body: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -273,14 +296,18 @@ export class GithubClientService {
           'User-Agent': 'PRism',
         },
         body: JSON.stringify({ body }),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: this.deadline(signal),
       });
 
       if (!response.ok) {
         this.logger.warn(`GitHub comment post returned ${response.status} for ${url}`);
       }
     } catch (error) {
-      // Never fail the review over a comment we could not post.
+      // Never fail the review over a comment we could not post — unless the
+      // job budget is gone, in which case the retry will post this same
+      // comment and swallowing here is how a PR ends up with two of them.
+      signal?.throwIfAborted();
+
       this.logger.warn(
         `GitHub comment post failed for ${url}: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -291,6 +318,7 @@ export class GithubClientService {
     url: string,
     token: string,
     accept: string,
+    signal?: AbortSignal,
   ): Promise<{ ok: boolean; status: number; body: string }> {
     const response = await fetch(url, {
       headers: {
@@ -298,9 +326,16 @@ export class GithubClientService {
         Accept: accept,
         'User-Agent': 'PRism',
       },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: this.deadline(signal),
     });
 
     return { ok: response.ok, status: response.status, body: await response.text() };
+  }
+
+  /** This request's own ceiling, or the caller's budget — whichever is sooner. */
+  private deadline(signal?: AbortSignal): AbortSignal {
+    const own = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+
+    return signal ? AbortSignal.any([signal, own]) : own;
   }
 }

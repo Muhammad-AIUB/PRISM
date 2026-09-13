@@ -19,9 +19,16 @@ import {
  * per-attempt timeout, and mirrors Laravel's failed() hook. All pipeline logic
  * lives in the two runners.
  *
- * BullMQ v5 removed job timeouts entirely, so Laravel's `public int $timeout =
- * 120` has to be re-created here. Without it a hung provider call would hold
- * the single worker slot indefinitely and no review would ever run again.
+ * BullMQ v5 removed job timeouts entirely, so the per-attempt timeout has to be
+ * re-created here. Without it a hung provider call would hold the single worker
+ * slot indefinitely and no review would ever run again.
+ *
+ * The timeout cancels rather than merely gives up. The first version raced the
+ * work against a timer, but `Promise.race` does not stop the loser: the runner
+ * carried on writing rows and posting GitHub comments while the retry ran the
+ * same pipeline, so a slow review could land two comments on one PR and finish
+ * by overwriting the status its own failure handler had just set. The signal
+ * below is threaded all the way to every fetch, so a timed-out attempt stops.
  */
 @Processor(REVIEW_QUEUE, REVIEW_WORKER_OPTIONS)
 export class ReviewProcessor extends WorkerHost {
@@ -35,13 +42,18 @@ export class ReviewProcessor extends WorkerHost {
   }
 
   async process(job: Job): Promise<void> {
-    // attemptsMade is 0 while the first attempt runs; Laravel's attempts() is
-    // 1-based, and the number ends up in logs, so keep the Laravel convention.
+    // attemptsMade is 0 while the first attempt runs; attempts() was 1-based,
+    // and the number ends up in logs, so keep the 1-based convention.
     const attempt = job.attemptsMade + 1;
 
     if (job.name === COMMIT_REVIEW_JOB) {
-      await this.withTimeout(
-        this.commitRunner.run((job.data as CommitReviewJobData).commitReviewId, attempt),
+      await this.withDeadline(
+        (signal) =>
+          this.commitRunner.run(
+            (job.data as CommitReviewJobData).commitReviewId,
+            attempt,
+            signal,
+          ),
         job,
       );
 
@@ -49,8 +61,9 @@ export class ReviewProcessor extends WorkerHost {
     }
 
     if (job.name === PR_REVIEW_JOB) {
-      await this.withTimeout(
-        this.prRunner.run((job.data as PullRequestReviewJobData).pullRequestId, attempt),
+      await this.withDeadline(
+        (signal) =>
+          this.prRunner.run((job.data as PullRequestReviewJobData).pullRequestId, attempt, signal),
         job,
       );
 
@@ -109,25 +122,26 @@ export class ReviewProcessor extends WorkerHost {
     await this.prRunner.markFailed(pullRequestId);
   }
 
-  private async withTimeout(work: Promise<void>, job: Job): Promise<void> {
-    let timer: NodeJS.Timeout | undefined;
-
-    const timeout = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(
-          new Error(
-            `Review job ${job.name}#${job.id ?? '?'} exceeded ${REVIEW_JOB_TIMEOUT_MS}ms.`,
-          ),
-        );
-      }, REVIEW_JOB_TIMEOUT_MS);
-    });
+  /**
+   * Runs the pipeline under a cancellation signal and awaits it directly, so
+   * the attempt is genuinely over when this returns. The runner surfaces the
+   * abort by throwing, which fails the job and lets BullMQ retry.
+   */
+  private async withDeadline(
+    work: (signal: AbortSignal) => Promise<void>,
+    job: Job,
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(
+        new Error(`Review job ${job.name}#${job.id ?? '?'} exceeded ${REVIEW_JOB_TIMEOUT_MS}ms.`),
+      );
+    }, REVIEW_JOB_TIMEOUT_MS);
 
     try {
-      await Promise.race([work, timeout]);
+      await work(controller.signal);
     } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
+      clearTimeout(timer);
     }
   }
 }

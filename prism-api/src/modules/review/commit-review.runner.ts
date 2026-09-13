@@ -44,7 +44,7 @@ export class CommitReviewRunner {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  async run(commitReviewId: number, attempt: number): Promise<void> {
+  async run(commitReviewId: number, attempt: number, signal?: AbortSignal): Promise<void> {
     const review = await this.commitReviews.findOne({
       where: { id: commitReviewId },
       relations: { repository: { user: true } },
@@ -74,7 +74,7 @@ export class CommitReviewRunner {
     const token = this.crypt.decrypt(user?.githubToken ?? null) ?? '';
     const diffBody = await this.diffCache.remember(
       this.diffCache.commitKey(repository.id, review.commitSha),
-      () => this.github.fetchCommitDiff(token, repository.fullName, review.commitSha),
+      () => this.github.fetchCommitDiff(token, repository.fullName, review.commitSha, signal),
     );
 
     const diff = diffBody.slice(0, DIFF_LIMIT);
@@ -89,6 +89,7 @@ export class CommitReviewRunner {
       this.promptBuilder.buildSystemPrompt(languages, 'commit'),
       `Review this commit diff:\n${diff}`,
       'commit_review',
+      signal,
     );
 
     const model = attemptResult.model;
@@ -117,6 +118,11 @@ export class CommitReviewRunner {
     const overallScore = clampScore(parsed.overall_score);
     const summary = typeof parsed.summary === 'string' ? parsed.summary : null;
 
+    // Out of budget. Stop before persisting: the retry redoes all of this, and
+    // a half-written row racing its own retry is how a review ends up with one
+    // attempt's issues and another's status.
+    signal?.throwIfAborted();
+
     await this.commitReviews.update(review.id, {
       securityIssues: layers.security,
       performanceIssues: layers.performance,
@@ -134,6 +140,7 @@ export class CommitReviewRunner {
       diff,
       'commit',
       'commit_review',
+      signal,
     );
 
     if (suggestedFixes !== null) {
@@ -141,6 +148,10 @@ export class CommitReviewRunner {
     }
 
     // 4. Post the summary on the commit (a different endpoint than PRs use).
+    // The last checkpoint before the one irreversible, user-visible side
+    // effect in the pipeline: GitHub keeps every comment we ever post.
+    signal?.throwIfAborted();
+
     await this.github.postCommitComment(
       token,
       repository.fullName,
@@ -154,6 +165,7 @@ export class CommitReviewRunner {
         codeQualityIssues: layers.code_quality as ReviewIssue[],
         aiModelUsed: model,
       }),
+      signal,
     );
 
     await this.commitReviews.update(review.id, { status: 'completed' });

@@ -1,4 +1,6 @@
 import type { JobsOptions, WorkerOptions } from 'bullmq';
+import { GROQ_MODELS, GROQ_TIMEOUT_MS } from '../../ai/ai-client.service';
+import { REQUEST_TIMEOUT_MS as GITHUB_TIMEOUT_MS } from '../../github/github-client.service';
 
 /**
  * Queue identity and retry policy, mirroring the Laravel job classes.
@@ -28,8 +30,25 @@ export const REVIEW_JOB_ATTEMPTS = 3;
 /** Laravel: public array $backoff = [60, 180, 600] (seconds). */
 export const REVIEW_JOB_BACKOFF_SECONDS = [60, 180, 600];
 
-/** Laravel: public int $timeout = 120 (seconds, per attempt). */
-export const REVIEW_JOB_TIMEOUT_MS = 120_000;
+/**
+ * Per-attempt budget, derived rather than written down.
+ *
+ * The PHP said `public int $timeout = 120`, and the port copied the number
+ * without re-checking it against what one attempt actually does. It does not
+ * fit: a single attempt can spend GROQ_TIMEOUT_MS on each model of the first
+ * pass, the same again on the fixes pass, and a GitHub round trip either side.
+ * At 120s the job died mid-pipeline, which made the "every model returned
+ * unparseable JSON, save the raw text" path unreachable whenever the models
+ * failed by hanging rather than by answering badly.
+ *
+ * Importing the two constants is the point: change a provider timeout or add a
+ * model and this budget follows, instead of silently going back under water.
+ */
+const AI_WORST_CASE_MS = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 1);
+const GITHUB_WORST_CASE_MS = GITHUB_TIMEOUT_MS * 2;
+
+/** Plus a margin for the DB writes and JSON work between the calls. */
+export const REVIEW_JOB_TIMEOUT_MS = AI_WORST_CASE_MS + GITHUB_WORST_CASE_MS + 30_000;
 
 /**
  * BullMQ's built-in `exponential`/`fixed` strategies cannot express

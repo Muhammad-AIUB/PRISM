@@ -32,10 +32,16 @@ export interface FallbackAiResult extends RawAiResult {
 }
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_TIMEOUT_MS = 60_000;
+
+/**
+ * Exported because the BullMQ job timeout is derived from it. Those two numbers
+ * drifting apart is not a theoretical risk: a job budget smaller than the calls
+ * it wraps silently made the graceful-degradation path below unreachable.
+ */
+export const GROQ_TIMEOUT_MS = 60_000;
 
 /** Tried in order. */
-const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+export const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string } }[];
@@ -61,6 +67,7 @@ export class AiClientService {
     system: string,
     user: string,
     context: AiCallContext,
+    signal?: AbortSignal,
   ): Promise<FallbackAiResult> {
     const strongSystem =
       'Respond with ONLY raw JSON. NO prose. NO markdown code fences. NO explanations before or after.\n\n' +
@@ -70,7 +77,11 @@ export class AiClientService {
     let lastRaw: string | null = null;
 
     for (const model of GROQ_MODELS) {
-      const result = await this.callGroqRaw(model, strongSystem, user, context);
+      // The job budget is spent. Falling through to the next model here would
+      // be work nobody will read, on a job that is already being retried.
+      signal?.throwIfAborted();
+
+      const result = await this.callGroqRaw(model, strongSystem, user, context, signal);
       lastModel = `groq/${model}`;
       lastRaw = result.raw;
 
@@ -96,12 +107,14 @@ export class AiClientService {
     system: string,
     user: string,
     context: AiCallContext,
+    signal?: AbortSignal,
   ): Promise<ExtractedJson | null> {
     const result = await this.callGroqRaw(
       model.startsWith('groq/') ? model.slice(5) : model,
       system,
       user,
       context,
+      signal,
     );
 
     return result.parsed;
@@ -113,6 +126,7 @@ export class AiClientService {
     system: string,
     user: string,
     context: AiCallContext,
+    signal?: AbortSignal,
   ): Promise<RawAiResult> {
     const response = await this.post(
       {
@@ -125,6 +139,7 @@ export class AiClientService {
         ],
       },
       { context, model },
+      signal,
     );
 
     if (!response.ok) {
@@ -149,6 +164,7 @@ export class AiClientService {
   private async post(
     payload: Record<string, unknown>,
     meta: { context: AiCallContext; model: string },
+    signal?: AbortSignal,
   ): Promise<{ ok: boolean; status: number; body: string | null; json: ChatCompletionResponse }> {
     const start = Date.now();
 
@@ -161,7 +177,12 @@ export class AiClientService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+        // Whichever fires first wins: this call's own ceiling, or the job
+        // running out of budget. Without the caller's signal the request keeps
+        // a socket and a response buffer alive long after anyone cares.
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(GROQ_TIMEOUT_MS)])
+          : AbortSignal.timeout(GROQ_TIMEOUT_MS),
       });
 
       const body = await response.text();
@@ -199,8 +220,14 @@ export class AiClientService {
           status: 0,
           duration_ms: Date.now() - start,
           error: message,
+          aborted: signal?.aborted ?? false,
         })}`,
       );
+
+      // A per-call timeout is a soft failure: report it and let the caller try
+      // the next model. The job budget expiring is not — swallowing it here
+      // would turn a dead job into a "no model answered" review.
+      signal?.throwIfAborted();
 
       return { ok: false, status: 0, body: null, json: {} };
     }

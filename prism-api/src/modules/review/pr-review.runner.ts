@@ -52,7 +52,7 @@ export class PullRequestReviewRunner {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  async run(pullRequestId: number, attempt: number): Promise<void> {
+  async run(pullRequestId: number, attempt: number, signal?: AbortSignal): Promise<void> {
     const pr = await this.pullRequests.findOne({
       where: { id: pullRequestId },
       relations: { repository: { user: true } },
@@ -81,7 +81,7 @@ export class PullRequestReviewRunner {
     const token = this.crypt.decrypt(user?.githubToken ?? null) ?? '';
     const diffBody = await this.diffCache.remember(
       this.diffCache.pullRequestKey(pr.id, pr.headBranch, pr.updatedAt),
-      () => this.github.fetchPullRequestDiff(token, repository.fullName, pr.prNumber),
+      () => this.github.fetchPullRequestDiff(token, repository.fullName, pr.prNumber, signal),
     );
 
     const diff = diffBody.slice(0, DIFF_LIMIT);
@@ -96,6 +96,7 @@ export class PullRequestReviewRunner {
       this.promptBuilder.buildSystemPrompt(languages, 'pull request'),
       `Review this diff:\n${diff}`,
       'pr_review',
+      signal,
     );
 
     const model = attemptResult.model;
@@ -126,6 +127,10 @@ export class PullRequestReviewRunner {
     const overallScore = clampScore(parsed.overall_score);
     const summary = typeof parsed.summary === 'string' ? parsed.summary : null;
 
+    // Out of budget. Stop before the upsert: the retry redoes all of this, and
+    // this row plus its comments must come from one attempt, not two.
+    signal?.throwIfAborted();
+
     // 3. Persist (or update) the review row.
     const review = await this.upsertReview(pr.id, {
       securityIssues: layers.security,
@@ -153,13 +158,18 @@ export class PullRequestReviewRunner {
       diff,
       'pull request',
       'pr_review',
+      signal,
     );
 
     if (suggestedFixes !== null) {
       await this.reviews.update(review.id, { suggestedFixes });
     }
 
-    // 5. Post the summary back on the GitHub PR.
+    // 5. Post the summary back on the GitHub PR. Last checkpoint before the
+    // one irreversible side effect: GitHub keeps every comment we post, so a
+    // timed-out attempt that carried on here left two on the same PR.
+    signal?.throwIfAborted();
+
     await this.github.postPullRequestComment(
       token,
       repository.fullName,
@@ -172,6 +182,7 @@ export class PullRequestReviewRunner {
         codeQualityIssues: layers.code_quality as ReviewIssue[],
         aiModelUsed: model,
       }),
+      signal,
     );
 
     await this.pullRequests.update(pr.id, { status: 'completed' });
