@@ -7,7 +7,7 @@ export class UpdateProfileDto {
   name!: string;
 
   /**
-   * Laravel's `lowercase` rule VALIDATES that the value is already lowercase,
+   * The original's `lowercase` rule VALIDATES that the value is already lowercase,
    * it does not transform it. Reproduced rather than silently normalising, so
    * the same input is rejected in both runtimes.
    */

@@ -9,7 +9,7 @@ import type { Branch } from '@/lib/types';
  *
  * Why actions rather than fetching from the browser: the API origin and the
  * session cookie stay on the server. The client components below call these
- * and get back a plain result to render, which also replaces Laravel's
+ * and get back a plain result to render, which also replaces the original's
  * redirect-with-flash — there is no session to flash through any more.
  */
 export interface ActionResult {

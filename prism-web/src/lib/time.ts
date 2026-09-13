@@ -1,5 +1,5 @@
 /**
- * Port of the `relative()` helper the Inertia pages used.
+ * Port of the `relative()` helper the previous pages used.
  *
  * Deliberately not Intl.RelativeTimeFormat: the thresholds and wording here
  * ("just now", "3m ago", "2d ago", then a plain date) are what the tables show

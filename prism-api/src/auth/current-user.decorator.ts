@@ -8,7 +8,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Equivalent of Laravel's `$request->user()` on a guarded route.
+ * Equivalent of the original's `$request->user()` on a guarded route.
  *
  * Throws rather than returning undefined: reaching a handler with no user
  * means the route is missing its guard, and failing loudly beats handing the

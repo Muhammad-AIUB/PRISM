@@ -2,13 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Replaces Socialite's GitHub driver.
+ * Replaces the previous OAuth helper.
  *
  * Scopes stay ['repo', 'read:user'] — 'repo' is what lets the app install
  * webhooks and read private diffs, so narrowing it would break repository
  * connection for private repos.
  *
- * Socialite gets the display name from GitHub's `name` and the nickname from
+ * the previous OAuth helper gets the display name from GitHub's `name` and the nickname from
  * `login`, and falls back to the nickname when `name` is null. It also fetches
  * the primary verified email from /user/emails when the profile hides it —
  * reproduced here, because users.email is NOT NULL and unique.
@@ -49,7 +49,7 @@ export class GithubOAuthService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  /** The URL Socialite's redirect() would have sent the browser to. */
+  /** The URL the previous OAuth helper's redirect() would have sent the browser to. */
   authorizeUrl(state: string): string {
     const params = new URLSearchParams({
       client_id: this.configService.get<string>('github.clientId') ?? '',
@@ -62,7 +62,7 @@ export class GithubOAuthService {
     return `${AUTHORIZE_URL}?${params.toString()}`;
   }
 
-  /** Socialite's user(): exchange the code, then load the profile. */
+  /** the previous OAuth helper's user(): exchange the code, then load the profile. */
   async userFromCode(code: string): Promise<GithubOAuthUser> {
     const token = await this.exchangeCode(code);
     const profile = await this.fetchJson<GithubUserResponse>(USER_URL, token);
@@ -76,7 +76,7 @@ export class GithubOAuthService {
     return {
       id: String(profile.id),
       nickname,
-      // Socialite's getName() is the raw `name`; the caller applies the
+      // the previous OAuth helper's getName() is the raw `name`; the caller applies the
       // `?? nickname` fallback, matching AuthController.
       name: profile.name ?? null,
       email: profile.email ?? (await this.primaryEmail(token)),
@@ -119,7 +119,7 @@ export class GithubOAuthService {
   }
 
   /**
-   * Users with a private email have `email: null` on the profile. Socialite
+   * Users with a private email have `email: null` on the profile. the previous OAuth helper
    * falls back to the primary verified address; without this they cannot sign
    * in at all, because users.email is NOT NULL.
    */

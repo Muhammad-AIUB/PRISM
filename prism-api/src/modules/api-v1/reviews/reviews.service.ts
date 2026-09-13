@@ -25,10 +25,10 @@ import type {
 } from './dto/review-response.dto';
 
 /**
- * Port of App\Http\Controllers\Api\ReviewApiController.
+ * Port of the original API review controller.
  *
  * Every query is scoped to repositories owned by the token's user - the same
- * invariant the Laravel controller enforced, restated here because it is the
+ * invariant the original controller enforced, restated here because it is the
  * only thing standing between two tenants' review data.
  */
 @Injectable()
@@ -50,7 +50,7 @@ export class ReviewsService {
    *
    * Note how much more this clears than the pull-request version below: score,
    * summary, all three issue arrays, the fixes, AND the cached diff. That
-   * asymmetry is deliberate in the Laravel controller — a commit card blanks
+   * asymmetry is deliberate in the original controller — a commit card blanks
    * immediately on re-analyze while a PR keeps showing its previous review
    * until the new one overwrites it. Do not "tidy" these into one shape.
    */
@@ -95,8 +95,8 @@ export class ReviewsService {
    * sha1(head_branch|updated_at), so writing a fresh updated_at IS the
    * invalidation, and it is the only reason this endpoint touches the column.
    *
-   * Laravel got that write for free: `$pullRequest->update(['status' => …])`
-   * touches updated_at because Eloquent timestamps are on. TypeORM entities
+   * The original got that write for free: `$pullRequest->update(['status' => …])`
+   * touches updated_at because the original ORM timestamps are on. TypeORM entities
    * here declare plain @Column timestamps rather than @UpdateDateColumn, so
    * update() writes only the fields named below — omit updatedAt and the key
    * never changes, and the job re-reviews the diff captured before the user
@@ -266,7 +266,7 @@ export class ReviewsService {
     return (b ?? '').localeCompare(a ?? '');
   }
 
-  // -- Shapers (mirror the Laravel controller's protected methods) ------
+  // -- Shapers (mirror the original controller's protected methods) ------
 
   private commitSummary(commit: CommitReview): CommitSummaryDto {
     return {

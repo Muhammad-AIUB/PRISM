@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { ReviewIssue } from '../database/entities/review.entity';
 
 /**
- * The two Laravel jobs build *almost* the same prompts. The differences are
+ * The two the original jobs build *almost* the same prompts. The differences are
  * small enough to look like copy-paste noise and large enough that collapsing
  * them would change what the model is asked. They are preserved exactly:
  *
@@ -85,7 +85,7 @@ export class PromptBuilderService {
 
   /**
    * Port of getLanguageRules(). Ruby and Java are deliberately absent: the
-   * detector recognises them for the UI badges, but Laravel has never had rules
+   * detector recognises them for the UI badges, but the original has never had rules
    * for them, so a diff of only .rb files gets the base prompt unchanged.
    */
   getLanguageRules(languages: string[]): string[] {

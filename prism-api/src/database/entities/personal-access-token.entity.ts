@@ -2,8 +2,8 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { bigintTransformer } from '../transformers';
 
 /**
- * Laravel Sanctum's token table, read as-is so tokens issued by the Laravel app
- * keep working against this service. Nothing here is re-hashed or re-issued.
+ * The API token table, read as-is so tokens issued before this service existed
+ * keep working against it. Nothing here is re-hashed or re-issued.
  */
 @Entity({ name: 'personal_access_tokens' })
 export class PersonalAccessToken {

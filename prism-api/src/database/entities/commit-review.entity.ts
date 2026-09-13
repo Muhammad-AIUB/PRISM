@@ -65,7 +65,7 @@ export class CommitReview {
   @JoinColumn({ name: 'repository_id' })
   repository!: Repository;
 
-  /** Mirrors the Laravel model's shortSha() helper used in every API payload. */
+  /** Mirrors the original model's shortSha() helper used in every API payload. */
   shortSha(): string {
     return this.commitSha.slice(0, 7);
   }

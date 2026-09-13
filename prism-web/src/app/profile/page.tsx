@@ -5,7 +5,7 @@ import { getSessionUser } from '@/lib/session';
 export const metadata: Metadata = { title: 'Profile' };
 
 /**
- * The Laravel page also fetched `mustVerifyEmail` and a session `status`. Both
+ * The original page also fetched `mustVerifyEmail` and a session `status`. Both
  * are dropped: the User model never implemented MustVerifyEmail, so the flag
  * was always false and the verification block it gated was dead markup.
  */

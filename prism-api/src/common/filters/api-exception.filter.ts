@@ -8,22 +8,22 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-interface LaravelErrorBody {
+interface ApiErrorBody {
   message: string;
   errors?: Record<string, string[]>;
 }
 
 /**
- * Laravel's JSON error envelope, reproduced verbatim:
+ * The original's JSON error envelope, reproduced verbatim:
  *   4xx/5xx      → { "message": "..." }
  *   422 validate → { "message": "...", "errors": { "field": ["..."] } }
  *
- * Existing clients (the MCP server, the Inertia frontend) already parse this
+ * Existing clients (the MCP server, the previous frontend) already parse this
  * shape, so it is part of the API contract — not an implementation detail.
  */
 @Catch()
-export class LaravelExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(LaravelExceptionFilter.name);
+export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -35,7 +35,7 @@ export class LaravelExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const body = this.toLaravelBody(exception, status);
+    const body = this.toErrorBody(exception, status);
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
@@ -47,9 +47,9 @@ export class LaravelExceptionFilter implements ExceptionFilter {
     response.status(status).json(body);
   }
 
-  private toLaravelBody(exception: unknown, status: number): LaravelErrorBody {
+  private toErrorBody(exception: unknown, status: number): ApiErrorBody {
     if (!(exception instanceof HttpException)) {
-      // Never leak internals; Laravel with APP_DEBUG=false says exactly this.
+      // Never leak internals; the original with APP_DEBUG=false says exactly this.
       return { message: 'Server Error' };
     }
 
@@ -63,7 +63,7 @@ export class LaravelExceptionFilter implements ExceptionFilter {
     const rawMessage = record['message'];
 
     // class-validator's ValidationPipe returns message as string[] — fold it
-    // into Laravel's 422 shape.
+    // into the original's 422 shape.
     if (status === HttpStatus.UNPROCESSABLE_ENTITY && Array.isArray(rawMessage)) {
       return {
         message: String(rawMessage[0] ?? 'The given data was invalid.'),
@@ -71,7 +71,7 @@ export class LaravelExceptionFilter implements ExceptionFilter {
       };
     }
 
-    const body: LaravelErrorBody = {
+    const body: ApiErrorBody = {
       message: typeof rawMessage === 'string' ? rawMessage : exception.message,
     };
 
@@ -88,7 +88,7 @@ export class LaravelExceptionFilter implements ExceptionFilter {
 
   /**
    * Best-effort field extraction: class-validator prefixes each message with
-   * the property name, which is what Laravel keys `errors` by.
+   * the property name, which is what the original keys `errors` by.
    */
   private groupValidationMessages(messages: string[]): Record<string, string[]> {
     const grouped: Record<string, string[]> = {};

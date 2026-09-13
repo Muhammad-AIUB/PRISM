@@ -13,7 +13,7 @@ import { ReviewsService } from './reviews.service';
  * The commit endpoint purges explicitly: its cache key is the SHA, which never
  * changes. The pull-request endpoint has no explicit purge and must not grow
  * one — its key is sha1(head_branch|updated_at), so writing a fresh updated_at
- * IS the invalidation. Laravel got that write for free from Eloquent's
+ * IS the invalidation. The original got that write for free from the original ORM's
  * timestamps; TypeORM entities here declare plain @Column timestamps, so it has
  * to be passed by hand or the worker re-reviews the same bytes for an hour.
  */

@@ -10,7 +10,7 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   githubId!: string | null;
 
-  /** Laravel `encrypted` cast — ciphertext at rest. Decrypt via LaravelCryptService. */
+  /** The original `encrypted` cast — ciphertext at rest. Decrypt via CryptService. */
   @Column({ type: 'text', nullable: true })
   githubToken!: string | null;
 

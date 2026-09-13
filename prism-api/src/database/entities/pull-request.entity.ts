@@ -42,7 +42,7 @@ export class PullRequest {
   headBranch!: string;
 
   /**
-   * Laravel's `enum()` compiles to varchar + CHECK constraint on Postgres, NOT
+   * The original's `enum()` compiles to varchar + CHECK constraint on Postgres, NOT
    * a native pg enum type. Declaring `type: 'enum'` here would make TypeORM
    * want to create a type that does not exist — keep it varchar.
    */

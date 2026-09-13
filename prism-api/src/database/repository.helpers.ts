@@ -36,7 +36,7 @@ export function watchedBranchesFor(
 }
 
 /**
- * Port of Str::random(), which base64-encodes random bytes and keeps only the
+ * Port of the previous random-string helper, which base64-encodes random bytes and keeps only the
  * alphanumeric characters. The alphabet matters: this value is copied into
  * GitHub's webhook `config.secret`, and it is compared byte-for-byte when
  * verifying deliveries.

@@ -16,7 +16,7 @@ import { ReviewsWebService } from './reviews-web.service';
     TypeOrmModule.forFeature([PullRequest, Review, ReviewComment, CommitReview]),
     AuthWebModule,
     // ReviewModule supplies ReviewQueueService — these two routes are the last
-    // AI dispatch paths that still lived on Laravel's queue.
+    // AI dispatch paths that still lived on the original's queue.
     ReviewModule,
     GithubModule,
     DiffCacheModule,

@@ -11,7 +11,7 @@ import { WebAuthService } from './web-auth.service';
 
 /**
  * Browser-facing auth. Deliberately separate from AuthModule, which owns the
- * Sanctum guard for the MCP server's API tokens — the two authenticate
+ * bearer-token guard for the MCP server's API tokens — the two authenticate
  * different clients against different stores and must not be merged.
  */
 @Module({

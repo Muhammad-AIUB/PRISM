@@ -11,13 +11,17 @@ has its own `package.json` and `node_modules`:
 |---|---|
 | `prism-api/` | NestJS 11 — REST API, GitHub webhook, browser-facing routes, **and** the BullMQ review worker (same process) |
 | `prism-web/` | Next.js 15 App Router — the entire frontend, all data fetched server-side |
-| `mcp-server/` | Standalone MCP server (plain `index.js`, no build) that talks to `/api/v1` with a Sanctum token |
+| `mcp-server/` | Standalone MCP server (plain `index.js`, no build) that talks to `/api/v1` with a bearer token |
 
-It is a completed port of a Laravel + Inertia app. The PHP is deleted, but the
-**production database, its schema, and the tokens in it were written by Laravel**,
-which is why several things below look stranger than they otherwise would.
-`prism-api/MIGRATION.md` is the authoritative record of which compatibility
-constraints still bind.
+The codebase is entirely TypeScript: NestJS on the API, Next.js on the web. It
+began as a port of a PHP application, and that application is gone — no PHP, no
+`composer.json`, no framework left anywhere in the tree.
+
+What did not go away is the data it wrote. **The production database, its
+schema, and the API tokens in it predate this codebase**, which is why several
+things below look stranger than they otherwise would. Those constraints are
+about the bytes on disk, not about any framework, and they still bind.
+`prism-api/MIGRATION.md` records which ones and why.
 
 ## Commands
 
@@ -83,9 +87,9 @@ confirm a review id exists. Keep it that way.
 
 ### Two auth mechanisms, both live
 
-- `auth/sanctum-auth.guard.ts` — bearer tokens in `personal_access_tokens`, format
+- `auth/api-token-auth.guard.ts` — bearer tokens in `personal_access_tokens`, format
   `"{id}|{plaintext}"` with `sha256(plaintext)` stored. Deployed MCP servers hold
-  tokens Laravel's Sanctum issued. **This format cannot drift.**
+  tokens issued before this codebase existed. **This format cannot drift.**
 - `modules/auth/web-auth.guard.ts` — the browser's JWT session cookie, signed with
   `JWT_SECRET`. It loads the user row rather than trusting the claims, so a deleted
   account stops working immediately.
@@ -103,7 +107,7 @@ consumes it in the same Nest process — Render's free tier has no background-wo
 type, and `concurrency: 1` is what keeps peak memory inside 512MB.
 
 `commit-review.runner.ts` and `pr-review.runner.ts` are near-parallel ports of the
-two Laravel jobs; a change to one usually belongs in the other. Each: fetch diff
+two original jobs; a change to one usually belongs in the other. Each: fetch diff
 (Redis-cached 1h) → `detectLanguages()` → **first AI pass** (analysis) → persist →
 **second AI pass** (`FixesService`, reusing the model that succeeded) → post a
 GitHub comment → audit log → email/Slack.
@@ -111,7 +115,7 @@ GitHub comment → audit log → email/Slack.
 Deliberate behaviours to preserve:
 
 - Runners let exceptions propagate so BullMQ retries; terminal cleanup lives in the
-  processor's `failed` handler, mirroring Laravel's `handle()`/`failed()` split.
+  processor's `failed` handler — the run/cleanup split is deliberate.
 - Retry backoff is `[60, 180, 600]` seconds via a custom strategy — BullMQ's builtin
   strategies cannot express it (`review.queue.ts`).
 - Notification failures are caught and logged, never rethrown; a Slack outage must
@@ -127,7 +131,7 @@ Deliberate behaviours to preserve:
   "modernise" without re-measuring parse rates.
 - The per-attempt job budget is **derived**, not written down (`review.queue.ts`):
   it imports `GROQ_TIMEOUT_MS`/`GROQ_MODELS` and the GitHub timeout so it cannot
-  drift back under the work it wraps. The PHP's `$timeout = 120` was copied across
+  drift back under the work it wraps. The original `$timeout = 120` was copied across
   literally and was too small, which quietly made the graceful-degradation bullet
   above unreachable whenever models failed by hanging.
 - The deadline **cancels**, it does not merely stop waiting. `review.processor.ts`
@@ -136,30 +140,39 @@ Deliberate behaviours to preserve:
   version left the timed-out runner alive, which double-posted GitHub comments and
   raced `markFailed` against its own `status: 'completed'`.
 
-## Laravel-compatibility invariants
+## Stored-data invariants
 
 These are not legacy cruft; they are load-bearing against live production data.
-Breaking one usually produces no error, just wrong data.
+Breaking one usually produces no error, just wrong data. None of them require a
+framework to be present — they describe bytes that are already on disk or
+already in someone's MCP config.
 
 - **`synchronize: false`, `migrationsRun: false`, forever.** `schema.sql` is the
-  source of truth. TypeORM reconciliation would drop the CHECK constraints behind
-  Laravel's `enum()` columns.
-- **Laravel `enum()` is `varchar` + CHECK**, not a Postgres enum. Entities declare
-  `varchar` with a TS union type.
+  source of truth. TypeORM reconciliation would drop the CHECK constraints the
+  status columns rely on.
+- **Status columns are `varchar` + CHECK**, not Postgres enums. Entities declare
+  `varchar` with a TS union type; declaring `type: 'enum'` makes TypeORM look for
+  a type that does not exist.
 - **`bigint` ids must serialise as JSON numbers.** node-postgres returns them as
   strings; `database/transformers.ts` casts them back.
-- **Timestamps use `common/utils/iso8601.ts`, not `Date#toISOString()`.** Carbon
-  emits `+00:00`, JS emits `.000Z` — the MCP client displays these strings.
+- **Timestamps use `common/utils/iso8601.ts`, not `Date#toISOString()`.** The
+  stored format carries an explicit `+00:00` offset where JS emits `.000Z`, and
+  the MCP client displays these strings verbatim.
 - **`database/pg-types.ts` must run before any DataSource connects** (it does, at the
   top of `main.ts`) so naive `timestamp` columns parse as UTC. `main.ts` also pins
   `process.env.TZ = 'UTC'`.
-- **`users.github_token` is Laravel-encrypted** (AES-256-CBC, MAC-verified,
-  PHP-serialised inner value, keyed by `APP_KEY`). `laravel-crypt.service.ts` is the
-  only reader/writer.
-- **Error envelopes are Laravel's**: 422 `{message, errors}` from
-  `laravelValidationException`, everything else through `LaravelExceptionFilter`,
+- **`users.github_token` is encrypted at rest** (AES-256-CBC, MAC-verified,
+  PHP-serialised inner value, keyed by `APP_KEY`). `common/utils/crypt.service.ts`
+  is the only reader/writer. The PHP serialisation is part of the stored
+  ciphertext, not an import — it cannot be swapped for JSON without rewriting
+  every existing row.
+- **API tokens are `"{id}|{plaintext}"` with `sha256(plaintext)` stored.**
+  Deployed MCP servers hold tokens in that shape; the format cannot drift.
+- **Error envelopes are fixed by their clients**: 422 `{message, errors}` from
+  `validationException`, everything else through `ApiExceptionFilter`,
   401 body exactly `"Unauthenticated."`, 429 exactly `"Too Many Attempts."`. The
-  frontend's form components read `errors`.
+  frontend's form components read `errors`, and the MCP server matches on the
+  401/429 bodies.
 - **`rawBody: true` in `main.ts`** — the webhook HMAC is computed over the exact
   bytes GitHub sent.
 - `esModuleInterop` is off in `prism-api`; CommonJS packages use `import x = require('x')`.
@@ -167,7 +180,7 @@ Breaking one usually produces no error, just wrong data.
 ### The golden fixtures are frozen
 
 `prism-api/test/fixtures/` holds system prompts and encrypted payloads captured from
-the deleted PHP, asserted byte-for-byte. They cannot be regenerated. A prompt change
+the deleted implementation, asserted byte-for-byte. They cannot be regenerated. A prompt change
 must break a test on purpose — update the fixture in the same commit and say why.
 
 ## Deployment

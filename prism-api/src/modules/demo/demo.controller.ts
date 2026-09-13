@@ -23,7 +23,7 @@ export class DemoController {
     };
   }
 
-  /** Laravel constrained this to ->whereNumber('id'); ParseIntPipe does the same. */
+  /** The original constrained this to ->whereNumber('id'); ParseIntPipe does the same. */
   @Get('review/:id')
   review(@Param('id', ParseIntPipe) id: number): { isDemo: true; review: DemoReview } {
     const review = DEMO_REVIEWS.find((entry) => entry.id === id);

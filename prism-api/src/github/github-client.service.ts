@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 /**
- * The GitHub calls both Laravel jobs make. Two diff fetches (different
+ * The GitHub calls both the original jobs make. Two diff fetches (different
  * endpoints for PRs and commits) and two comment posts (likewise).
  *
  * The diff fetches throw on a non-2xx so BullMQ retries the job, matching
- * Laravel's RuntimeException. The comment posts deliberately do NOT check the
- * response: Laravel fires them and moves on, so a repo where the token lost
+ * the original's RuntimeException. The comment posts deliberately do NOT check the
+ * response: The original fires them and moves on, so a repo where the token lost
  * write access still completes the review instead of failing it.
  */
 const API_ROOT = 'https://api.github.com';
@@ -96,7 +96,7 @@ export class GithubClientService {
   /**
    * GET /user/repos?per_page=100&sort=updated
    *
-   * Laravel returns an empty list on any failure rather than surfacing an
+   * The original returns an empty list on any failure rather than surfacing an
    * error, so a revoked token shows an empty repository picker instead of a
    * 500. Same here.
    */
@@ -129,7 +129,7 @@ export class GithubClientService {
 
   /**
    * POST /repos/{full_name}/hooks — installs the webhook when a repository is
-   * connected. The caller needs to know whether this failed: Laravel deletes
+   * connected. The caller needs to know whether this failed: The original deletes
    * the freshly created row and reports the error when it does, so a
    * half-connected repository never exists.
    */
@@ -156,7 +156,7 @@ export class GithubClientService {
 
   /**
    * PATCH /repos/{full_name}/hooks/{id} — keeps the event subscriptions in
-   * step with review_mode. Failures are logged, not thrown: Laravel saves the
+   * step with review_mode. Failures are logged, not thrown: The original saves the
    * local settings either way, so the row must not roll back over this.
    */
   async updateWebhookEvents(

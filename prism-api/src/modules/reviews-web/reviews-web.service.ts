@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
-import { LaravelCryptService } from '../../common/utils/laravel-crypt.service';
+import { CryptService } from '../../common/utils/crypt.service';
 import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Review, ReviewComment, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
@@ -12,9 +12,9 @@ import { ReviewQueueService } from '../review/review-queue.service';
 /**
  * Port of ReviewController and CommitReviewController (the web ones).
  *
- * These are the last two routes that dispatched AI jobs onto Laravel's
+ * These are the last two routes that dispatched AI jobs onto the original's
  * database queue. With them here, every path that starts a review runs on
- * BullMQ, and Laravel's queue:work can finally be retired in slice D.
+ * BullMQ, and the original's queue:work can finally be retired in slice D.
  */
 @Injectable()
 export class ReviewsWebService {
@@ -29,7 +29,7 @@ export class ReviewsWebService {
     private readonly commitReviews: OrmRepository<CommitReview>,
     private readonly queue: ReviewQueueService,
     private readonly github: GithubClientService,
-    private readonly crypt: LaravelCryptService,
+    private readonly crypt: CryptService,
     private readonly diffCache: DiffCacheService,
     private readonly auditLog: AuditLogService,
   ) {}
@@ -50,14 +50,14 @@ export class ReviewsWebService {
    * state rather than a stale score, then queues a fresh job.
    *
    * Note this differs from the /api/v1 re-analyze, which leaves the previous
-   * review in place. Both behaviours are Laravel's and both are intentional.
+   * review in place. Both behaviours are the original's and both are intentional.
    */
   async reAnalyzePullRequest(user: User, id: number): Promise<{ message: string }> {
     const pr = await this.findOwnedPullRequest(user, id, true);
 
     // Touching updated_at is what actually invalidates the cached diff: the
     // worker's cache key is sha1(head_branch|updated_at), so a new value there
-    // forces a fresh fetch. Laravel relied on the same side effect.
+    // forces a fresh fetch. The original relied on the same side effect.
     await this.pullRequests.update(pr.id, { status: 'analyzing', updatedAt: new Date() });
 
     if (pr.review) {
@@ -99,7 +99,7 @@ export class ReviewsWebService {
       return { status: 200, body };
     } catch (error) {
       // fetchPullRequestDiff throws "Failed to fetch diff: <status>" — recover
-      // the code so the browser sees GitHub's, as Laravel passed it through.
+      // the code so the browser sees GitHub's, as the original passed it through.
       const match = /(\d{3})\s*$/.exec(error instanceof Error ? error.message : '');
 
       return { status: match ? Number(match[1]) : 502, body: '' };
@@ -245,7 +245,7 @@ export class ReviewsWebService {
       throw new NotFoundException('No query results for model [App\\Models\\PullRequest] ' + id);
     }
 
-    // Laravel aborts 403 when the repository is missing OR not the user's.
+    // The original aborts 403 when the repository is missing OR not the user's.
     if (!pr.repository || pr.repository.userId !== user.id) {
       throw new ForbiddenException();
     }

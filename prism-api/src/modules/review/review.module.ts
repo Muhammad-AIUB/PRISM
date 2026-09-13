@@ -16,7 +16,7 @@ import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
  * Queue + worker live in the same Nest process. Render's free tier has no
- * background-worker service type, so this mirrors what the Laravel container
+ * background-worker service type, so this mirrors what the original container
  * already does with supervisord: one box, HTTP and worker side by side.
  */
 @Module({

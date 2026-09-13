@@ -1,5 +1,5 @@
 /**
- * Shapes returned by prism-api, which in turn reproduce the props the Inertia
+ * Shapes returned by prism-api, which in turn reproduce the props the previous
  * pages received. Field names stay snake_case for that reason — renaming them
  * would mean diverging from the API and from the pages being ported.
  */

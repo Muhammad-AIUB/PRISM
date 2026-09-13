@@ -3,14 +3,14 @@ import { ThrottlerGuard, type ThrottlerLimitDetail } from '@nestjs/throttler';
 import type { AuthenticatedRequest } from '../../auth/current-user.decorator';
 
 /**
- * Reproduces Laravel's RateLimiter::for('api'):
+ * Reproduces the previous API rate limit:
  *   100 requests / minute, keyed by user id, falling back to IP for guests.
  *
  * The 429 body must stay "Too Many Attempts." - that string is what the MCP
  * server surfaces to the model when a user hits the ceiling.
  */
 @Injectable()
-export class LaravelThrottlerGuard extends ThrottlerGuard {
+export class RateLimitGuard extends ThrottlerGuard {
   protected override async getTracker(req: Record<string, unknown>): Promise<string> {
     const request = req as unknown as AuthenticatedRequest;
 

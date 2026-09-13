@@ -7,7 +7,7 @@ import { WebhookService } from './webhook.service';
 /**
  * GitHub records the status and body of every delivery and shows them in the
  * repository's webhook settings, so both are part of the contract. Every case
- * below is asserted against what Laravel's WebhookController returned.
+ * below is asserted against what the original's WebhookController returned.
  */
 const SECRET = 'shhh';
 
@@ -152,7 +152,7 @@ describe('WebhookService', () => {
       expect(queue.enqueuePullRequestReview).toHaveBeenCalledWith(55);
     });
 
-    it('updates an existing row, because Laravel used updateOrCreate', async () => {
+    it('updates an existing row, because the original updated in place', async () => {
       pullRequests.findOne.mockResolvedValue({ id: 55 } as PullRequest);
 
       await deliver(prBody('synchronize'), 'pull_request');
@@ -232,7 +232,7 @@ describe('WebhookService', () => {
       });
     });
 
-    it('does NOT update an existing row, because Laravel used firstOrCreate', async () => {
+    it('does NOT update an existing row, because the original created only when missing', async () => {
       commitReviews.findOne.mockResolvedValue({ id: 66 } as CommitReview);
 
       await deliver(pushBody({ head_commit: { message: 'Rewritten' } }), 'push');

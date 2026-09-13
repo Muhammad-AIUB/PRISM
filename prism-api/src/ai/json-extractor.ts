@@ -67,7 +67,7 @@ export function extractJson(content: string): ExtractedJson | null {
 }
 
 /**
- * Port of clampScore(). Laravel returns null for anything non-numeric and
+ * Port of clampScore(). The original returns null for anything non-numeric and
  * otherwise squeezes into 0–100 — the prompt states the same range, but models
  * still return 8.5 out of 10 often enough that this matters.
  */

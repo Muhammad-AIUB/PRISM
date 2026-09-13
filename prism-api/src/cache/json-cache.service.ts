@@ -3,13 +3,14 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 
 /**
- * The general-purpose `Cache::remember()` the web controllers lean on —
+ * The general-purpose read-through cache the web controllers lean on —
  * GitHub repository lists, connected-repo ids, branch lists.
  *
- * Like DiffCacheService this keeps its own namespace rather than reading
- * Laravel's entries, which are double-prefixed and PHP-serialised. The two
- * runtimes therefore hold independent copies during the migration; the only
- * consequence is a cold miss per key after cutover.
+ * Like DiffCacheService this keeps its own key namespace and stores plain JSON.
+ * Older entries written by the previous runtime are double-prefixed and
+ * PHP-serialised, and are deliberately not read: decoding them would mean
+ * carrying a second serialisation format for values that cost one API call to
+ * refetch.
  *
  * A Redis failure falls through to the loader. A cache that is down must slow
  * the page, not break it.

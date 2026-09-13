@@ -14,13 +14,13 @@ const MONTHS = [
 ];
 
 /**
- * Carbon's format('M d, Y') — "Aug 30, 2026".
+ * The original's format('M d, Y') — "Aug 30, 2026".
  *
  * Used on the Security → My Data screen, which shows dates to people rather
  * than to machines. Note the zero-padded day: PHP's `d` is 2-digit, so the 5th
  * renders as "05", not "5".
  *
- * Formatted in UTC, matching Laravel's app timezone.
+ * Formatted in UTC, matching the original's app timezone.
  */
 export function formatShortDate(date: Date | null | undefined): string | null {
   if (!date) {

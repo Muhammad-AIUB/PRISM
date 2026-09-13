@@ -27,7 +27,7 @@ Modern software teams face three painful realities in code review:
 
 1. **Senior bandwidth is scarce.** Junior PRs sit in queues for hours, sometimes days. Velocity dies.
 2. **Existing AI tools are expensive.** CodeRabbit charges **$24/dev/month**, Greptile is even higher. Small teams and developers in emerging markets can't afford it.
-3. **Generic reviewers miss framework-specific issues.** N+1 Eloquent queries, missing Laravel validation, React key-prop bugs — most AI tools don't catch them.
+3. **Generic reviewers miss framework-specific issues.** N+1 ORM queries, missing input validation, React key-prop bugs — most AI tools don't catch them.
 
 **PRism solves all three.** It's a self-hostable, production-grade AI code reviewer that runs on free infrastructure, understands language-specific anti-patterns, and posts actionable feedback directly on every pull request — automatically, within seconds.
 
@@ -92,7 +92,7 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
                     │   GitHub PR     │
                     │   (opened)      │
                     └────────┬────────┘
-                             │ webhook (HMAC + IP verified)
+                             │ webhook (HMAC verified)      
                              ▼
         ┌────────────────────────────────────────┐
         │  prism-api (NestJS)                    │
@@ -222,7 +222,7 @@ Visit `/security` in the app for full transparency.
 | **Database** | PostgreSQL 16 (Neon.tech) |
 | **Cache & Queue** | Redis (Upstash) — BullMQ for the review queue |
 | **AI** | Groq (Llama 3.3 70B, then 3.1 8B — native JSON mode) |
-| **Auth** | GitHub OAuth; JWT session cookie for the browser, Sanctum-format tokens for the API |
+| **Auth** | GitHub OAuth; JWT session cookie for the browser, bearer tokens for the API |
 | **Email** | Resend |
 | **Styling** | Tailwind CSS + lucide-react |
 | **Charts** | Chart.js + react-chartjs-2 |
@@ -242,7 +242,7 @@ Visit `/security` in the app for full transparency.
 | Job failure cascades | `tries=3`, exponential backoff, `failed()` handler | Auto-recovery without data loss |
 | N+1 query risk on dashboard | Eager loading + composite indexes | Sub-50ms dashboard load |
 | Untraceable production errors | Structured JSON logs + `X-Request-Id` | Debug single request across services |
-| Generic AI review missing framework issues | Language-specific rule injection | Catches Laravel N+1, React key-prop, etc. |
+| Generic AI review missing framework issues | Language-specific rule injection | Catches N+1 query patterns, React key-prop, etc. |
 | Email failures crashing reviews | Try-catch with `Log::warning`, no rethrow | Notifications fail-safe |
 | Solo developers don't use PR workflow | Commit-based review mode with branch filtering | PRism now serves both teams and solo devs |
 | Users unsure what data we collect | Dedicated Security page + "View My Data" + Audit log | Full transparency = user trust |

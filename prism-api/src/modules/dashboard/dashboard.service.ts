@@ -68,7 +68,7 @@ export class DashboardService {
     };
   }
 
-  /** Laravel: round((float) $avg, 1), and null when there is nothing scored. */
+  /** The original: round((float) $avg, 1), and null when there is nothing scored. */
   private async averageScore(repoIds: number[]): Promise<number | null> {
     const row = await this.reviews
       .createQueryBuilder('review')
@@ -88,7 +88,7 @@ export class DashboardService {
     const rows = await this.pullRequests.find({
       where: { repositoryId: In(repoIds) },
       relations: { repository: true, review: true },
-      // Laravel's latest() orders by created_at; id breaks ties so rows created
+      // The original's latest() orders by created_at; id breaks ties so rows created
       // in the same second do not shuffle between requests.
       order: { createdAt: 'DESC', id: 'DESC' },
       take: 10,

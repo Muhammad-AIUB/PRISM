@@ -6,19 +6,19 @@ import { PersonalAccessToken, User } from '../database/entities';
 import type { AuthenticatedRequest } from './current-user.decorator';
 
 /**
- * Validates Laravel Sanctum bearer tokens against the SAME
- * `personal_access_tokens` rows the Laravel app writes.
+ * Validates API bearer tokens against the `personal_access_tokens` table.
  *
- * This is what makes parallel running possible: a token a user generated in
- * Settings → API Tokens authenticates identically whether the request lands on
- * Laravel or on this service. No re-issuing, no dual token stores.
+ * The token format is fixed and cannot be redesigned: "{id}|{plaintext}", with
+ * sha256(plaintext) in the column. Rows predating this service are still live,
+ * and every deployed MCP server is holding a token in that shape. Change the
+ * format and those clients start failing authentication with no way to tell
+ * why, having never been asked to re-issue anything.
  *
- * Sanctum's format is "{id}|{plaintext}"; the column stores
- * sha256(plaintext). Legacy tokens with no "|" are matched by hashing the
- * whole string, exactly as Sanctum's findToken() does.
+ * Tokens with no "|" are matched by hashing the whole string, which is how the
+ * scheme handled its own older tokens. That branch still has rows behind it.
  */
 @Injectable()
-export class SanctumAuthGuard implements CanActivate {
+export class ApiTokenAuthGuard implements CanActivate {
   constructor(
     @InjectRepository(PersonalAccessToken)
     private readonly tokens: OrmRepository<PersonalAccessToken>,
@@ -46,7 +46,7 @@ export class SanctumAuthGuard implements CanActivate {
       throw new UnauthorizedException('Unauthenticated.');
     }
 
-    // Sanctum touches last_used_at on every authenticated request. Fire and
+    // The original token scheme touches last_used_at on every authenticated request. Fire and
     // forget — a write failure here must not fail the request.
     void this.tokens.update(token.id, { lastUsedAt: new Date() }).catch(() => undefined);
 

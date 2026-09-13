@@ -1,7 +1,7 @@
 import { formatShortDate } from './short-date';
 
 /**
- * Carbon's format('M d, Y'), shown to people on the Security → My Data screen.
+ * The original's format('M d, Y'), shown to people on the Security → My Data screen.
  */
 describe('formatShortDate', () => {
   it('renders as "Aug 30, 2026"', () => {
@@ -13,7 +13,7 @@ describe('formatShortDate', () => {
   });
 
   it('formats in UTC, not the host timezone', () => {
-    // 23:30Z on the 31st is already the 1st in Dhaka; Laravel's app timezone
+    // 23:30Z on the 31st is already the 1st in Dhaka; the original's app timezone
     // is UTC, so this must stay the 31st.
     expect(formatShortDate(new Date('2026-12-31T23:30:00Z'))).toBe('Dec 31, 2026');
   });

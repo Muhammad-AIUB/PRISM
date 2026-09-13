@@ -4,7 +4,7 @@ import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 /**
- * Port of the Inertia ThemeToggle.
+ * Port of the previous ThemeToggle.
  *
  * Rendered as a full-width `.menu-item` row rather than a bare icon: the
  * original was a small icon inside a container with `cursor: default`, which

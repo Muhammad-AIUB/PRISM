@@ -40,7 +40,7 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   APP_URL!: string;
 
-  /** Laravel APP_KEY ("base64:…") — needed to read encrypted columns. */
+  /** The original APP_KEY ("base64:…") — needed to read encrypted columns. */
   @IsString()
   @IsNotEmpty()
   APP_KEY!: string;
@@ -94,7 +94,7 @@ export class EnvironmentVariables {
   @IsOptional()
   FRONTEND_URL?: string;
 
-  // ── GitHub OAuth (same app registration as Laravel uses) ──
+  // ── GitHub OAuth (same app registration as the original uses) ──
   @IsString()
   @IsNotEmpty()
   GITHUB_CLIENT_ID!: string;

@@ -4,12 +4,12 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from './redis.constants';
 
 /**
- * The general-purpose Redis client, on the same instance Laravel uses and
+ * The general-purpose Redis client, on the same instance the original uses and
  * under the same REDIS_PREFIX.
  *
- * It does NOT read Laravel's cache entries. Laravel's cache key is
+ * It does NOT read the original's cache entries. The original's cache key is
  * REDIS_PREFIX + CACHE_PREFIX + key — the second prefix defaults to
- * Str::slug(APP_NAME).'-cache-' — and its values are PHP-serialised. Sharing
+ * a slug of APP_NAME plus '-cache-' — and its values are PHP-serialised. Sharing
  * the instance is not the same as sharing entries; see DiffCacheService.
  *
  * BullMQ does not use this client: workers need maxRetriesPerRequest null and

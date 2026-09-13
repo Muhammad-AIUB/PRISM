@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 /**
  * Port of sendSlack() from both jobs. Slack's legacy attachments payload —
- * chosen in Laravel because it also works with Mattermost and other
+ * chosen in the original because it also works with Mattermost and other
  * Slack-compatible endpoints.
  *
  * The two payloads differ: PRs report critical/warning counts, commits report

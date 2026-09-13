@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
 import { AuditLogService } from '../../audit/audit-log.service';
-import { LaravelCryptService } from '../../common/utils/laravel-crypt.service';
+import { CryptService } from '../../common/utils/crypt.service';
 import { User } from '../../database/entities';
 import type { GithubOAuthUser } from './github-oauth.service';
 
@@ -16,11 +16,11 @@ import type { GithubOAuthUser } from './github-oauth.service';
  *     GitHub email keeps their repositories
  *   - name falls back to the nickname when GitHub's `name` is null
  *
- * One thing deliberately different: Laravel called Auth::login() and wrote a
- * PHP-serialised session row. This issues a JWT instead. Laravel sessions
+ * One thing deliberately different: The original called Auth::login() and wrote a
+ * PHP-serialised session row. This issues a JWT instead. The original sessions
  * cannot be read from Node without coupling to PHP serialisation, and the
  * Next.js frontend needs something it can carry itself. The `sessions` table
- * stays untouched and Laravel's own login keeps working during the migration.
+ * stays untouched and the original's own login keeps working during the migration.
  */
 export interface SessionUserDto {
   id: number;
@@ -44,7 +44,7 @@ export class WebAuthService {
     @InjectRepository(User)
     private readonly users: OrmRepository<User>,
     private readonly jwt: JwtService,
-    private readonly crypt: LaravelCryptService,
+    private readonly crypt: CryptService,
     private readonly auditLog: AuditLogService,
     private readonly configService: ConfigService,
   ) {}
@@ -55,7 +55,7 @@ export class WebAuthService {
     const values = {
       name: githubUser.name ?? githubUser.nickname ?? '',
       email: githubUser.email ?? '',
-      // Laravel's `encrypted` cast wrote this column and still reads it.
+      // Encrypted at rest, in the format the existing rows use. See CryptService.
       githubToken: this.crypt.encrypt(githubUser.token),
       githubAvatar: githubUser.avatar,
       githubUsername: githubUser.nickname,
@@ -93,7 +93,7 @@ export class WebAuthService {
     return this.jwt.signAsync(payload);
   }
 
-  /** Shape shared with the frontend; mirrors Inertia's `auth.user` prop. */
+  /** Shape shared with the frontend; mirrors the previous frontend's `auth.user` prop. */
   toSessionUser(user: User): SessionUserDto {
     return {
       id: user.id,
@@ -110,7 +110,7 @@ export class WebAuthService {
   }
 
   /**
-   * Laravel's Auth::login($user, true) set a two-year remember cookie; the JWT
+   * The original's Auth::login($user, true) set a two-year remember cookie; the JWT
    * TTL is the equivalent knob here.
    */
   cookieMaxAgeMs(): number {

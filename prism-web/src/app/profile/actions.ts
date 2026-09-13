@@ -32,7 +32,7 @@ export async function updateProfile(input: {
 
 /**
  * Requires the current password, which GitHub-OAuth users do not have — the
- * same limitation as in Laravel. Those users delete their account from
+ * same limitation as in the original. Those users delete their account from
  * Security → My Data instead.
  */
 export async function deleteAccount(password: string): Promise<ActionResult> {

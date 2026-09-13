@@ -3,8 +3,8 @@ import { apiRaw } from './api';
 import type { SessionUser } from './types';
 
 /**
- * The replacement for Inertia's shared `auth.user` prop, which every
- * authenticated page read from HandleInertiaRequests.
+ * The replacement for the previous frontend's shared `auth.user` prop, which every
+ * authenticated page read from its shared-props middleware.
  *
  * Each page fetches it server-side. Nothing about the session reaches the
  * browser: the cookie is httpOnly and the API origin is never exposed.

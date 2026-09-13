@@ -6,7 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { AuthModule } from './auth/auth.module';
-import { LaravelThrottlerGuard } from './common/guards/laravel-throttler.guard';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
 import { CryptModule } from './common/utils/crypt.module';
 import {
   aiConfig,
@@ -83,18 +83,18 @@ import { RedisModule } from './redis/redis.module';
         ],
 
         /**
-         * NEVER true. Laravel's migrations own this schema; letting TypeORM
-         * reconcile it would drop the CHECK constraints behind Laravel's
+         * NEVER true. The original's migrations own this schema; letting TypeORM
+         * reconcile it would drop the CHECK constraints behind the original's
          * enum() columns and rewrite indexes out from under the running app.
          */
         synchronize: false,
         migrationsRun: false,
 
-        // Laravel columns are snake_case; entities stay camelCase.
+        // The original columns are snake_case; entities stay camelCase.
         namingStrategy: new SnakeNamingStrategy(),
 
         logging: configService.get<string>('app.env') === 'development',
-        // Free-tier Postgres has a low connection ceiling and Laravel is
+        // Free-tier Postgres has a low connection ceiling and the original is
         // holding some of it during the parallel-run window.
         extra: { max: 5 },
       }),
@@ -149,6 +149,6 @@ import { RedisModule } from './redis/redis.module';
     ReviewModule,
     WebhookModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: LaravelThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }],
 })
 export class AppModule {}

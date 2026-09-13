@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 /**
- * Port of the Inertia FlashBanner.
+ * Port of the previous FlashBanner.
  *
  * Success banners clear themselves after 5s; error banners stay until
  * dismissed, because the user needs time to actually read them.

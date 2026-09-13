@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
 import { AuditLogService } from '../../audit/audit-log.service';
-import { LaravelCryptService } from '../../common/utils/laravel-crypt.service';
+import { CryptService } from '../../common/utils/crypt.service';
 import { toIso8601String } from '../../common/utils/iso8601';
 import { formatShortDate } from '../../common/utils/short-date';
 import { AuditLog, Repository, Review, User } from '../../database/entities';
@@ -28,7 +28,7 @@ export class SecurityService {
     @InjectRepository(AuditLog)
     private readonly auditLogs: OrmRepository<AuditLog>,
     private readonly github: GithubClientService,
-    private readonly crypt: LaravelCryptService,
+    private readonly crypt: CryptService,
     private readonly auditLog: AuditLogService,
   ) {}
 
@@ -66,7 +66,7 @@ export class SecurityService {
 
   /** GET /security/my-data */
   async myData(user: User): Promise<Record<string, unknown>> {
-    // The cast-decrypted value, as Laravel's $user->github_token was — the
+    // The cast-decrypted value, as the original's $user->github_token was — the
     // preview is of the real token, not of the ciphertext.
     const token = this.crypt.decrypt(user.githubToken) ?? '';
 
@@ -113,7 +113,7 @@ export class SecurityService {
   /**
    * DELETE /security/my-data — irreversible.
    *
-   * Order matters and is Laravel's: uninstall the GitHub webhooks FIRST, while
+   * Order matters and is the original's: uninstall the GitHub webhooks FIRST, while
    * the token and the hook ids still exist. Delete the user first and they are
    * gone, leaving GitHub delivering to a repository nothing recognises.
    */

@@ -8,9 +8,9 @@ import { User } from '../../database/entities';
 import type { JwtPayload } from './web-auth.service';
 
 /**
- * Guards the browser-facing routes, the way Laravel's `auth` middleware did.
+ * Guards the browser-facing routes, the way the original's `auth` middleware did.
  *
- * Distinct from SanctumAuthGuard on purpose: that one authenticates the MCP
+ * Distinct from ApiTokenAuthGuard on purpose: that one authenticates the MCP
  * server's long-lived API tokens against `personal_access_tokens`, and it is
  * not going anywhere. This one authenticates a human's browser session.
  *
@@ -18,7 +18,7 @@ import type { JwtPayload } from './web-auth.service';
  * frontend will carry it — with an Authorization header accepted as well so
  * the routes stay testable with curl.
  *
- * The 401 body stays "Unauthenticated." to match Laravel's.
+ * The 401 body stays "Unauthenticated." to match the original's.
  */
 @Injectable()
 export class WebAuthGuard implements CanActivate {

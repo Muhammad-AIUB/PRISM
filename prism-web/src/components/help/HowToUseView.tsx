@@ -444,7 +444,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="⚡"
                             title="Performance Tab"
-                            body={<>Catches: N+1 database queries, missing indexes, inefficient loops, memory leaks, blocking I/O in async code, and unoptimized queries. Especially smart about Laravel Eloquent and React rendering patterns.</>}
+                            body={<>Catches: N+1 database queries, missing indexes, inefficient loops, memory leaks, blocking I/O in async code, and unoptimized queries. Especially smart about ORM query patterns and React rendering.</>}
                         />
                         <AccordionItem
                             icon="🧹"
@@ -479,7 +479,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="🏷️"
                             title="Language Detection"
-                            body={<>PRism automatically detects the languages in your PR (PHP, JavaScript, TypeScript, Python, Go, Ruby, Java) and applies language-specific rules. For example, on PHP files it specifically looks for Laravel N+1 queries and missing validation.</>}
+                            body={<>PRism automatically detects the languages in your PR (PHP, JavaScript, TypeScript, Python, Go, Ruby, Java) and applies language-specific rules. For example, on PHP files it specifically looks for N+1 query patterns and missing validation.</>}
                         />
                         <AccordionItem
                             icon="📈"

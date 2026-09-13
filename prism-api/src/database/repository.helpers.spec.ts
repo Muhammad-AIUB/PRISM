@@ -10,7 +10,7 @@ describe('webhookEventsFor', () => {
   });
 
   it('falls back to pull_request for an unrecognised mode', () => {
-    // Laravel's match() default arm — the column is varchar + CHECK, so a
+    // The original's match() default arm — the column is varchar + CHECK, so a
     // value written outside the app is possible.
     expect(webhookEventsFor('something-else')).toEqual(['pull_request']);
   });

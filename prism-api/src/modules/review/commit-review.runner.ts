@@ -7,7 +7,7 @@ import { FixesService } from '../../ai/fixes.service';
 import { PromptBuilderService } from '../../ai/prompt-builder.service';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
-import { LaravelCryptService } from '../../common/utils/laravel-crypt.service';
+import { CryptService } from '../../common/utils/crypt.service';
 import { CommitReview } from '../../database/entities';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 import { detectLanguages } from '../../diff/language-detector';
@@ -17,11 +17,11 @@ import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
- * Port of App\Jobs\ProcessCommitReview::handle().
+ * Port of the original commit-review job.
  *
  * Exceptions propagate on purpose so BullMQ retries per the backoff schedule;
  * the terminal-failure cleanup lives in the processor's failed handler, exactly
- * as Laravel splits handle() and failed().
+ * as the original splits handle() and failed().
  */
 const DIFF_LIMIT = 8000;
 
@@ -37,7 +37,7 @@ export class CommitReviewRunner {
     private readonly fixes: FixesService,
     private readonly github: GithubClientService,
     private readonly diffCache: DiffCacheService,
-    private readonly crypt: LaravelCryptService,
+    private readonly crypt: CryptService,
     private readonly summaryComment: SummaryCommentBuilder,
     private readonly email: EmailService,
     private readonly slack: SlackService,
@@ -215,7 +215,7 @@ export class CommitReviewRunner {
     }
   }
 
-  /** Laravel's failed(): mark the row failed once every attempt is spent. */
+  /** The original's failed(): mark the row failed once every attempt is spent. */
   async markFailed(commitReviewId: number): Promise<void> {
     await this.commitReviews.update(commitReviewId, { status: 'failed' });
   }

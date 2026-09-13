@@ -16,7 +16,7 @@ import {
 
 /**
  * The BullMQ worker. Thin on purpose: it routes by job name, enforces the
- * per-attempt timeout, and mirrors Laravel's failed() hook. All pipeline logic
+ * per-attempt timeout, and mirrors the original's failed() hook. All pipeline logic
  * lives in the two runners.
  *
  * BullMQ v5 removed job timeouts entirely, so the per-attempt timeout has to be
@@ -75,7 +75,7 @@ export class ReviewProcessor extends WorkerHost {
 
   /**
    * Port of failed(). BullMQ emits `failed` after every attempt, so the status
-   * is only written once retries are exhausted — Laravel calls failed() once.
+   * is only written once retries are exhausted — the original calls failed() once.
    */
   @OnWorkerEvent('failed')
   async onFailed(job: Job | undefined, error: Error): Promise<void> {

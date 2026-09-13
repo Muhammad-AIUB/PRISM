@@ -7,15 +7,15 @@ import { watchedBranchesFor } from '../../database/repository.helpers';
 import { ReviewQueueService } from '../review/review-queue.service';
 
 /**
- * Port of App\Http\Controllers\WebhookController.
+ * Port of the original webhook controller.
  *
  * GitHub records the status and body of every delivery and shows them in the
  * repository's webhook UI, so both are part of the contract. Every branch here
- * returns exactly what Laravel returned.
+ * returns exactly what the original returned.
  *
  * The signature check is the real security boundary: IP allow-listing was
  * removed because Render's edge proxy masks GitHub's source address (see the
- * comment on the Laravel route).
+ * comment on the original route).
  */
 export interface WebhookResult {
   status: number;
@@ -109,7 +109,7 @@ export class WebhookService {
       diffUrl: (this.get(pr, 'diff_url') as string | undefined) ?? null,
     };
 
-    // Eloquent updateOrCreate: an existing row IS updated, so a re-opened or
+    // The original ORM update-or-create: an existing row IS updated, so a re-opened or
     // re-titled PR picks up the new metadata.
     const existing = await this.pullRequests.findOne({
       where: { repositoryId: repository.id, githubPrId },
@@ -141,7 +141,7 @@ export class WebhookService {
 
   /**
    * Push: one review for the head commit of the push. The gate order below is
-   * Laravel's and it is observable — a push to an unwatched branch on a
+   * the original's and it is observable — a push to an unwatched branch on a
    * pr_only repository reports "PR-only mode", not "Branch not watched".
    */
   private async handlePush(
@@ -177,7 +177,7 @@ export class WebhookService {
 
     const commitSha = String(headSha);
 
-    // Eloquent firstOrCreate: an existing row is NOT updated — a re-push of the
+    // The original ORM first-or-create: an existing row is NOT updated — a re-push of the
     // same SHA keeps the original message and author.
     let review = await this.commitReviews.findOne({
       where: { repositoryId: repository.id, commitSha },
@@ -242,7 +242,7 @@ export class WebhookService {
     }
   }
 
-  /** Laravel's data_get() for one level. */
+  /** The original's a one-level safe getter for one level. */
   private get(source: unknown, key: string): unknown {
     if (typeof source !== 'object' || source === null) {
       return undefined;

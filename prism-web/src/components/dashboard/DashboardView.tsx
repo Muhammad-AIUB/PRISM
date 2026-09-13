@@ -164,7 +164,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
 
   /**
    * Poll while anything is still being reviewed, so a fresh push appears
-   * without a manual reload. Inertia did this with a partial reload; the
+   * without a manual reload. the previous frontend did this with a partial reload; the
    * equivalent here is router.refresh(), which re-runs the server component
    * and swaps in new data without losing the selected tab or the scroll
    * position.

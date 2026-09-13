@@ -19,7 +19,7 @@ import { SettingsService } from './settings.service';
 /**
  * Port of the /settings routes.
  *
- * Laravel redirected back with flash messages; these return the same message
+ * The original redirected back with flash messages; these return the same message
  * strings as JSON so the Next.js pages can show them unchanged.
  */
 @Controller('settings')
@@ -59,7 +59,7 @@ export class SettingsController {
   }
 
   /**
-   * Laravel reported a Slack rejection as a flash 'error' on a 302, not as an
+   * The original reported a Slack rejection as a flash 'error' on a 302, not as an
    * HTTP error, so this stays 200 with an `ok` flag rather than throwing — the
    * request itself succeeded, Slack just did not like the URL.
    */

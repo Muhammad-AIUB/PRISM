@@ -4,7 +4,7 @@ const diffFor = (...paths: string[]): string =>
   paths.map((path) => `diff --git a/${path} b/${path}\n@@ -1 +1 @@\n-a\n+b`).join('\n');
 
 describe('detectLanguages', () => {
-  it('maps every extension Laravel recognises', () => {
+  it('maps every extension the original recognised', () => {
     expect(detectLanguages(diffFor('a.php'))).toEqual(['PHP']);
     expect(detectLanguages(diffFor('a.py'))).toEqual(['Python']);
     expect(detectLanguages(diffFor('a.go'))).toEqual(['Go']);

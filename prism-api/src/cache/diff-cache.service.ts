@@ -4,11 +4,11 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 
 /**
- * Laravel's `Cache::remember($key, 3600, …)` around the GitHub diff fetch.
+ * The original's a one-hour read-through cache around the GitHub diff fetch.
  *
- * This does NOT share entries with Laravel's cache, and that is deliberate.
- * Laravel's Redis cache key is REDIS_PREFIX + CACHE_PREFIX + key — the second
- * prefix defaults to Str::slug(APP_NAME).'-cache-' — and its values are
+ * This does NOT share entries with the original's cache, and that is deliberate.
+ * The original's Redis cache key is REDIS_PREFIX + CACHE_PREFIX + key — the second
+ * prefix defaults to a slug of APP_NAME plus '-cache-' — and its values are
  * PHP-serialised (`s:<bytes>:"…";`). Reproducing both just to share a
  * one-hour diff cache would couple this service to PHP's serialisation format
  * for no real gain. The cost of not sharing is one extra GitHub call per
@@ -30,7 +30,7 @@ export class DiffCacheService {
 
   /**
    * Keyed on head branch + updated_at so a new push invalidates it, matching
-   * Laravel's sha1($pr->head_branch.'|'.$pr->updated_at).
+   * the original's sha1($pr->head_branch.'|'.$pr->updated_at).
    */
   pullRequestKey(pullRequestId: number, headBranch: string, updatedAt: Date | null): string {
     const stamp = updatedAt ? updatedAt.toISOString().slice(0, 19).replace('T', ' ') : '';
@@ -41,7 +41,7 @@ export class DiffCacheService {
 
   /**
    * A Redis failure must not fail the review — fall through to the loader and
-   * let the job proceed uncached, which is what Laravel's cache does when the
+   * let the job proceed uncached, which is what the original's cache does when the
    * store is unreachable.
    */
   async remember(key: string, loader: () => Promise<string>): Promise<string> {

@@ -7,12 +7,12 @@ import { randomString } from '../database/repository.helpers';
 import { toIso8601String } from '../common/utils/iso8601';
 
 /**
- * Issues and revokes Sanctum tokens, matching HasApiTokens::createToken().
+ * Issues and revokes API tokens.
  *
- * The format is load-bearing in both directions: SanctumAuthGuard reads these
- * rows, Laravel's Sanctum reads them too, and the MCP server already holds
- * tokens issued by the Laravel app. A token minted here must be
- * indistinguishable from one minted there.
+ * The format is load-bearing: ApiTokenAuthGuard reads these rows, and deployed
+ * MCP servers are already holding tokens minted before this service existed. A
+ * token minted here has to be indistinguishable from those, which is why the
+ * shape below is spelled out rather than left to a helper.
  *
  *   plainTextToken = "{id}|{plaintext}"
  *   token column   = sha256(plaintext), hex
@@ -46,7 +46,7 @@ export class PersonalAccessTokenService {
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
-      // Carbon's toIso8601String(), not JS's toISOString() — see iso8601.ts.
+      // The original's toIso8601String(), not JS's toISOString() — see iso8601.ts.
       last_used_at: toIso8601String(row.lastUsedAt),
       created_at: toIso8601String(row.createdAt),
     }));
@@ -86,7 +86,7 @@ export class PersonalAccessTokenService {
   }
 
   /**
-   * Scoped to the owner's tokens, as Laravel's $user->tokens()->where(...) was.
+   * Scoped to the owner's tokens, as the original's $user->tokens()->where(...) was.
    * Revoking by id alone would let any signed-in user delete anyone's token.
    */
   async revoke(user: User, tokenId: number): Promise<void> {

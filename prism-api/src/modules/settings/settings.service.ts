@@ -9,7 +9,7 @@ import type { UpdateSettingsDto } from './dto/settings.dto';
 /**
  * Port of App\Http\Controllers\SettingsController.
  *
- * Laravel flashed the new plaintext token into the session and the Inertia
+ * The original flashed the new plaintext token into the session and the previous
  * page read it back as `new_api_token`. There is no session here, so the
  * create endpoint returns it in its own response body instead — still exactly
  * once, since nothing stores it.
@@ -78,7 +78,7 @@ export class SettingsService {
   }
 
   /**
-   * Only the keys actually sent are written. Laravel's validate() returns the
+   * Only the keys actually sent are written. The original's validate() returns the
    * present subset, so posting just a Slack URL must not silently reset the
    * email preference.
    */

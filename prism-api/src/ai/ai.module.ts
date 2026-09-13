@@ -4,7 +4,7 @@ import { FixesService } from './fixes.service';
 import { PromptBuilderService } from './prompt-builder.service';
 
 /**
- * The AI helpers the two Laravel jobs duplicated verbatim. Behaviour is
+ * The AI helpers the two the original jobs duplicated verbatim. Behaviour is
  * unchanged; only the duplication is gone.
  */
 @Module({

@@ -42,7 +42,7 @@ export default function RepositorySettingsView({
 
       if (result.ok) {
         setSaved(true);
-        // Matches Inertia's recentlySuccessful window, so the inline "Saved"
+        // Matches the previous frontend's recentlySuccessful window, so the inline "Saved"
         // next to the button fades on its own.
         setTimeout(() => setSaved(false), 2000);
       } else {

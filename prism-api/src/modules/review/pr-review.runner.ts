@@ -8,7 +8,7 @@ import { clampScore } from '../../ai/json-extractor';
 import { PromptBuilderService } from '../../ai/prompt-builder.service';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
-import { LaravelCryptService } from '../../common/utils/laravel-crypt.service';
+import { CryptService } from '../../common/utils/crypt.service';
 import { PullRequest, Review, ReviewComment } from '../../database/entities';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 import type { ReviewLayer, ReviewSeverity } from '../../database/entities/review-comment.entity';
@@ -19,7 +19,7 @@ import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
- * Port of App\Jobs\ProcessPullRequestReview::handle().
+ * Port of the original pull-request review job.
  *
  * Differs from the commit pipeline in three ways that are behaviour, not
  * style: the review lives in its own `reviews` row (upserted, not updated in
@@ -45,7 +45,7 @@ export class PullRequestReviewRunner {
     private readonly fixes: FixesService,
     private readonly github: GithubClientService,
     private readonly diffCache: DiffCacheService,
-    private readonly crypt: LaravelCryptService,
+    private readonly crypt: CryptService,
     private readonly summaryComment: SummaryCommentBuilder,
     private readonly email: EmailService,
     private readonly slack: SlackService,
@@ -242,12 +242,12 @@ export class PullRequestReviewRunner {
     }
   }
 
-  /** Laravel's failed(): mark the row failed once every attempt is spent. */
+  /** The original's failed(): mark the row failed once every attempt is spent. */
   async markFailed(pullRequestId: number): Promise<void> {
     await this.pullRequests.update(pullRequestId, { status: 'failed' });
   }
 
-  /** Eloquent's Review::updateOrCreate(['pull_request_id' => …], […]). */
+  /** The original ORM's an update-or-create keyed on pull_request_id. */
   private async upsertReview(
     pullRequestId: number,
     values: Partial<Review>,

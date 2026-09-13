@@ -6,7 +6,7 @@ import { OptionalWebAuthGuard } from '../auth/optional-web-auth.guard';
 import { WebAuthGuard } from '../auth/web-auth.guard';
 import { SecurityService } from './security.service';
 
-/** Laravel: 'confirm' => 'required|in:DELETE' — typed by hand, deliberately. */
+/** The original: 'confirm' => 'required|in:DELETE' — typed by hand, deliberately. */
 export class DeleteMyDataDto {
   @IsString()
   @IsIn(['DELETE'])

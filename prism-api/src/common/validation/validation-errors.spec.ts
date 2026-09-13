@@ -1,5 +1,5 @@
 import type { ValidationError } from 'class-validator';
-import { collectValidationErrors, laravelValidationException } from './laravel-validation';
+import { collectValidationErrors, validationException } from './validation-errors';
 
 const error = (
   property: string,
@@ -28,7 +28,7 @@ describe('collectValidationErrors', () => {
     expect(collected.email).toEqual(['email must be an email', 'email must be lowercase']);
   });
 
-  it('uses Laravel dot notation for array items', () => {
+  it('uses dot notation for array items', () => {
     const collected = collectValidationErrors([
       error('review_branches', {}, [error('0', { isString: 'each value must be a string' })]),
     ]);
@@ -43,15 +43,15 @@ describe('collectValidationErrors', () => {
   });
 });
 
-describe('laravelValidationException', () => {
+describe('validationException', () => {
   it('answers 422, not Nest default 400', () => {
-    const exception = laravelValidationException([error('name', { isString: 'name must be a string' })]);
+    const exception = validationException([error('name', { isString: 'name must be a string' })]);
 
     expect(exception.getStatus()).toBe(422);
   });
 
-  it('uses the first message as the top-level message, as Laravel does', () => {
-    const exception = laravelValidationException([
+  it('uses the first message as the top-level message, as the original did', () => {
+    const exception = validationException([
       error('name', { isString: 'name must be a string' }),
       error('email', { isEmail: 'email must be an email' }),
     ]);
@@ -65,8 +65,8 @@ describe('laravelValidationException', () => {
     });
   });
 
-  it('falls back to Laravel wording when there is no message at all', () => {
-    expect(laravelValidationException([]).getResponse()).toEqual({
+  it('falls back to the original wording when there is no message at all', () => {
+    expect(validationException([]).getResponse()).toEqual({
       message: 'The given data was invalid.',
       errors: {},
     });

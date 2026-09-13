@@ -3,7 +3,7 @@ import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
  * This text is posted publicly on GitHub, so it is the most visible parity
- * surface in the slice. The expected strings below are copied from the Laravel
+ * surface in the slice. The expected strings below are copied from the original
  * buildSummaryComment() implementations.
  */
 const config = {

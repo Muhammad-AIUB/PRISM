@@ -23,10 +23,10 @@ import { WebAuthService, type SessionUserDto } from './web-auth.service';
 /**
  * Port of App\Http\Controllers\AuthController.
  *
- * Laravel put these behind `throttle:auth` — 10/min per IP, protecting the
+ * The original put these behind `throttle:auth` — 10/min per IP, protecting the
  * OAuth handshake from brute force. Same ceiling here.
  *
- * Socialite carried its CSRF `state` in the Laravel session. With no session
+ * the previous OAuth helper carried its CSRF `state` in the original session. With no session
  * table in play, it travels in a short-lived httpOnly cookie instead and is
  * compared in constant time on the way back. Dropping the check entirely would
  * open the callback to login-CSRF.
@@ -45,7 +45,7 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  /** GET /auth/github — Socialite's redirect(). */
+  /** GET /auth/github — the previous OAuth helper's redirect(). */
   @Get('github')
   redirectToGithub(@Res() response: Response): void {
     const state = randomBytes(32).toString('hex');
@@ -64,7 +64,7 @@ export class AuthController {
   /**
    * GET /auth/github/callback
    *
-   * Laravel redirected to the dashboard on success and back to /login with an
+   * The original redirected to the dashboard on success and back to /login with an
    * error bag on failure. The same redirects are issued here, against the
    * frontend's base URL, so the browser flow is unchanged from the user's side.
    */
@@ -129,8 +129,8 @@ export class AuthController {
   }
 
   /**
-   * GET /auth/me — the JSON replacement for Inertia's shared `auth.user` prop,
-   * which every page currently reads from HandleInertiaRequests.
+   * GET /auth/me — the JSON replacement for the previous frontend's shared `auth.user` prop,
+   * which every page currently reads from its shared-props middleware.
    */
   @Get('me')
   @UseGuards(WebAuthGuard)

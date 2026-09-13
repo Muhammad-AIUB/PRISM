@@ -20,12 +20,12 @@ import type { SessionUser } from '@/lib/types';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
 /**
- * Port of the Inertia AuthenticatedLayout.
+ * Port of the previous AuthenticatedLayout.
  *
  * Two things had to change and nothing else did: navigation goes through
- * next/link instead of Inertia's, and the active-item check reads
+ * next/link instead of the previous frontend's, and the active-item check reads
  * usePathname() rather than Ziggy's route().current(), which does not exist
- * outside Laravel.
+ * outside the original.
  */
 interface NavEntry {
   href: string;
@@ -299,7 +299,7 @@ export default function AuthenticatedLayout({
       isActive: pathname.startsWith('/repositories'),
     },
     // Points at the dashboard, which lists recent PRs, until a dedicated
-    // /reviews index exists — same as the Laravel sidebar.
+    // /reviews index exists — same as the original sidebar.
     {
       href: '/dashboard',
       icon: FileSearch,

@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ConfigService } from '@nestjs/config';
-import { LaravelCryptService } from './laravel-crypt.service';
+import { CryptService } from './crypt.service';
 
 /**
  * Cross-runtime parity for users.github_token.
  *
- * The fixtures were produced by Laravel's real Encrypter, so this asserts
+ * The fixtures were produced by the original's real encrypter, so this asserts
  * PHP -> TS against genuine output rather than a reimplementation.
  *
- * This still matters with Laravel gone: every github_token already in the
+ * This still matters with the original gone: every github_token already in the
  * production database was written by it, and these rows have to stay readable.
  * The TS -> PHP direction was verified before the PHP was deleted (7/7 samples,
  * including empty, multibyte and embedded quotes) and no longer has a second
@@ -23,18 +23,18 @@ interface CryptFixtures {
 }
 
 const fixtures = JSON.parse(
-  readFileSync(join(__dirname, '..', '..', '..', 'test', 'fixtures', 'laravel-encrypted.json'), 'utf8'),
+  readFileSync(join(__dirname, '..', '..', '..', 'test', 'fixtures', 'encrypted-payloads.json'), 'utf8'),
 ) as CryptFixtures;
 
 const configFor = (appKey: string) =>
   ({ get: (key: string) => (key === 'app.key' ? appKey : undefined) }) as unknown as ConfigService;
 
-describe('LaravelCryptService', () => {
-  const crypt = new LaravelCryptService(configFor(fixtures.app_key));
+describe('CryptService', () => {
+  const crypt = new CryptService(configFor(fixtures.app_key));
 
   describe('decrypt', () => {
     it.each(Object.entries(fixtures.payloads))(
-      'reads a Laravel-encrypted %s value',
+      'reads a legacy-encrypted %s value',
       (_name, { value, payload }) => {
         expect(crypt.decrypt(payload)).toBe(value);
       },
@@ -49,7 +49,7 @@ describe('LaravelCryptService', () => {
       const first = Object.values(fixtures.payloads)[0];
 
       if (!first) {
-        throw new Error('laravel-encrypted.json has no payloads — regenerate the fixtures.');
+        throw new Error('encrypted-payloads.json has no payloads — regenerate the fixtures.');
       }
 
       const { payload } = first;
@@ -78,7 +78,7 @@ describe('LaravelCryptService', () => {
       expect(crypt.decrypt(crypt.encrypt(value))).toBe(value);
     });
 
-    it('emits the four keys Laravel expects, with an empty non-AEAD tag', () => {
+    it('emits the four keys the format expects, with an empty non-AEAD tag', () => {
       const decoded = JSON.parse(
         Buffer.from(crypt.encrypt('gho_x'), 'base64').toString('utf8'),
       ) as Record<string, string>;
@@ -102,7 +102,7 @@ describe('LaravelCryptService', () => {
   });
 
   it('refuses an APP_KEY that does not decode to 32 bytes', () => {
-    expect(() => new LaravelCryptService(configFor('base64:c2hvcnQ='))).toThrow(
+    expect(() => new CryptService(configFor('base64:c2hvcnQ='))).toThrow(
       /must decode to 32 bytes/,
     );
   });

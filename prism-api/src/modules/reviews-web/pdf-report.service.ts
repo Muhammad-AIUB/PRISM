@@ -74,7 +74,7 @@ export class PdfReportService {
     return true;
   }
 
-  /** Laravel: PRism-Review-PR{n}.pdf */
+  /** The original: PRism-Review-PR{n}.pdf */
   filenameFor(pr: PullRequest): string {
     return `PRism-Review-PR${pr.prNumber}.pdf`;
   }

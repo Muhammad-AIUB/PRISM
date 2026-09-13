@@ -19,7 +19,7 @@ import type { SessionUser } from '@/lib/types';
  *
  * DELIBERATE OMISSION — the change-password form. It posted to Breeze's
  * PUT /password, which has no NestJS equivalent (that route set is still on
- * Laravel), and no PRism account can have a password anyway: sign-in is GitHub
+ * the original), and no PRism account can have a password anyway: sign-in is GitHub
  * only. The form was unusable before and would be broken now.
  */
 export default function ProfileView({ user }: { user: SessionUser }) {
@@ -205,7 +205,7 @@ export default function ProfileView({ user }: { user: SessionUser }) {
             Download anything you want to keep first.
           </p>
 
-          {/* Says out loud what the Laravel version left the user to discover:
+          {/* Says out loud what the original version left the user to discover:
               this form needs a password, and GitHub sign-in never sets one. */}
           <div
             className="mt-4 rounded-md p-3 text-xs"

@@ -38,7 +38,7 @@ export class ConnectRepositoryDto {
   @IsArray()
   @IsString({ each: true })
   @MaxLength(255, { each: true })
-  // Not in the Laravel rules, but an unbounded array here would be written
+  // Not in the original rules, but an unbounded array here would be written
   // straight into a json column; 200 is far above any real branch count.
   @ArrayMaxSize(200)
   review_branches?: string[];
@@ -57,7 +57,7 @@ export class UpdateRepositorySettingsDto {
 }
 
 export class BranchesQueryDto {
-  /** Laravel: regex:#^[\w.-]+/[\w.-]+$# — owner/repo, nothing path-like. */
+  /** The original: regex:#^[\w.-]+/[\w.-]+$# — owner/repo, nothing path-like. */
   @IsString()
   @Matches(/^[\w.-]+\/[\w.-]+$/)
   full_name!: string;

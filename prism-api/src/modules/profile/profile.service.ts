@@ -8,8 +8,8 @@ import type { UpdateProfileDto } from './dto/profile.dto';
 /**
  * Port of App\Http\Controllers\ProfileController.
  *
- * Validation errors use Laravel's { message, errors } envelope so the existing
- * form components keep working — LaravelExceptionFilter shapes the response,
+ * Validation errors use the original's { message, errors } envelope so the existing
+ * form components keep working — ApiExceptionFilter shapes the response,
  * this just supplies the field keys and messages.
  */
 @Injectable()
@@ -43,7 +43,7 @@ export class ProfileService {
 
     const changes: Partial<User> = { name: dto.name, email: dto.email, updatedAt: new Date() };
 
-    // Laravel: isDirty('email') → re-verification is required again.
+    // The original: isDirty('email') → re-verification is required again.
     if (dto.email !== user.email) {
       changes.emailVerifiedAt = null;
     }
@@ -54,8 +54,8 @@ export class ProfileService {
   }
 
   /**
-   * Laravel's `current_password` rule. Note that GitHub-OAuth users have a
-   * NULL password, so this path is unreachable for them in Laravel too — they
+   * The original's `current_password` rule. Note that GitHub-OAuth users have a
+   * NULL password, so this path is unreachable for them in the original too — they
    * cannot delete their account here, only via Security → My Data.
    */
   async destroy(user: User, password: string): Promise<void> {
@@ -71,10 +71,10 @@ export class ProfileService {
     // repositories and audit_logs cascade from users, and pull_requests,
     // commit_reviews, reviews and review_comments cascade on down from there.
     //
-    // personal_access_tokens does NOT: Sanctum uses a polymorphic
+    // personal_access_tokens does NOT: The original token scheme uses a polymorphic
     // tokenable_type/tokenable_id pair with no foreign key, so those rows are
-    // left behind here exactly as they are in Laravel. They cannot be used to
-    // authenticate — SanctumAuthGuard looks the user up and finds nothing —
+    // left behind here exactly as they are in the original. They cannot be used to
+    // authenticate — ApiTokenAuthGuard looks the user up and finds nothing —
     // but they do accumulate.
     await this.users.delete(user.id);
   }

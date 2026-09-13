@@ -1,7 +1,7 @@
 import { types } from 'pg';
 
 /**
- * Laravel's `$table->timestamps()` creates `timestamp WITHOUT time zone`
+ * The original's the timestamp columns creates `timestamp WITHOUT time zone`
  * columns and writes UTC into them. node-postgres would otherwise parse those
  * strings in the server's LOCAL zone, silently shifting every `created_at` we
  * hand back to the MCP client. Parse them as UTC explicitly.

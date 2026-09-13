@@ -1,10 +1,10 @@
 import { Global, Module } from '@nestjs/common';
-import { LaravelCryptService } from './laravel-crypt.service';
+import { CryptService } from './crypt.service';
 
 /** Global: any module reading users.github_token needs this. */
 @Global()
 @Module({
-  providers: [LaravelCryptService],
-  exports: [LaravelCryptService],
+  providers: [CryptService],
+  exports: [CryptService],
 })
 export class CryptModule {}

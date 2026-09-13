@@ -8,7 +8,7 @@ import { registerPgTypeParsers } from './database/pg-types';
 
 registerPgTypeParsers();
 
-// Laravel's app timezone is UTC and every timestamp column is naive. Pin the
+// The original's app timezone is UTC and every timestamp column is naive. Pin the
 // process to UTC so date maths cannot pick up the host's local zone.
 process.env.TZ = 'UTC';
 
@@ -21,8 +21,8 @@ import helmet from 'helmet';
 // with a callable export) is brought in with the import-require form.
 import cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
-import { laravelValidationException } from './common/validation/laravel-validation';
-import { LaravelExceptionFilter } from './common/filters/laravel-exception.filter';
+import { validationException } from './common/validation/validation-errors';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -52,17 +52,17 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: false },
-      // Nest defaults to 400 with { message: string[] }. Laravel answers 422
+      // Nest defaults to 400 with { message: string[] }. The original answers 422
       // with { message, errors: { field: [...] } }, and the frontend's form
       // components read `errors` — so the default shape silently breaks every
       // form's inline error display.
-      exceptionFactory: laravelValidationException,
+      exceptionFactory: validationException,
     }),
   );
 
-  // Emits Laravel's { message } / { message, errors } envelope for every
+  // Emits the original's { message } / { message, errors } envelope for every
   // failure, so existing clients keep parsing errors the way they do today.
-  app.useGlobalFilters(new LaravelExceptionFilter());
+  app.useGlobalFilters(new ApiExceptionFilter());
 
   app.enableShutdownHooks();
 

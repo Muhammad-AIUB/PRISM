@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { JsonCacheService } from '../../cache/json-cache.service';
-import { LaravelCryptService } from '../../common/utils/laravel-crypt.service';
+import { CryptService } from '../../common/utils/crypt.service';
 import { Repository, User } from '../../database/entities';
 import {
   REVIEW_MODES,
@@ -22,7 +22,7 @@ import type {
 /**
  * Port of App\Http\Controllers\RepositoryController.
  *
- * The Laravel version rendered Inertia pages and redirected with flash
+ * The original version rendered the previous frontend pages and redirected with flash
  * messages. These return JSON instead — unavoidable, since the whole point is
  * to decouple the frontend — but the prop names, cache keys, TTLs, audit
  * entries and user-facing message strings are all kept, so the Next.js pages
@@ -46,7 +46,7 @@ export class RepositoriesService {
     private readonly repositories: OrmRepository<Repository>,
     private readonly github: GithubClientService,
     private readonly cache: JsonCacheService,
-    private readonly crypt: LaravelCryptService,
+    private readonly crypt: CryptService,
     private readonly auditLog: AuditLogService,
     private readonly configService: ConfigService,
   ) {}
@@ -88,7 +88,7 @@ export class RepositoriesService {
       },
     });
 
-    // Laravel keyBy('github_repo_id') — the page looks rows up by that id.
+    // The original keyBy('github_repo_id') — the page looks rows up by that id.
     const connectedRepos = Object.fromEntries(
       connected.map((row) => [
         String(row.githubRepoId),
@@ -109,7 +109,7 @@ export class RepositoriesService {
    * POST /repositories — create the row, then install the webhook.
    *
    * If GitHub rejects the hook the row is deleted again. That ordering is
-   * Laravel's and it matters: a repository that exists locally with no webhook
+   * the original's and it matters: a repository that exists locally with no webhook
    * would sit in the UI looking connected while never receiving an event.
    */
   async connect(
@@ -219,7 +219,7 @@ export class RepositoriesService {
 
     // Keep GitHub's event subscriptions in step with the new mode. A failure
     // here is logged, not thrown: the local settings are already saved and
-    // Laravel did not roll them back either.
+    // the original did not roll them back either.
     if (repository.webhookId) {
       await this.github.updateWebhookEvents(
         this.tokenFor(user),
@@ -242,7 +242,7 @@ export class RepositoriesService {
   /**
    * GET /repositories/branches?full_name=owner/repo
    *
-   * Already JSON in Laravel, so this one is a straight translation. Any GitHub
+   * Already JSON in the original, so this one is a straight translation. Any GitHub
    * failure yields an empty list — the connect modal degrades to a free-text
    * branch entry rather than erroring.
    */
@@ -284,7 +284,7 @@ export class RepositoriesService {
       throw new NotFoundException('No query results for model [App\\Models\\Repository] ' + id);
     }
 
-    // Laravel: abort_unless($repository->user_id === Auth::id(), 403)
+    // The original: abort_unless($repository->user_id === Auth::id(), 403)
     if (repository.userId !== user.id) {
       throw new ForbiddenException();
     }

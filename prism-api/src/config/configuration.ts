@@ -40,7 +40,7 @@ export const queueConfig = registerAs('queue', () => ({
   connection: process.env.QUEUE_CONNECTION ?? 'database',
   /**
    * BullMQ's own key namespace. Kept distinct from REDIS_PREFIX so queue keys
-   * can never collide with Laravel's cache or session entries in the shared
+   * can never collide with the original's cache or session entries in the shared
    * instance.
    */
   prefix: process.env.QUEUE_PREFIX ?? 'prism-bull',

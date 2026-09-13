@@ -37,7 +37,7 @@ export class ProfileController {
   }
 
   /**
-   * Laravel logged the user out and invalidated the session before deleting.
+   * The original logged the user out and invalidated the session before deleting.
    * The equivalent is clearing the session cookie — and it has to happen after
    * the delete succeeds, or a wrong password would still sign the user out.
    */

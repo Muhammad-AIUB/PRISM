@@ -3,19 +3,18 @@ import { GROQ_MODELS, GROQ_TIMEOUT_MS } from '../../ai/ai-client.service';
 import { REQUEST_TIMEOUT_MS as GITHUB_TIMEOUT_MS } from '../../github/github-client.service';
 
 /**
- * Queue identity and retry policy, mirroring the Laravel job classes.
+ * Queue identity and retry policy.
  *
- * Laravel's worker consumes the `database` queue; this one consumes Redis via
- * BullMQ. They share no rows and cannot contend, which is what makes running
- * both during the migration safe. Laravel's worker must stay up until the web
- * re-analyze routes move in slice B.
+ * The queue name is a live Redis key. Renaming it orphans anything already
+ * enqueued rather than migrating it, so a deploy that changes this silently
+ * drops the reviews in flight at the moment it ships.
  */
 export const REVIEW_QUEUE = 'prism-reviews';
 
 export const COMMIT_REVIEW_JOB = 'commit-review';
 export const PR_REVIEW_JOB = 'pr-review';
 
-/** Only the row id travels — never a serialised entity, as Laravel did. */
+/** Only the row id travels — never a serialised entity, as the original did. */
 export interface CommitReviewJobData {
   commitReviewId: number;
 }
@@ -24,10 +23,10 @@ export interface PullRequestReviewJobData {
   pullRequestId: number;
 }
 
-/** Laravel: public int $tries = 3. */
+/** The original: public int $tries = 3. */
 export const REVIEW_JOB_ATTEMPTS = 3;
 
-/** Laravel: public array $backoff = [60, 180, 600] (seconds). */
+/** The original: public array $backoff = [60, 180, 600] (seconds). */
 export const REVIEW_JOB_BACKOFF_SECONDS = [60, 180, 600];
 
 /**
@@ -69,7 +68,7 @@ export const REVIEW_JOB_OPTIONS: JobsOptions = {
 };
 
 /**
- * concurrency 1 matches the single `queue:work` process Laravel runs, which is
+ * concurrency 1 matches the single `queue:work` process the original runs, which is
  * what keeps peak memory predictable on a 512MB box — commit 5eca1c6 exists
  * because that ceiling was breached once already.
  */

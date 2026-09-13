@@ -24,7 +24,7 @@ import { RepositoriesService } from './repositories.service';
 /**
  * Port of the /repositories routes.
  *
- * Laravel had these behind `auth` + `throttle:api`; WebAuthGuard is the
+ * The original had these behind `auth` + `throttle:api`; WebAuthGuard is the
  * session equivalent and the global throttler supplies the 100/min.
  *
  * Route order matters: /repositories/branches is declared before
@@ -47,7 +47,7 @@ export class RepositoriesController {
   }
 
   /**
-   * Laravel redirected with a flash message on both paths. As JSON, a failed
+   * The original redirected with a flash message on both paths. As JSON, a failed
    * webhook install has to be a real error status — the row was rolled back,
    * so reporting 200 would leave the UI showing a repository that no longer
    * exists.

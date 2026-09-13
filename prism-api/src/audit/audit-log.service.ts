@@ -10,7 +10,7 @@ import { AuditLog } from '../database/entities';
  *   - a write failure is swallowed and logged; audit logging must never break
  *     the flow it is recording
  *
- * ip_address stays null here. Laravel fills it from request()?->ip(), which is
+ * ip_address stays null here. The original fills it from request()?->ip(), which is
  * already null inside a queued job, so this matches what the rows look like
  * today for review_completed entries.
  */
@@ -39,7 +39,7 @@ export class AuditLogService {
           userId,
           action,
           description,
-          // Laravel writes null rather than an empty object for `[]`.
+          // The original writes null rather than an empty object for `[]`.
           metadata: Object.keys(metadata).length > 0 ? metadata : null,
           ipAddress: null,
           createdAt: new Date(),

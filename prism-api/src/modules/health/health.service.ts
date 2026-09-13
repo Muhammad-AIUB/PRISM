@@ -40,7 +40,7 @@ export class HealthService {
         database,
         redis,
         queue,
-        // Non-null: Carbon::now() always produces a timestamp.
+        // Non-null: The original::now() always produces a timestamp.
         timestamp: toIso8601String(new Date()) as string,
       },
       statusCode: status === 'ok' ? 200 : 503,

@@ -8,7 +8,7 @@ import {
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-interface LaravelEncryptionPayload {
+interface EncryptionPayload {
   iv: string;
   value: string;
   mac: string;
@@ -16,15 +16,19 @@ interface LaravelEncryptionPayload {
 }
 
 /**
- * Reads columns written by Laravel's `encrypted` cast (users.github_token).
+ * Reads and writes the encrypted users.github_token column.
  *
- * Laravel's default cipher is AES-256-CBC. The stored value is base64(JSON)
- * with { iv, value, mac }, where mac = HMAC-SHA256(iv . value) using APP_KEY.
+ * The cipher is AES-256-CBC. The stored value is base64(JSON) with
+ * { iv, value, mac }, where mac = HMAC-SHA256(iv . value) keyed by APP_KEY.
  * Verify the MAC before decrypting — an unauthenticated CBC decrypt is a
  * padding-oracle waiting to happen.
+ *
+ * This format is fixed by the rows already in the database, not chosen. It is
+ * also why APP_KEY must never be rotated casually: a new key makes every
+ * stored token permanently unreadable, and nothing will say so out loud.
  */
 @Injectable()
-export class LaravelCryptService {
+export class CryptService {
   private readonly key: Buffer;
 
   constructor(configService: ConfigService) {
@@ -40,16 +44,17 @@ export class LaravelCryptService {
   }
 
   /**
-   * Writes a value Laravel's `encrypted` cast can read back.
+   * Writes users.github_token in the format the existing rows already use.
    *
-   * Required as soon as NestJS owns GitHub OAuth: it stores
-   * users.github_token, and the Laravel app (and its queue worker) still read
-   * that column through the cast. A plaintext write there would surface as
-   * "The MAC is invalid." on the PHP side.
+   * Every token stored before this service existed is in that format, so read
+   * and write have to agree with it exactly — a token written any other way
+   * fails MAC verification on the way back out and the user's reviews stop
+   * working with no error until someone opens the row.
    *
-   * Laravel's Encrypter emits base64(json({iv, value, mac, tag})) where the
-   * inner value is PHP-serialised BEFORE encryption and `tag` is empty for the
-   * non-AEAD default cipher.
+   * The shape is base64(json({iv, value, mac, tag})), where the inner value is
+   * PHP-serialised BEFORE encryption and `tag` is empty for the non-AEAD
+   * cipher. The PHP serialisation is part of the stored bytes, not a leftover
+   * import: `s:<byte length>:"<value>";` is what sits inside the ciphertext.
    */
   encrypt(plaintext: string): string {
     const iv = randomBytes(16);
@@ -74,9 +79,9 @@ export class LaravelCryptService {
       return null;
     }
 
-    let parsed: LaravelEncryptionPayload;
+    let parsed: EncryptionPayload;
     try {
-      parsed = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as LaravelEncryptionPayload;
+      parsed = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as EncryptionPayload;
     } catch {
       throw new InternalServerErrorException('Could not decode encrypted payload.');
     }
@@ -91,12 +96,12 @@ export class LaravelCryptService {
       decipher.final(),
     ]);
 
-    // Laravel serialises before encrypting; `encrypted` cast values are PHP
+    // The original serialises before encrypting; `encrypted` cast values are PHP
     // strings, which serialize() wraps as: s:<len>:"<value>";
     return this.unserializeString(plaintext.toString('utf8'));
   }
 
-  private macIsValid(payload: LaravelEncryptionPayload): boolean {
+  private macIsValid(payload: EncryptionPayload): boolean {
     const expected = createHmac('sha256', this.key)
       .update(payload.iv + payload.value)
       .digest();

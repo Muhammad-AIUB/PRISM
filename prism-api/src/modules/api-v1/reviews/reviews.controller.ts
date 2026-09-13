@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../../../auth/current-user.decorator';
-import { SanctumAuthGuard } from '../../../auth/sanctum-auth.guard';
+import { ApiTokenAuthGuard } from '../../../auth/api-token-auth.guard';
 import type { User } from '../../../database/entities';
 import { ListReviewsQuery } from './dto/list-reviews.query';
 import type {
@@ -27,13 +27,13 @@ import { ReviewsService } from './reviews.service';
  * Paths, verbs and payloads are frozen: mcp-server/index.js is already
  * deployed on users' machines and calls these exact URLs.
  *
- * The two POST /re-analyze endpoints are served here now that the AI worker
- * runs on BullMQ: they enqueue the same jobs the webhook does. The two *web*
- * re-analyze routes are session-authenticated and stay on Laravel until slice
- * B. See MIGRATION.md.
+ * The two POST /re-analyze endpoints enqueue the same jobs the webhook does.
+ * Their session-authenticated twins live in modules/reviews-web and behave
+ * differently on purpose — see the note on ReviewsService.reAnalyzeCommit
+ * before assuming either pair should be collapsed into the other.
  */
 @Controller('api/v1')
-@UseGuards(SanctumAuthGuard)
+@UseGuards(ApiTokenAuthGuard)
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
@@ -72,7 +72,7 @@ export class ReviewsController {
   }
 
   /**
-   * Laravel's response()->json() defaults to 200; Nest defaults POST to 201.
+   * The previous handler defaulted to 200; Nest defaults POST to 201.
    * The MCP server does not check the code, but the contract is 200 — pin it.
    */
   @Post('commits/:id/re-analyze')

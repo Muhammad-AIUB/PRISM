@@ -42,7 +42,7 @@ export class Repository {
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
 
-  /** Laravel stores this as varchar(32), validated in application code. */
+  /** The original stores this as varchar(32), validated in application code. */
   @Column({ type: 'varchar', length: 32, default: 'pr_only' })
   reviewMode!: ReviewMode;
 

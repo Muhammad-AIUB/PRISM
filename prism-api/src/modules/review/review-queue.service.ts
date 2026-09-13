@@ -11,10 +11,10 @@ import {
 } from './review.queue';
 
 /**
- * The Node-side equivalent of ProcessCommitReview::dispatch(). Used by webhook
+ * The Node-side equivalent of the previous dispatch helper. Used by webhook
  * ingestion and by the two /api/v1 re-analyze endpoints.
  *
- * These jobs land in Redis, not the `jobs` table, so Laravel's worker will
+ * These jobs land in Redis, not the `jobs` table, so the original's worker will
  * never see them and the two workers cannot contend.
  */
 @Injectable()

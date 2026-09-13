@@ -22,7 +22,7 @@ import { WebhookService } from './webhook.service';
  * cannot reshape a body GitHub is going to display.
  */
 /**
- * Laravel puts this route behind `throttle:webhook` — 60/min per IP, not the
+ * The original puts this route behind `throttle:webhook` — 60/min per IP, not the
  * api limiter's 100/min. Overriding the limit here gives the same ceiling, and
  * the throttler's storage key is per-handler, so this gets its own bucket
  * rather than sharing one with the API routes.

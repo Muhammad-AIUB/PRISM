@@ -1,5 +1,5 @@
 /**
- * Port of detectLanguages(), duplicated verbatim in both Laravel jobs.
+ * Port of detectLanguages(), duplicated verbatim in both the original jobs.
  *
  * Feeds two things: the `detected_languages` badges in the UI and the
  * language-specific rule block appended to the AI system prompt. Both are

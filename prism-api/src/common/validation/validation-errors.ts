@@ -2,9 +2,9 @@ import { UnprocessableEntityException } from '@nestjs/common';
 import type { ValidationError } from 'class-validator';
 
 /**
- * Turns class-validator's errors into Laravel's ValidationException response.
+ * Turns class-validator's errors into the original's ValidationException response.
  *
- * Laravel answers a failed validation with 422 and:
+ * The original answers a failed validation with 422 and:
  *   { "message": "<the first error message>",
  *     "errors": { "field": ["...", "..."] } }
  *
@@ -13,7 +13,7 @@ import type { ValidationError } from 'class-validator';
  * ValidationError.property rather than parsing the message text also means the
  * field names are exact, including for custom messages.
  *
- * Nested errors use Laravel's dot notation ("review_branches.0"), so array
+ * Nested errors use the original's dot notation ("review_branches.0"), so array
  * item failures land under a key the same way they do today.
  */
 export function collectValidationErrors(
@@ -42,7 +42,7 @@ export function collectValidationErrors(
   return collected;
 }
 
-export function laravelValidationException(
+export function validationException(
   errors: ValidationError[],
 ): UnprocessableEntityException {
   const collected = collectValidationErrors(errors);

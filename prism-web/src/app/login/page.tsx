@@ -16,7 +16,7 @@ function GithubIcon({ className }: { className?: string }) {
 /**
  * Port of Pages/Auth/Login.jsx.
  *
- * The OAuth failure message arrived as an Inertia error bag; the NestJS
+ * The OAuth failure message arrived as an the previous frontend error bag; the NestJS
  * callback redirects here with `?error=` instead, so it is read from the
  * query string.
  */
