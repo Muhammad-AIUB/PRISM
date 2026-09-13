@@ -6,6 +6,11 @@
 
 *An intelligent, self-hostable alternative to CodeRabbit and Greptile — built with engineering depth, not just features.*
 
+**[▶ Try it live — prism-web-fgts.onrender.com](https://prism-web-fgts.onrender.com/login)**
+
+<sub>Hosted on Render's free tier, so the first request after an idle spell takes ~30s to wake the service.</sub>
+
+[![Live](https://img.shields.io/badge/Live-prism--web--fgts.onrender.com-2ea44f)](https://prism-web-fgts.onrender.com/login)
 [![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs)](https://nestjs.com)
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs)](https://nextjs.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://postgresql.org)
@@ -32,7 +37,7 @@ Modern software teams face three painful realities in code review:
 
 When a developer opens a pull request on a connected repository, PRism:
 
-1. **Receives** the GitHub webhook (HMAC-verified, IP-whitelisted)
+1. **Receives** the GitHub webhook (HMAC-verified against the raw request body)
 2. **Fetches** the unified diff via GitHub API
 3. **Detects** the languages involved (PHP, JS/TS, Python, Go, Ruby, Java)
 4. **Analyzes** the code through three engineering lenses:

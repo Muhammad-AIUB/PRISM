@@ -96,7 +96,8 @@ unreadable.
 
 ### The review pipeline
 
-Webhook (`modules/webhook/`, HMAC + GitHub IP whitelist) or a re-analyze route
+Webhook (`modules/webhook/`, HMAC over the raw body — IP allow-listing was
+removed because Render's edge proxy masks GitHub's source address) or a re-analyze route
 enqueues **only a row id** onto the `prism-reviews` BullMQ queue. `ReviewProcessor`
 consumes it in the same Nest process — Render's free tier has no background-worker
 type, and `concurrency: 1` is what keeps peak memory inside 512MB.
@@ -117,10 +118,23 @@ Deliberate behaviours to preserve:
   not roll back a completed review.
 - If every model returns unparseable JSON the review completes with a null score and
   the raw text, rather than failing.
-- `ai-client.service.ts`: Groq first (native JSON mode), then OpenRouter free models.
-  The model list, its order, the temperatures, and the fact that the second pass
-  sends no temperature on OpenRouter are all measured behaviour. Do not reorder or
+- `ai-client.service.ts`: **Groq only** — `llama-3.3-70b-versatile`, then
+  `llama-3.1-8b-instant`. The OpenRouter fallback chain was removed in `bec6ce6`;
+  nothing reads `OPENROUTER_API_KEY` any more and `GROQ_API_KEY` is required at boot.
+  That makes Groq's native JSON mode (`response_format: json_object`) load-bearing
+  rather than decorative — it is what the removed chain used to cover. The model
+  list, its order and the temperature are measured behaviour. Do not reorder or
   "modernise" without re-measuring parse rates.
+- The per-attempt job budget is **derived**, not written down (`review.queue.ts`):
+  it imports `GROQ_TIMEOUT_MS`/`GROQ_MODELS` and the GitHub timeout so it cannot
+  drift back under the work it wraps. The PHP's `$timeout = 120` was copied across
+  literally and was too small, which quietly made the graceful-degradation bullet
+  above unreachable whenever models failed by hanging.
+- The deadline **cancels**, it does not merely stop waiting. `review.processor.ts`
+  aborts an `AbortController` that is threaded to every `fetch`, and the runners
+  call `signal.throwIfAborted()` before each side effect. An earlier `Promise.race`
+  version left the timed-out runner alive, which double-posted GitHub comments and
+  raced `markFailed` against its own `status: 'completed'`.
 
 ## Laravel-compatibility invariants
 
