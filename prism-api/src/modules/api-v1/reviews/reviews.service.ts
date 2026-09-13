@@ -89,7 +89,19 @@ export class ReviewsService {
     return { message: 'Re-analysis queued', id };
   }
 
-  /** POST /api/v1/pull-requests/:id/re-analyze — status only, no cache purge. */
+  /**
+   * POST /api/v1/pull-requests/:id/re-analyze — no explicit cache purge, and
+   * it must not grow one. The worker keys the cached diff on
+   * sha1(head_branch|updated_at), so writing a fresh updated_at IS the
+   * invalidation, and it is the only reason this endpoint touches the column.
+   *
+   * Laravel got that write for free: `$pullRequest->update(['status' => …])`
+   * touches updated_at because Eloquent timestamps are on. TypeORM entities
+   * here declare plain @Column timestamps rather than @UpdateDateColumn, so
+   * update() writes only the fields named below — omit updatedAt and the key
+   * never changes, and the job re-reviews the diff captured before the user
+   * pushed their fix, for the full hour of the TTL, with no error anywhere.
+   */
   async reAnalyzePullRequest(user: User, id: number): Promise<{ message: string; id: number }> {
     const pullRequest = await this.pullRequests.findOne({
       where: { id },
@@ -102,7 +114,7 @@ export class ReviewsService {
 
     this.assertOwnership(user, pullRequest.repository?.userId ?? null);
 
-    await this.pullRequests.update(id, { status: 'analyzing' });
+    await this.pullRequests.update(id, { status: 'analyzing', updatedAt: new Date() });
     await this.reviewQueue.enqueuePullRequestReview(id);
 
     await this.auditLog.record(
