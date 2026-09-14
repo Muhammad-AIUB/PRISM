@@ -25,6 +25,26 @@ export type Layer = 'security' | 'performance' | 'code_quality';
 export interface ReviewIssue {
   file?: string;
   line?: number;
+  /**
+   * Which side of the diff `line` counts on. A removed line has no new-side
+   * number, so it is reported against its old one — showing that bare would
+   * point the reader at whatever now occupies that position. Absent on reviews
+   * written before the API started validating locations.
+   */
+  side?: 'added' | 'removed';
+  /**
+   * What kind of problem this claims to be. The first three are the ones a
+   * reader can confirm against the diff in seconds, which is what lets the
+   * verdict say "blocking" and mean it. Absent on older reviews.
+   */
+  category?:
+    | 'auth_weakened'
+    | 'contract_changed'
+    | 'no_timeout'
+    | 'error_swallowed'
+    | 'untested_change'
+    | 'migration_no_rollback'
+    | 'other';
   severity?: Severity;
   comment?: string;
 }
@@ -133,9 +153,21 @@ export interface ReviewComment {
   comment: string;
 }
 
+/**
+ * The answer to "should this stop me merging". Derived on the API from the
+ * findings that survived validation, so every surface agrees rather than each
+ * one deciding for itself. `blocking` requires a category a reader can confirm
+ * against the diff, not just a severity the model chose.
+ */
+export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found';
+
 export interface ReviewDetail {
   id: number;
   overall_score: number | null;
+  /** Absent on reviews written before verdicts existed. */
+  verdict?: Verdict;
+  /** All three layers merged and ordered worst-first by the API. */
+  findings?: ReviewIssue[];
   summary: string | null;
   ai_model_used: string | null;
   security_issues: ReviewIssue[];
@@ -154,6 +186,8 @@ export interface CommitReviewDetail {
   branch: string;
   status: ReviewStatus;
   overall_score: number | null;
+  verdict?: Verdict;
+  findings?: ReviewIssue[];
   summary: string | null;
   security_issues: ReviewIssue[];
   performance_issues: ReviewIssue[];

@@ -2,7 +2,7 @@
 
 import { Check, Copy, Wand2 } from 'lucide-react';
 import { useState } from 'react';
-import type { ReviewIssue, SuggestedFix } from '@/lib/types';
+import type { ReviewIssue, SuggestedFix, Verdict } from '@/lib/types';
 
 /**
  * The pieces the PR review and commit review screens both render. They were
@@ -14,6 +14,117 @@ const SEV: Record<string, { color: string; label: string }> = {
   warning: { color: 'var(--warning)', label: 'Warning' },
   suggestion: { color: 'var(--info)', label: 'Suggestion' },
 };
+
+const VERDICTS: Record<Verdict, { label: string; color: string; note: string }> = {
+  blocking: {
+    label: 'Blocking',
+    color: 'var(--danger)',
+    note: 'Something here can be checked against the diff and should stop a merge.',
+  },
+  worth_a_look: {
+    label: 'Worth a look',
+    color: 'var(--warning)',
+    note: 'Nothing that clearly blocks, but read these before merging.',
+  },
+  nothing_found: {
+    label: 'Nothing found',
+    color: 'var(--success)',
+    note: 'No issue survived checking against the lines this change actually touched.',
+  },
+};
+
+/**
+ * The answer, before the evidence.
+ *
+ * Everything below this on the page is browsable detail: five tabs, a severity
+ * filter, a diff. That is the right shape for someone investigating and the
+ * wrong shape for someone who just wants to know whether they can merge. This
+ * panel answers that in one line and shows at most three findings, worst first,
+ * so a tired reader at the end of a day is not made to go hunting through tabs
+ * for the thing that matters.
+ *
+ * The ordering and the verdict are computed once on the API and sent down, so
+ * this page cannot disagree with the GitHub comment about the same review.
+ */
+export function VerdictPanel({
+  verdict,
+  findings,
+}: {
+  verdict?: Verdict;
+  findings?: ReviewIssue[];
+}) {
+  // Reviews written before verdicts existed have neither field. Showing nothing
+  // is right: inventing a verdict for a review that was never checked would be
+  // exactly the overclaiming this whole change set exists to remove.
+  if (!verdict || !findings) {
+    return null;
+  }
+
+  const shown = findings.slice(0, 3);
+  const rest = findings.length - shown.length;
+  const style = VERDICTS[verdict];
+
+  return (
+    <div className="card" style={{ borderColor: `color-mix(in srgb, ${style.color} 32%, transparent)` }}>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-lg font-semibold tracking-tight" style={{ color: style.color }}>
+          {style.label}
+        </span>
+        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+          {findings.length === 1 ? '1 finding' : `${findings.length} findings`}
+        </span>
+      </div>
+      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+        {style.note}
+      </p>
+
+      {shown.length > 0 && (
+        <ol className="mt-4 space-y-3">
+          {shown.map((finding, index) => (
+            <li key={`${finding.file}-${finding.line}-${index}`} className="flex gap-3">
+              <span
+                className="mt-0.5 shrink-0 font-mono text-xs font-semibold"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {index + 1}.
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <code className="truncate font-mono text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {finding.file}
+                    {finding.line ? `:${finding.line}` : ''}
+                    {finding.side === 'removed' ? ' (removed)' : ''}
+                  </code>
+                  {finding.category && finding.category !== 'other' && (
+                    <span
+                      className="rounded font-mono text-[10px]"
+                      style={{
+                        backgroundColor: 'var(--bg-hover)',
+                        color: 'var(--text-secondary)',
+                        padding: '0.0625rem 0.375rem',
+                      }}
+                    >
+                      {finding.category}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                  {finding.comment}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {rest > 0 && (
+        <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {rest === 1 ? '1 more finding' : `${rest} more findings`} in the tabs below.
+        </p>
+      )}
+    </div>
+  );
+}
 
 const STATUS: Record<string, { color: string; pulse?: boolean }> = {
   pending: { color: 'var(--warning)' },
@@ -386,6 +497,10 @@ export function IssueCard({ issue }: { issue: ReviewIssue }) {
                   }}
                 >
                   Line {issue.line}
+                  {/* A removed line is numbered on the old side, so saying so
+                      is the difference between "look here" and "look at what
+                      used to be here". */}
+                  {issue.side === 'removed' ? ' (removed)' : ''}
                 </span>
               ) : null}
             </div>

@@ -12,7 +12,11 @@ import { CryptService } from '../../common/utils/crypt.service';
 import { PullRequest, Review, ReviewComment } from '../../database/entities';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 import type { ReviewLayer, ReviewSeverity } from '../../database/entities/review-comment.entity';
-import { detectLanguages } from '../../diff/language-detector';
+import { prepareDiff } from '../../diff/prepare';
+import { droppedCount, validateLayers } from '../../ai/issue-validator';
+import { validateFixes } from '../../ai/fix-validator';
+import { reconcileScore, verdictFor } from '../../ai/verdict';
+import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
 import { EmailService } from '../../notifications/email.service';
 import { SlackService } from '../../notifications/slack.service';
@@ -84,8 +88,11 @@ export class PullRequestReviewRunner {
       () => this.github.fetchPullRequestDiff(token, repository.fullName, pr.prNumber, signal),
     );
 
-    const diff = diffBody.slice(0, DIFF_LIMIT);
-    const languages = detectLanguages(diff);
+    // Select whole files rather than cutting at a byte, render every changed
+    // line with an anchor, and detect languages from the WHOLE diff. Shared
+    // with the commit runner so a parser fix lands in one place.
+    const prepared = prepareDiff(diffBody, DIFF_LIMIT);
+    const languages = prepared.languages;
 
     if (languages.length > 0) {
       await this.pullRequests.update(pr.id, { detectedLanguages: languages });
@@ -94,7 +101,7 @@ export class PullRequestReviewRunner {
     // 2. First AI pass.
     const attemptResult = await this.aiClient.callWithFallback(
       this.promptBuilder.buildSystemPrompt(languages, 'pull request'),
-      `Review this diff:\n${diff}`,
+      `Review this diff:\n${prepared.body}`,
       'pr_review',
       signal,
     );
@@ -123,9 +130,38 @@ export class PullRequestReviewRunner {
       return;
     }
 
-    const layers = FixesService.layersFrom(parsed);
-    const overallScore = clampScore(parsed.overall_score);
-    const summary = typeof parsed.summary === 'string' ? parsed.summary : null;
+    // Every location the model reported is checked against the lines we
+    // actually rendered. A finding that does not resolve is dropped rather than
+    // shown against a guessed line — a comment pointing at the wrong line costs
+    // more trust than a missing comment costs bugs.
+    const layers = validateLayers(FixesService.layersFrom(parsed), prepared.anchors);
+    const dropped = droppedCount(layers);
+
+    if (dropped > 0) {
+      this.logger.log(
+        `issue_validation ${JSON.stringify({
+          pr_id: pr.id,
+          kept: layers.kept,
+          dropped,
+          reasons: layers.reasons,
+        })}`,
+      );
+    }
+
+    // The model scored the list it reported, not the list that survived. Pull
+    // the number into agreement with the verdict so the page cannot contradict
+    // itself; the score stays because deployed MCP clients read it.
+    const verdict = verdictFor([
+      ...layers.security,
+      ...layers.performance,
+      ...layers.code_quality,
+    ]);
+    const overallScore = reconcileScore(clampScore(parsed.overall_score), verdict);
+    const summary = composeSummary(
+      typeof parsed.summary === 'string' ? parsed.summary : null,
+      prepared.coverage,
+      dropped,
+    );
 
     // Out of budget. Stop before the upsert: the retry redoes all of this, and
     // this row plus its comments must come from one attempt, not two.
@@ -152,17 +188,33 @@ export class PullRequestReviewRunner {
     }
 
     // 4. Second AI pass: suggested fixes.
+    // The selected text, not a raw byte cut: the fixes pass gets the same code
+    // the review pass saw. Its own 4000-character limit still applies inside
+    // buildFixesPrompt, and its line numbers remain unvalidated — that is
+    // tracked separately, not silently fixed here.
     const suggestedFixes = await this.fixes.generate(
       model ?? '',
       layers,
-      diff,
+      prepared.selection.text,
       'pull request',
       'pr_review',
       signal,
     );
 
     if (suggestedFixes !== null) {
-      await this.reviews.update(review.id, { suggestedFixes });
+      // Fixes name their own file and line and the UI renders them in a badge,
+      // so they get checked too: the code they quote has to actually be at the
+      // line they claim. Otherwise the weakest surface sets the trust level for
+      // every verified finding beside it.
+      const checked = validateFixes(suggestedFixes.fixes, prepared.index);
+
+      if (checked.dropped > 0) {
+        this.logger.log(
+          `fix_validation ${JSON.stringify({ pr_id: pr.id, kept: checked.fixes.length, dropped: checked.dropped })}`,
+        );
+      }
+
+      await this.reviews.update(review.id, { suggestedFixes: { fixes: checked.fixes } });
     }
 
     // 5. Post the summary back on the GitHub PR. Last checkpoint before the
@@ -175,6 +227,9 @@ export class PullRequestReviewRunner {
       repository.fullName,
       pr.prNumber,
       this.summaryComment.buildForPullRequest({
+        // The web route is /reviews/[pullRequest], keyed on the pull request
+        // rather than the review row, so this is pr.id and not review.id.
+        id: pr.id,
         overallScore,
         summary,
         securityIssues: layers.security as ReviewIssue[],

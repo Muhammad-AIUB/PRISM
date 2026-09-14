@@ -15,6 +15,20 @@ const DIFF_ACCEPT = 'application/vnd.github.v3.diff';
 /** Exported: the BullMQ job budget is derived from it. See review.queue.ts. */
 export const REQUEST_TIMEOUT_MS = 30_000;
 
+/**
+ * Hard ceiling on how much of a diff is ever held in memory.
+ *
+ * Deliberately far above the review budget, so it only fires on diffs nobody
+ * was going to review in full anyway. The point is not truncation — selection
+ * already handles that — it is that the worker runs in 512MB alongside Nest,
+ * TypeORM, pg, ioredis and BullMQ, and a monorepo diff read whole is the one
+ * allocation in this pipeline with no upper bound at all.
+ *
+ * It has to be enforced while reading. Slicing the string afterwards frees
+ * nothing, because by then the whole thing has already been allocated.
+ */
+export const MAX_DIFF_BYTES = 2_000_000;
+
 @Injectable()
 export class GithubClientService {
   private readonly logger = new Logger(GithubClientService.name);
@@ -31,6 +45,7 @@ export class GithubClientService {
       token,
       DIFF_ACCEPT,
       signal,
+      true,
     );
 
     if (!response.ok) {
@@ -38,6 +53,54 @@ export class GithubClientService {
     }
 
     return response.body;
+  }
+
+  /**
+   * Reads at most MAX_DIFF_BYTES and abandons the rest of the stream.
+   *
+   * Cutting lands on a line boundary for two reasons: the diff parser walks
+   * lines and must never be handed half of one, and a cut inside a multi-byte
+   * character would otherwise leave a replacement character behind.
+   */
+  private async readBounded(body: ReadableStream<Uint8Array> | null): Promise<string> {
+    if (!body) {
+      return '';
+    }
+
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    let bytes = 0;
+
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          return text + decoder.decode();
+        }
+
+        bytes += value.byteLength;
+
+        if (bytes >= MAX_DIFF_BYTES) {
+          text += decoder.decode(value, { stream: true }) + decoder.decode();
+
+          // The chunk that crossed the line is appended whole, so cut back to
+          // the ceiling and then to the last line break. "Ceiling" has to mean
+          // ceiling, or the bound is really "cap plus whatever one chunk is".
+          const capped = text.slice(0, MAX_DIFF_BYTES);
+          const lastBreak = capped.lastIndexOf('\n');
+
+          return lastBreak === -1 ? capped : capped.slice(0, lastBreak + 1);
+        }
+
+        text += decoder.decode(value, { stream: true });
+      }
+    } finally {
+      // Releases the socket rather than letting the rest of a huge response
+      // keep arriving into a buffer nobody will read.
+      await reader.cancel().catch(() => undefined);
+    }
   }
 
   /** GET /repos/{full_name}/commits/{sha} as a unified diff. */
@@ -52,6 +115,7 @@ export class GithubClientService {
       token,
       DIFF_ACCEPT,
       signal,
+      true,
     );
 
     if (!response.ok) {
@@ -319,6 +383,7 @@ export class GithubClientService {
     token: string,
     accept: string,
     signal?: AbortSignal,
+    bounded = false,
   ): Promise<{ ok: boolean; status: number; body: string }> {
     const response = await fetch(url, {
       headers: {
@@ -329,7 +394,13 @@ export class GithubClientService {
       signal: this.deadline(signal),
     });
 
-    return { ok: response.ok, status: response.status, body: await response.text() };
+    return {
+      ok: response.ok,
+      status: response.status,
+      // Diffs are read with a hard ceiling. Everything else on this path is
+      // small and known — comment posts and JSON metadata — and is read whole.
+      body: bounded ? await this.readBounded(response.body) : await response.text(),
+    };
   }
 
   /** This request's own ceiling, or the caller's budget — whichever is sooner. */

@@ -1,0 +1,4 @@
+# Harness scratch: fetched diffs and run results. The script re-fetches on demand,
+# and results are per-run measurements, not source.
+.diff-cache/
+measure-*.json

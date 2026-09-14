@@ -24,6 +24,8 @@ export type AiCallContext = 'commit_review' | 'pr_review';
 export interface RawAiResult {
   parsed: ExtractedJson | null;
   raw: string | null;
+  /** 429 specifically, which is a failed attempt rather than a bad answer. */
+  rateLimited?: boolean;
 }
 
 export interface FallbackAiResult extends RawAiResult {
@@ -32,6 +34,26 @@ export interface FallbackAiResult extends RawAiResult {
 }
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+
+/**
+ * Every model was rate limited, which is a failed attempt rather than a review.
+ *
+ * Thrown so it reaches BullMQ, whose REVIEW_JOB_BACKOFF_SECONDS is already
+ * [60, 180, 600] — a schedule that fits a per-minute token limit well. Handling
+ * it here instead, by sleeping on `retry-after`, would spend the derived job
+ * budget waiting and would stall every other review behind it, because the
+ * worker runs at concurrency 1.
+ *
+ * This is deliberately NOT how unparseable output is treated: a model that
+ * answers badly still produces a completed review with the raw text, which is a
+ * documented feature and is covered by its own regression test.
+ */
+export class RateLimitedError extends Error {
+  constructor(model: string) {
+    super(`Groq rate limited every model (last: ${model})`);
+    this.name = 'RateLimitedError';
+  }
+}
 
 /**
  * Exported because the BullMQ job timeout is derived from it. Those two numbers
@@ -75,6 +97,7 @@ export class AiClientService {
 
     let lastModel: string | null = null;
     let lastRaw: string | null = null;
+    let rateLimited = 0;
 
     for (const model of GROQ_MODELS) {
       // The job budget is spent. Falling through to the next model here would
@@ -89,9 +112,22 @@ export class AiClientService {
         return { model: lastModel, parsed: result.parsed, raw: result.raw };
       }
 
+      if (result.rateLimited) {
+        rateLimited += 1;
+        this.logger.warn(`Groq rate limited, trying next model: ${model}`);
+        continue;
+      }
+
       this.logger.warn(
         `Groq model returned unparseable output, trying next: ${model} — ${(result.raw ?? '').slice(0, 200)}`,
       );
+    }
+
+    // Nothing was wrong with the review; the provider simply would not talk to
+    // us. Fail the attempt so the existing backoff retries it, rather than
+    // completing a review that contains no review.
+    if (rateLimited === GROQ_MODELS.length) {
+      throw new RateLimitedError(lastModel ?? 'unknown');
     }
 
     return { model: lastModel, parsed: null, raw: lastRaw };
@@ -147,8 +183,12 @@ export class AiClientService {
         `Groq call failed: ${response.status} ${(response.body ?? '').slice(0, 500)}`,
       );
 
-      // The raw HTTP body, not the message content — there is no content.
-      return { parsed: null, raw: response.body };
+      // `raw` is what the graceful-degradation path shows the user as the model's
+      // own words. An HTTP error body is not that, and returning it here is how
+      // a rate-limited review ended up displaying Groq's error JSON as its
+      // summary. The status is logged above; the user is not shown a transport
+      // failure dressed up as a review.
+      return { parsed: null, raw: null, rateLimited: response.status === 429 };
     }
 
     const content = this.contentOf(response.json);

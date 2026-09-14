@@ -1,45 +1,52 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ReviewIssue } from '../../database/entities/review.entity';
+import { orderFindings, verdictFor, type Verdict } from '../../ai/verdict';
 
 /**
- * Port of buildSummaryComment() from both jobs. This text is posted publicly on
- * GitHub, so it is the most visible parity surface in the whole slice.
+ * The comment PRism posts on a pull request or a commit.
  *
- * The two differ in ways that look accidental but are shipped behaviour:
- *   - commits are headed "PRism AI Review (Commit)", PRs just "PRism AI Review"
- *   - commits append a "[View full review](…)" link, PRs do not
+ * This is the most visible thing the product does. It used to say a score, three
+ * counts, and a paragraph — "2 security issues" with no file, no line, no
+ * explanation, and on pull requests not even a link to go and read them. A
+ * reviewer standing in the pull request had to leave it, open a dashboard and
+ * hunt, to find out what the bot meant. Most people do not.
+ *
+ * So the findings come here, worst first, capped at three with the rest folded
+ * into a <details> block. The cap is the point rather than a limitation: a
+ * reader who is handed eleven things reads none of them.
  */
+const SHOWN = 3;
+
+const VERDICT_LABELS: Record<Verdict, string> = {
+  blocking: '**BLOCKING**',
+  worth_a_look: '**WORTH A LOOK**',
+  nothing_found: '**NOTHING FOUND**',
+};
+
+interface CommentReview {
+  id: number;
+  overallScore: number | null;
+  summary: string | null;
+  securityIssues: ReviewIssue[] | null;
+  performanceIssues: ReviewIssue[] | null;
+  codeQualityIssues: ReviewIssue[] | null;
+  aiModelUsed: string | null;
+}
+
 @Injectable()
 export class SummaryCommentBuilder {
   constructor(private readonly configService: ConfigService) {}
 
-  buildForPullRequest(review: {
-    overallScore: number | null;
-    summary: string | null;
-    securityIssues: ReviewIssue[] | null;
-    performanceIssues: ReviewIssue[] | null;
-    codeQualityIssues: ReviewIssue[] | null;
-    aiModelUsed: string | null;
-  }): string {
+  buildForPullRequest(review: CommentReview): string {
     return (
       '## 🔍 PRism AI Review\n\n' +
       this.body(review) +
-      `_Model: ${review.aiModelUsed ?? ''}_`
+      `[View full review](${this.url(`/reviews/${review.id}`)}) · _Model: ${review.aiModelUsed ?? ''}_`
     );
   }
 
-  buildForCommit(
-    review: {
-      id: number;
-      overallScore: number | null;
-      summary: string | null;
-      securityIssues: ReviewIssue[] | null;
-      performanceIssues: ReviewIssue[] | null;
-      codeQualityIssues: ReviewIssue[] | null;
-      aiModelUsed: string | null;
-    },
-  ): string {
+  buildForCommit(review: CommentReview): string {
     return (
       '## 🔍 PRism AI Review (Commit)\n\n' +
       this.body(review) +
@@ -47,27 +54,46 @@ export class SummaryCommentBuilder {
     );
   }
 
-  private body(review: {
-    overallScore: number | null;
-    summary: string | null;
-    securityIssues: ReviewIssue[] | null;
-    performanceIssues: ReviewIssue[] | null;
-    codeQualityIssues: ReviewIssue[] | null;
-  }): string {
+  private body(review: CommentReview): string {
+    const findings = orderFindings([
+      ...(review.securityIssues ?? []),
+      ...(review.performanceIssues ?? []),
+      ...(review.codeQualityIssues ?? []),
+    ]);
     const score = review.overallScore ?? 'N/A';
+    const verdict = VERDICT_LABELS[verdictFor(findings)];
+    const count = findings.length === 1 ? '1 finding' : `${findings.length} findings`;
 
-    return (
-      `**Overall Score:** ${score}/100\n\n` +
-      `- 🛡️ Security issues: ${this.count(review.securityIssues)}\n` +
-      `- ⚡ Performance issues: ${this.count(review.performanceIssues)}\n` +
-      `- 🧹 Code quality issues: ${this.count(review.codeQualityIssues)}\n\n` +
-      // PHP's `?:` treats an empty summary as absent, not just null.
-      `**Summary:** ${review.summary ? review.summary : '_No summary provided._'}\n\n`
-    );
+    let out = `${verdict} — ${count} · Score ${score}/100\n\n`;
+
+    findings.slice(0, SHOWN).forEach((finding, index) => {
+      out += this.finding(finding, index + 1);
+    });
+
+    const rest = findings.slice(SHOWN);
+
+    if (rest.length > 0) {
+      out += `<details><summary>${rest.length} more finding${rest.length === 1 ? '' : 's'}</summary>\n\n`;
+      rest.forEach((finding, index) => {
+        out += this.finding(finding, SHOWN + index + 1);
+      });
+      out += '</details>\n\n';
+    }
+
+    // PHP's `?:` treated an empty summary as absent, not just null. Kept.
+    return `${out}**Summary:** ${review.summary ? review.summary : '_No summary provided._'}\n\n`;
   }
 
-  private count(issues: ReviewIssue[] | null): number {
-    return Array.isArray(issues) ? issues.length : 0;
+  private finding(finding: ReviewIssue, position: number): string {
+    // A removed line is numbered on the old side, so saying so is the difference
+    // between "look here" and "look at what used to be here".
+    const side = finding.side === 'removed' ? ' (removed)' : '';
+    const where = finding.line ? `${finding.file}:${finding.line}` : (finding.file ?? 'unknown');
+
+    return (
+      `**${position}. \`${where}\`${side}** · ${finding.category ?? 'other'}\n` +
+      `${finding.comment ?? ''}\n\n`
+    );
   }
 
   private url(path: string): string {

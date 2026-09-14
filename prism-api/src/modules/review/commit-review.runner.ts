@@ -10,7 +10,11 @@ import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { CommitReview } from '../../database/entities';
 import type { ReviewIssue } from '../../database/entities/review.entity';
-import { detectLanguages } from '../../diff/language-detector';
+import { prepareDiff } from '../../diff/prepare';
+import { droppedCount, validateLayers } from '../../ai/issue-validator';
+import { validateFixes } from '../../ai/fix-validator';
+import { reconcileScore, verdictFor } from '../../ai/verdict';
+import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
 import { EmailService } from '../../notifications/email.service';
 import { SlackService } from '../../notifications/slack.service';
@@ -77,8 +81,10 @@ export class CommitReviewRunner {
       () => this.github.fetchCommitDiff(token, repository.fullName, review.commitSha, signal),
     );
 
-    const diff = diffBody.slice(0, DIFF_LIMIT);
-    const languages = detectLanguages(diff);
+    // Same preparation as the pull-request runner, by design: these two stay in
+    // step, and a parser fix has to land once rather than twice.
+    const prepared = prepareDiff(diffBody, DIFF_LIMIT);
+    const languages = prepared.languages;
 
     if (languages.length > 0) {
       await this.commitReviews.update(review.id, { detectedLanguages: languages });
@@ -87,7 +93,7 @@ export class CommitReviewRunner {
     // 2. First AI pass.
     const attemptResult = await this.aiClient.callWithFallback(
       this.promptBuilder.buildSystemPrompt(languages, 'commit'),
-      `Review this commit diff:\n${diff}`,
+      `Review this commit diff:\n${prepared.body}`,
       'commit_review',
       signal,
     );
@@ -114,9 +120,35 @@ export class CommitReviewRunner {
       return;
     }
 
-    const layers = FixesService.layersFrom(parsed);
-    const overallScore = clampScore(parsed.overall_score);
-    const summary = typeof parsed.summary === 'string' ? parsed.summary : null;
+    // Every reported location is checked against the lines actually rendered;
+    // anything that does not resolve is dropped rather than shown at a guess.
+    const layers = validateLayers(FixesService.layersFrom(parsed), prepared.anchors);
+    const dropped = droppedCount(layers);
+
+    if (dropped > 0) {
+      this.logger.log(
+        `issue_validation ${JSON.stringify({
+          review_id: review.id,
+          kept: layers.kept,
+          dropped,
+          reasons: layers.reasons,
+        })}`,
+      );
+    }
+
+    // Same reconciliation as the pull-request runner: the score describes the
+    // list that survived validation, not the one the model first reported.
+    const verdict = verdictFor([
+      ...layers.security,
+      ...layers.performance,
+      ...layers.code_quality,
+    ]);
+    const overallScore = reconcileScore(clampScore(parsed.overall_score), verdict);
+    const summary = composeSummary(
+      typeof parsed.summary === 'string' ? parsed.summary : null,
+      prepared.coverage,
+      dropped,
+    );
 
     // Out of budget. Stop before persisting: the retry redoes all of this, and
     // a half-written row racing its own retry is how a review ends up with one
@@ -134,17 +166,30 @@ export class CommitReviewRunner {
     });
 
     // 3. Second AI pass: suggested fixes.
+    // The selected text, matching the pull-request runner. The fixes pass keeps
+    // its own 4000-character limit and its line numbers stay unvalidated.
     const suggestedFixes = await this.fixes.generate(
       model ?? '',
       layers,
-      diff,
+      prepared.selection.text,
       'commit',
       'commit_review',
       signal,
     );
 
     if (suggestedFixes !== null) {
-      await this.commitReviews.update(review.id, { suggestedFixes });
+      // Fixes carry their own file and line and the UI shows them in a badge,
+      // so they are checked against the quoted code the same way the
+      // pull-request runner checks them.
+      const checked = validateFixes(suggestedFixes.fixes, prepared.index);
+
+      if (checked.dropped > 0) {
+        this.logger.log(
+          `fix_validation ${JSON.stringify({ review_id: review.id, kept: checked.fixes.length, dropped: checked.dropped })}`,
+        );
+      }
+
+      await this.commitReviews.update(review.id, { suggestedFixes: { fixes: checked.fixes } });
     }
 
     // 4. Post the summary on the commit (a different endpoint than PRs use).

@@ -1,0 +1,12 @@
+# Real merged PRs, fetched 2026-09-13
+facebook/react#37608
+facebook/react#37609
+microsoft/TypeScript#64247
+microsoft/TypeScript#64245
+nestjs/nest#17692
+nestjs/nest#17595
+vercel/next.js#93974
+vercel/next.js#93975
+django/django#21929
+rails/rails#58377
+rails/rails#58555

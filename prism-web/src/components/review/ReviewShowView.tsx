@@ -22,6 +22,7 @@ import {
   ReviewStatusPill,
   ScoreCircle,
   SeverityFilters,
+  VerdictPanel,
   normaliseFixes,
 } from '@/components/review/parts';
 import { AuthorAvatar } from '@/components/ui/pills';
@@ -222,6 +223,10 @@ export default function ReviewShowView({
             </div>
           </div>
         </div>
+
+        {/* The verdict leads. Everything below it is detail for someone who has
+            already decided to investigate. */}
+        <VerdictPanel verdict={review?.verdict} findings={review?.findings} />
 
         {review?.summary && (
           <div className="card">

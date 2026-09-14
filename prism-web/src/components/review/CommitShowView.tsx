@@ -12,6 +12,7 @@ import {
   LanguageBadges,
   ReviewStatusPill,
   ScoreCircle,
+  VerdictPanel,
   normaliseFixes,
 } from '@/components/review/parts';
 import type { CommitReviewDetail, SessionUser } from '@/lib/types';
@@ -158,6 +159,10 @@ export default function CommitShowView({
             </div>
           </div>
         </div>
+
+        {/* Same panel, same position as the pull request page: these two stay
+            in step, the way their runners do. */}
+        <VerdictPanel verdict={commitReview.verdict} findings={commitReview.findings} />
 
         {commitReview.summary && (
           <div className="card">

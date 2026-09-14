@@ -11,10 +11,32 @@ import { bigintTransformer } from '../transformers';
 import { PullRequest } from './pull-request.entity';
 import { ReviewComment } from './review-comment.entity';
 
-/** Shape of one entry inside the `*_issues` JSON arrays. */
+/**
+ * Shape of one entry inside the `*_issues` JSON arrays.
+ *
+ * `side` is written by the validator, never asked of the model, so adding it
+ * changes no prompt and therefore no frozen fixture. The column is `json`, so
+ * it needs no migration either — older rows simply have no `side`, which reads
+ * as "we did not know", and that is true of every row written before this.
+ */
 export interface ReviewIssue {
   file?: string;
   line?: number;
+  /** Which side of the diff `line` counts on. Removed lines use old numbering. */
+  side?: 'added' | 'removed';
+  /**
+   * What kind of problem this claims to be. Asked of the model, then normalised
+   * to `other` if it invents one — an unrecognised category must not be able to
+   * reach the blocking set. Absent on rows written before categories existed.
+   */
+  category?:
+    | 'auth_weakened'
+    | 'contract_changed'
+    | 'no_timeout'
+    | 'error_swallowed'
+    | 'untested_change'
+    | 'migration_no_rollback'
+    | 'other';
   severity?: 'critical' | 'warning' | 'suggestion';
   comment?: string;
 }

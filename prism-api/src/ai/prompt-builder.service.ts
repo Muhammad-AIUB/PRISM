@@ -13,6 +13,37 @@ import type { ReviewIssue } from '../database/entities/review.entity';
  */
 export type ReviewTarget = 'commit' | 'pull request';
 
+/**
+ * What kind of problem a finding claims to be.
+ *
+ * The first three are checkable against the diff by a person in seconds, which
+ * is what lets the verdict say "blocking" and mean it. The rest are real but
+ * need judgement, so they inform the reader without gating a merge.
+ *
+ * Deliberately not a list of things a linter finds. Those were removed from the
+ * prompt in the same change that added this: a reviewer with twenty years of
+ * practice spends their attention once, and spending it on a stray console.log
+ * is how a tool stops being read.
+ */
+export const ISSUE_CATEGORIES = [
+  'auth_weakened',
+  'contract_changed',
+  'no_timeout',
+  'error_swallowed',
+  'untested_change',
+  'migration_no_rollback',
+  'other',
+] as const;
+
+export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
+
+/** The subset a person can confirm from the diff alone, so they can gate a merge. */
+export const BLOCKING_CATEGORIES: readonly IssueCategory[] = [
+  'auth_weakened',
+  'contract_changed',
+  'no_timeout',
+];
+
 export interface IssueLayers {
   security: ReviewIssue[];
   performance: ReviewIssue[];
@@ -60,14 +91,26 @@ export class PromptBuilderService {
       `You are a senior software engineer reviewing a ${target}.\n` +
       'Analyze the diff and return ONLY a valid JSON object with this exact structure:\n' +
       '{\n' +
-      '  "security_issues": [{"file": "", "line": 0, "severity": "", "comment": ""}],\n' +
-      '  "performance_issues": [{"file": "", "line": 0, "severity": "", "comment": ""}],\n' +
-      '  "code_quality_issues": [{"file": "", "line": 0, "severity": "", "comment": ""}],\n' +
+      '  "security_issues": [{"file": "", "line": 0, "category": "", "severity": "", "comment": ""}],\n' +
+      '  "performance_issues": [{"file": "", "line": 0, "category": "", "severity": "", "comment": ""}],\n' +
+      '  "code_quality_issues": [{"file": "", "line": 0, "category": "", "severity": "", "comment": ""}],\n' +
       '  "overall_score": 0,\n' +
       '  "summary": ""\n' +
       '}\n' +
       `overall_score must be an integer from 0 to 100 (NOT 0-10), where 100 is flawless and 0 is critically broken. A clean ${target} with only minor suggestions should score 80-95.\n` +
-      'severity must be: critical, warning, or suggestion';
+      'severity must be: critical, warning, or suggestion\n' +
+      `category must be one of: ${ISSUE_CATEGORIES.join(', ')}\n` +
+      '\n' +
+      'Look hardest for these, in this order:\n' +
+      '- an authentication, authorization or permission check that was removed or weakened (auth_weakened)\n' +
+      '- a public contract that changed shape: a response field, an error string, a status code (contract_changed)\n' +
+      '- a new network, database or subprocess call with no timeout or cancellation (no_timeout)\n' +
+      '- an error path that swallows its error, so a failure looks like a success (error_swallowed)\n' +
+      '- behaviour that changed while no test changed with it (untested_change)\n' +
+      '- a schema or data migration with no stated way back (migration_no_rollback)\n' +
+      '\n' +
+      'Do NOT report anything a linter already catches: unused imports or variables, console or print statements left in code, missing type annotations, `any` types, missing React keys, formatting, or naming style. A reader who has been writing software for twenty years already knows, and every one of those costs you their attention for the issues that matter.\n' +
+      'Report only what you can point at in the diff. Fewer, better issues.';
 
     const rules = this.getLanguageRules(languages);
 
@@ -103,11 +146,13 @@ export class PromptBuilderService {
     }
 
     if (languages.includes('JavaScript') || languages.includes('TypeScript')) {
+      // Three rules used to live here that ESLint already enforces, in the
+      // editor, before the diff exists: console.log left in code, `any`, and a
+      // missing React key. They were removed on purpose. The base prompt now
+      // tells the model not to report that class of thing at all, because
+      // deleting a rule removes the instruction and not the habit.
       rules.push(
-        'Flag console.log statements left in production code',
         'Check for missing error handling in async functions',
-        'Detect usage of `any` type in TypeScript',
-        'Check for missing key prop in React lists',
         'Flag direct DOM manipulation in React',
         'Detect potential memory leaks (uncleaned listeners)',
       );

@@ -7,6 +7,7 @@ import { CryptService } from '../../common/utils/crypt.service';
 import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Review, ReviewComment, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
+import { orderFindings, verdictFor } from '../../ai/verdict';
 import { ReviewQueueService } from '../review/review-queue.service';
 
 /**
@@ -123,6 +124,11 @@ export class ReviewsWebService {
 
   async showCommit(user: User, id: number): Promise<Record<string, unknown>> {
     const cr = await this.findOwnedCommitReview(user, id);
+    const commitFindings = orderFindings([
+      ...(cr.securityIssues ?? []),
+      ...(cr.performanceIssues ?? []),
+      ...(cr.codeQualityIssues ?? []),
+    ]);
 
     return {
       commitReview: {
@@ -134,6 +140,8 @@ export class ReviewsWebService {
         branch: cr.branch,
         status: cr.status,
         overall_score: cr.overallScore,
+        verdict: verdictFor(commitFindings),
+        findings: commitFindings,
         summary: cr.summary,
         security_issues: cr.securityIssues ?? [],
         performance_issues: cr.performanceIssues ?? [],
@@ -209,9 +217,21 @@ export class ReviewsWebService {
       return null;
     }
 
+    // Both derived in one place and sent down, rather than recomputed by each
+    // surface. Six places deriving the same verdict is six places to drift.
+    // Additive fields only: the three layer arrays stay exactly as they were,
+    // because clients deployed before this codebase existed still read them.
+    const findings = orderFindings([
+      ...(review.securityIssues ?? []),
+      ...(review.performanceIssues ?? []),
+      ...(review.codeQualityIssues ?? []),
+    ]);
+
     return {
       id: review.id,
       overall_score: review.overallScore,
+      verdict: verdictFor(findings),
+      findings,
       summary: review.summary,
       ai_model_used: review.aiModelUsed,
       security_issues: review.securityIssues ?? [],
