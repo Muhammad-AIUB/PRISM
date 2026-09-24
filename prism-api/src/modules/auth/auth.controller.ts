@@ -24,7 +24,11 @@ import { WebAuthService, type SessionUserDto } from './web-auth.service';
  * Port of App\Http\Controllers\AuthController.
  *
  * The original put these behind `throttle:auth` — 10/min per IP, protecting the
- * OAuth handshake from brute force. Same ceiling here.
+ * OAuth handshake from brute force. The handshake keeps that ceiling; /auth/me
+ * and /auth/logout get the global budget instead. prism-web reads /auth/me
+ * server-side on every page load and every polling refresh, all from its own
+ * address, so under 10/min the dashboard 500'd within a minute of a review
+ * starting.
  *
  * the previous OAuth helper carried its CSRF `state` in the original session. With no session
  * table in play, it travels in a short-lived httpOnly cookie instead and is
@@ -34,8 +38,9 @@ import { WebAuthService, type SessionUserDto } from './web-auth.service';
 const STATE_COOKIE = 'prism_oauth_state';
 const STATE_TTL_MS = 10 * 60 * 1000;
 
+const OAUTH_THROTTLE = { api: { limit: 10, ttl: 60_000 } };
+
 @Controller('auth')
-@Throttle({ api: { limit: 10, ttl: 60_000 } })
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
@@ -47,6 +52,7 @@ export class AuthController {
 
   /** GET /auth/github — the previous OAuth helper's redirect(). */
   @Get('github')
+  @Throttle(OAUTH_THROTTLE)
   redirectToGithub(@Res() response: Response): void {
     const state = randomBytes(32).toString('hex');
 
@@ -69,6 +75,7 @@ export class AuthController {
    * frontend's base URL, so the browser flow is unchanged from the user's side.
    */
   @Get('github/callback')
+  @Throttle(OAUTH_THROTTLE)
   async handleGithubCallback(
     @Req() request: Request,
     @Res() response: Response,

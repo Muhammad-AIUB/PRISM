@@ -33,7 +33,41 @@ interface ApiRequest {
   cache?: RequestCache;
 }
 
+/**
+ * Longest a 429 is worth waiting out mid-render. Past this the page would
+ * stall long enough to look broken anyway, so the 429 is returned as-is.
+ */
+const MAX_RETRY_WAIT_MS = 5_000;
+
+/**
+ * Every call here leaves from this server's address, so all visitors share
+ * the API's per-IP throttle buckets until a request is authenticated. A GET
+ * that lands on a nearly-reset bucket is retried once rather than turned into
+ * an error page. Writes are never retried.
+ */
 async function request(path: string, init: ApiRequest = {}): Promise<Response> {
+  const response = await send(path, init);
+
+  if (response.status !== 429 || (init.method ?? 'GET') !== 'GET') {
+    return response;
+  }
+
+  // @nestjs/throttler suffixes the header with the throttler's name ("api").
+  const seconds = Number(
+    response.headers.get('retry-after-api') ?? response.headers.get('retry-after'),
+  );
+  const waitMs = Number.isFinite(seconds) ? Math.max(seconds * 1000, 250) : Infinity;
+
+  if (waitMs > MAX_RETRY_WAIT_MS) {
+    return response;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
+
+  return send(path, init);
+}
+
+async function send(path: string, init: ApiRequest): Promise<Response> {
   const store = await cookies();
   const session = store.get(SESSION_COOKIE)?.value;
 
