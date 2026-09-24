@@ -31,21 +31,32 @@ npm run build           # nest build → dist/
 npm run start:dev       # watch mode
 npm run start:prod      # node dist/main.js
 npm run typecheck       # tsc --noEmit   ← must pass before any commit
+npm run lint            # eslint, typed rules, --max-warnings 0   ← must pass
 npm test                # jest           ← must pass before any commit
 npm test -- json-extractor              # one file, by path fragment
 npm test -- -t "clamps the score"       # one test, by name
 
-# prism-web
+# prism-web  (Node >= 22.12: the vitest toolchain requires it)
 npm run dev             # next dev on :3001
 npm run build
 npm run typecheck       # tsc --noEmit   ← must pass before any commit
+npm run lint            # eslint (next/core-web-vitals + next/typescript)   ← must pass
+npm test                # vitest + jsdom + Testing Library   ← must pass
 ```
 
-`npm run lint` **fails in both packages** — no `eslint.config.js` exists in
-`prism-api` and `prism-web` has no ESLint config or dependency. `npm run test:e2e`
-also fails; `test/jest-e2e.json` was never created (`prism-api/test/` holds only
-fixtures). Do not report these as regressions, and do not chase them unless asked.
-The real gates are `typecheck` in both packages and `npm test` in `prism-api`.
+`.github/workflows/ci.yml` runs all of the above, plus both builds, `node --check`
+on the MCP server and `npm audit --omit=dev --audit-level=high`, on every pull
+request. None of it needs Postgres, Redis or a secret: unit tests fake their
+stores. Keep it that way; a test that needs a live service belongs elsewhere.
+
+`npm run test:e2e` fails; `test/jest-e2e.json` was never created (`prism-api/test/`
+holds only fixtures). Do not report it as a regression, and do not chase it unless
+asked.
+
+Lint is a gate, not advice. In `prism-api`, `no-floating-promises` and
+`no-misused-promises` are errors because an unawaited promise there is a lost
+write or an unhandled rejection in the worker. Fix what a rule finds rather than
+disabling it; if a disable is truly right, put the reason on the same line.
 
 ## Running locally
 
@@ -82,8 +93,32 @@ in production, the rewrites in `next.config.mjs` locally (`/auth/*`, `/api/v1/*`
 `/webhook/*` → the API). Break that and sign-in appears to work while every
 subsequent request is anonymous.
 
-`apiGetAuthed()` folds 403 into 404 on purpose: a distinct "forbidden" screen would
-confirm a review id exists. Keep it that way.
+`apiGetAuthed()` folds 400 and 403 into 404 on purpose: a distinct "forbidden" screen
+would confirm a review id exists. Keep it that way.
+
+### Security headers
+
+- **prism-web** — `src/middleware.ts` sets a per-request nonce CSP
+  (`script-src 'self' 'nonce-…' 'strict-dynamic'`). Next applies the nonce to its
+  own scripts. Any inline `<script>` you add must take the nonce from the
+  `x-nonce` request header, the way `layout.tsx` does for the theme script, or it
+  will not run. New third-party origins (images, fonts, APIs) must be added to the
+  policy deliberately; the browser blocks them otherwise. `'unsafe-eval'` and
+  `ws:` are allowed in development only. `style-src` keeps `'unsafe-inline'`
+  because components use inline `style` throughout.
+- **prism-api** — helmet with `default-src 'none'; frame-ancestors 'none'`. The API
+  never serves a page.
+
+### Observability
+
+Every API request gets an `X-Request-Id` (a safe incoming one is kept), which is
+returned in the response and held in AsyncLocalStorage
+(`common/observability/request-context.ts`). `AppLogger` stamps it on every line,
+and does the same with the job id inside `ReviewProcessor`. Production writes one
+JSON object per line; development writes coloured text. `prism-web`'s middleware
+assigns an id per render and `api.ts` forwards it. Use Nest's `Logger`, never
+`console.*`, or the line loses its id. The access log records the path only: the
+OAuth callback carries a code in its query string.
 
 ### Two auth mechanisms, both live
 
@@ -92,7 +127,12 @@ confirm a review id exists. Keep it that way.
   tokens issued before this codebase existed. **This format cannot drift.**
 - `modules/auth/web-auth.guard.ts` — the browser's JWT session cookie, signed with
   `JWT_SECRET`. It loads the user row rather than trusting the claims, so a deleted
-  account stops working immediately.
+  account stops working immediately. Logout revokes the token
+  (`session-revocation.store.ts`: `sha256(token)` in Redis until the token would
+  have expired), and both `WebAuthGuard` and `OptionalWebAuthGuard` refuse a
+  revoked one. The check fails open on a Redis error, because an outage must not
+  sign everyone out, and the JWT is still verified. Any new guard that reads the
+  session must check revocation too.
 
 The global `RateLimitGuard` runs before either guard, so it verifies the
 session cookie itself to key signed-in browser traffic per user. Every browser

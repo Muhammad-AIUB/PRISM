@@ -117,7 +117,7 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
         ┌────────────────────────────────────────┐
         │  prism-api (NestJS)                    │
         │  ├─ Webhook Controller                 │
-        │  ├─ Rate Limiter (60/min per IP)       │
+        │  ├─ Rate Limiter (60/min, webhook)     │
         │  └─ Security Headers (helmet)          │
         └────────────────┬───────────────────────┘
                          │ enqueue job
@@ -200,9 +200,10 @@ Visit `/security` in the app for full transparency.
 ### Security
 - 🔐 **AES-256 encrypted GitHub tokens** at rest (AES-256-CBC, MAC-verified)
 - ✅ **HMAC-SHA256 webhook signature verification**
-- 🛡️ **GitHub IP whitelist** with CIDR matching (cached 24h)
-- 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min, auth 10/min
-- 🔒 **Security headers** — CSP, HSTS, X-Frame-Options, Permissions-Policy
+- 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min per signed-in user (per IP for guests and API tokens), OAuth 10/min
+- 🔒 **Content-Security-Policy** — a per-request nonce on the web app, so injected scripts do not run; `default-src 'none'` on the API, which never serves a page
+- 🪖 **Security headers** — HSTS, X-Frame-Options, nosniff and friends via helmet on the API; `frame-ancestors 'none'` on both
+- 🚪 **Real sign-out** — logout revokes the session server-side, so a copied cookie stops working too
 - 🚪 **GitHub OAuth-only login** — no password attack surface
 - 🛡️ **Dedicated Security & Privacy page** with full transparency
 - 👁️ **"View My Data" page** showing exactly what PRism stores
@@ -221,11 +222,12 @@ Visit `/security` in the app for full transparency.
 - ⚡ **Redis caching** (Upstash) — GitHub API responses cached 5min, diffs 1hr
 - 📑 **Composite database indexes** on every hot foreign-key path
 - 🔗 **Eager loading enforced** — zero N+1 queries on dashboard
-- 🎯 **Selective column projection** via explicit `->select()`
+- 🎯 **Selective column projection** via explicit TypeORM `select`
 
 ### Reliability & Observability
 - 🔁 **Job retry with exponential backoff** — `[60s, 180s, 600s]`, 3 attempts
-- 📝 **Structured JSON logging** with `X-Request-Id` tracing
+- 📝 **Structured JSON logging** — one JSON object per line in production, each carrying the `X-Request-Id` (or queue job id) it was logged under; prism-web forwards its id, so a page render and every API call it made share one
+- ✅ **CI on every pull request** — typecheck, lint, tests, build and a dependency audit for all three packages
 - 🏥 **Health check endpoint** (`/health`) — DB, Redis, Queue status
 - 📊 **AI call metrics** — model, duration, token usage logged per call
 
@@ -254,7 +256,7 @@ Visit `/security` in the app for full transparency.
 | Problem | Solution | Impact |
 |---|---|---|
 | GitHub tokens stored in plaintext | AES-256-CBC with a verified MAC | Tokens unreadable even with a DB dump |
-| Webhook endpoint open to abuse | HMAC verify + GitHub IP whitelist + rate limit | Triple-layer DDoS & spoof protection |
+| Webhook endpoint open to abuse | HMAC over the exact bytes GitHub sent + rate limit | Spoofed deliveries rejected, floods capped |
 | Repeated GitHub API calls | Redis caching with TTL | ~80% reduction in upstream calls |
 | Job failure cascades | `tries=3`, exponential backoff, `failed()` handler | Auto-recovery without data loss |
 | N+1 query risk on dashboard | Eager loading + composite indexes | Sub-50ms dashboard load |
