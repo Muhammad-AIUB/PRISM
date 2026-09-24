@@ -293,7 +293,6 @@ export class PullRequestReviewRunner {
     await this.pullRequests.update(pullRequestId, { status: 'failed' });
   }
 
-  /** The original ORM's an update-or-create keyed on pull_request_id. */
   /**
    * Called immediately after each review-row write, on every path. A missing
    * assessment (the scan threw) clears the saved one rather than leaving the
@@ -312,6 +311,7 @@ export class PullRequestReviewRunner {
     }
   }
 
+  /** The original ORM's an update-or-create keyed on pull_request_id. */
   private async upsertReview(
     pullRequestId: number,
     values: Partial<Review>,

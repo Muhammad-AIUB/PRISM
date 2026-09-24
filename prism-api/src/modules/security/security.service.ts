@@ -125,25 +125,25 @@ export class SecurityService {
    * gone, leaving GitHub delivering to a repository nothing recognises.
    */
   async deleteEverything(user: User): Promise<{ message: string }> {
-    // First, and fatal on failure: nothing irreversible has happened yet, so a
-    // Redis outage costs a retry rather than a false "everything is deleted".
-    await this.accountData.erase(user);
+    // Redis-held data first, inside deleteAccount: a failure anywhere stops
+    // the deletion and says so, rather than a false "everything is deleted".
+    await this.accountData.deleteAccount(user, async () => {
+      const token = this.crypt.decrypt(user.githubToken) ?? '';
+      const repositories = await this.repositories.find({ where: { userId: user.id } });
 
-    const token = this.crypt.decrypt(user.githubToken) ?? '';
-    const repositories = await this.repositories.find({ where: { userId: user.id } });
+      for (const repo of repositories) {
+        if (!repo.webhookId) {
+          continue;
+        }
 
-    for (const repo of repositories) {
-      if (!repo.webhookId) {
-        continue;
+        await this.github.deleteWebhook(token, repo.fullName, repo.webhookId);
       }
 
-      await this.github.deleteWebhook(token, repo.fullName, repo.webhookId);
-    }
+      // Recorded while the user still exists; the row cascades away with them.
+      await this.auditLog.record(user.id, 'account_deleted', 'User-initiated full data deletion');
 
-    // Recorded while the user still exists; the row cascades away with them.
-    await this.auditLog.record(user.id, 'account_deleted', 'User-initiated full data deletion');
-
-    await this.users.delete(user.id);
+      await this.users.delete(user.id);
+    });
 
     return { message: 'All your data has been permanently deleted.' };
   }

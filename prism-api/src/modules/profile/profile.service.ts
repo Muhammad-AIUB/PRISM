@@ -81,7 +81,8 @@ export class ProfileService {
     //
     // Redis-held data (designs, saved risk) is outside that cascade, so it is
     // erased first; a failure there stops the deletion rather than leaving it.
-    await this.accountData.erase(user);
-    await this.users.delete(user.id);
+    await this.accountData.deleteAccount(user, async () => {
+      await this.users.delete(user.id);
+    });
   }
 }

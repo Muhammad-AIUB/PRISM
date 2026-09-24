@@ -66,6 +66,10 @@ export class DesignService {
   ) {}
 
   async create(user: User, brief: DesignBrief): Promise<Blueprint> {
+    if (await this.store.isBeingErased(user.id)) {
+      throw new GoneException('This account has been deleted.');
+    }
+
     // Checked before the model is called, so a client in a loop costs a Redis
     // INCR per attempt rather than two Groq calls.
     if ((await this.store.hit(user.id, DESIGN_RATE_WINDOW_SECONDS)) > DESIGN_RATE_LIMIT) {

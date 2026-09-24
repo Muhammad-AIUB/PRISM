@@ -24,6 +24,7 @@ function build(ai: { callWithFallback: jest.Mock }, hits = 1) {
   const saved: Blueprint[] = [];
   const store = {
     hit: jest.fn().mockResolvedValue(hits),
+    isBeingErased: jest.fn().mockResolvedValue(false),
     save: jest.fn(async (_owner: number, blueprint: Blueprint) => {
       saved.push(blueprint);
 
@@ -153,5 +154,18 @@ describe('DesignService.create during account erasure', () => {
 
     await expect(service.create(user, brief)).rejects.toThrow('This account has been deleted.');
     expect(auditLog.record).not.toHaveBeenCalled();
+  });
+});
+
+describe('DesignService.create while the account is being deleted', () => {
+  it('refuses before spending any model call', async () => {
+    const ai = { callWithFallback: jest.fn() };
+    const { service, store } = build(ai);
+
+    store.isBeingErased.mockResolvedValue(true);
+
+    await expect(service.create(user, brief)).rejects.toThrow('This account has been deleted.');
+    expect(ai.callWithFallback).not.toHaveBeenCalled();
+    expect(store.hit).not.toHaveBeenCalled();
   });
 });

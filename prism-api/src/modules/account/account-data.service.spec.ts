@@ -35,36 +35,83 @@ function build(overrides: { purgeOwner?: jest.Mock; purge?: jest.Mock } = {}) {
   return { service, designs, risk, redis };
 }
 
-describe('AccountDataService', () => {
-  it('erases saved risk for every one of the user\'s pull requests, and all their designs', async () => {
-    const { service, designs, risk } = build();
+describe('AccountDataService.deleteAccount', () => {
+  const MARKER = 'account:erased:1';
 
-    await service.erase(user);
+  function withRedis() {
+    const built = build();
+    const redis = {
+      set: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+    };
 
+    Object.assign(built.service, { redis });
+
+    return { ...built, redis };
+  }
+
+  it('sets the marker, purges Redis, then deletes the rows - in that order', async () => {
+    const { service, designs, risk, redis } = withRedis();
+    const deleteRows = jest.fn().mockResolvedValue(undefined);
+
+    await service.deleteAccount(user, deleteRows);
+
+    const order = [
+      redis.set.mock.invocationCallOrder[0],
+      risk.purge.mock.invocationCallOrder[0],
+      designs.purgeOwner.mock.invocationCallOrder[0],
+      deleteRows.mock.invocationCallOrder[0],
+    ] as number[];
+
+    expect(redis.set).toHaveBeenCalledWith(MARKER, '1', 'EX', expect.any(Number));
     expect(risk.purge).toHaveBeenCalledWith([41, 42]);
     expect(designs.purgeOwner).toHaveBeenCalledWith(1);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    // On success the marker stays and expires: a review still running for
+    // this id may yet try to save, and the marker is what refuses it.
+    expect(redis.del).not.toHaveBeenCalled();
   });
 
-  it('sets the erasure marker before any purge, so work in flight cannot re-create data', async () => {
-    const { service, designs, risk, redis } = build();
+  it('clears the marker and keeps the account when a purge fails', async () => {
+    const { service, designs, redis } = withRedis();
+    const deleteRows = jest.fn();
 
-    await service.erase(user);
+    designs.purgeOwner.mockRejectedValue(new Error('ECONNREFUSED'));
 
-    expect(redis.set).toHaveBeenCalledWith('account:erased:1', '1', 'EX', expect.any(Number));
-
-    const [marked] = redis.set.mock.invocationCallOrder;
-
-    expect(marked).toBeLessThan(risk.purge.mock.invocationCallOrder[0] as number);
-    expect(marked).toBeLessThan(designs.purgeOwner.mock.invocationCallOrder[0] as number);
-  });
-
-  it('turns a storage failure into a 503 that says nothing was deleted', async () => {
-    const { service } = build({ purgeOwner: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')) });
-
-    const attempt = service.erase(user);
+    const attempt = service.deleteAccount(user, deleteRows);
 
     await expect(attempt).rejects.toBeInstanceOf(ServiceUnavailableException);
-    await expect(attempt).rejects.toThrow(/nothing was deleted/);
+    await expect(attempt).rejects.toThrow(/has not been deleted/);
+    expect(deleteRows).not.toHaveBeenCalled();
+    expect(redis.del).toHaveBeenCalledWith(MARKER);
+  });
+
+  it('clears the marker when deleting the rows fails after the purge', async () => {
+    const { service, redis } = withRedis();
+
+    await expect(
+      service.deleteAccount(user, jest.fn().mockRejectedValue(new Error('deadlock detected'))),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(redis.del).toHaveBeenCalledWith(MARKER);
+  });
+
+  it('never claims nothing was deleted: saved risk may already be gone', async () => {
+    const { service, designs } = withRedis();
+
+    designs.purgeOwner.mockRejectedValue(new Error('x'));
+
+    await expect(service.deleteAccount(user, jest.fn())).rejects.not.toThrow(/nothing was deleted/);
+  });
+
+  it('still reports the failure when clearing the marker also fails', async () => {
+    const { service, designs, redis } = withRedis();
+
+    designs.purgeOwner.mockRejectedValue(new Error('x'));
+    redis.del.mockRejectedValue(new Error('still down'));
+
+    await expect(service.deleteAccount(user, jest.fn())).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 
   it('reports what is held outside the database for the data export', async () => {
@@ -93,7 +140,7 @@ describe('AccountDataService.summary when Redis is down', () => {
 });
 
 describe('SecurityService.deleteEverything', () => {
-  function security(erase: jest.Mock) {
+  function security(deleteAccount: jest.Mock) {
     const users = { delete: jest.fn().mockResolvedValue(undefined) };
     const github = { deleteWebhook: jest.fn().mockResolvedValue(undefined) };
     const service = new SecurityService(
@@ -104,30 +151,35 @@ describe('SecurityService.deleteEverything', () => {
       github as never,
       { decrypt: () => 'token' } as never,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
-      { erase } as never,
+      { deleteAccount } as never,
     );
 
     return { service, users, github };
   }
 
-  it('erases Redis-held data before anything irreversible', async () => {
-    const erase = jest.fn().mockResolvedValue(undefined);
-    const { service, users, github } = security(erase);
+  it('does every irreversible step inside deleteAccount, after its Redis purge', async () => {
+    const order: string[] = [];
+    const deleteAccount = jest.fn(async (_user: User, deleteRows: () => Promise<void>) => {
+      order.push('redis purged');
+      await deleteRows();
+    });
+    const { service, users, github } = security(deleteAccount);
 
-    await service.deleteEverything(user);
+    github.deleteWebhook.mockImplementation(async () => void order.push('webhook removed'));
+    users.delete.mockImplementation(async () => void order.push('user deleted'));
 
-    const [erased] = erase.mock.invocationCallOrder;
-
-    expect(erased).toBeLessThan(github.deleteWebhook.mock.invocationCallOrder[0] as number);
-    expect(erased).toBeLessThan(users.delete.mock.invocationCallOrder[0] as number);
+    await expect(service.deleteEverything(user)).resolves.toEqual({
+      message: 'All your data has been permanently deleted.',
+    });
+    expect(order).toEqual(['redis purged', 'webhook removed', 'user deleted']);
   });
 
-  it('deletes nothing, and says so, when that erasure fails', async () => {
+  it('deletes nothing, and says so, when deleteAccount fails before the rows', async () => {
     const { service, users, github } = security(
-      jest.fn().mockRejectedValue(new ServiceUnavailableException('nothing was deleted')),
+      jest.fn().mockRejectedValue(new ServiceUnavailableException('it has not been deleted')),
     );
 
-    await expect(service.deleteEverything(user)).rejects.toThrow('nothing was deleted');
+    await expect(service.deleteEverything(user)).rejects.toThrow('it has not been deleted');
     expect(github.deleteWebhook).not.toHaveBeenCalled();
     expect(users.delete).not.toHaveBeenCalled();
   });

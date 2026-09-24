@@ -151,6 +151,15 @@ export class DesignStore {
   }
 
   /**
+   * True while the owner's account is being deleted. Checked before the model
+   * is called, so a request that can only be refused at save time does not
+   * spend two Groq calls first. The save script still makes the final call.
+   */
+  async isBeingErased(ownerId: number): Promise<boolean> {
+    return (await this.redis.exists(this.erasedKey(ownerId))) === 1;
+  }
+
+  /**
    * How many designs the owner has stored, including ones past the history
    * cap. Designs expire one by one while the index's own expiry is refreshed
    * on every save, so the index collects ids of designs that no longer exist.

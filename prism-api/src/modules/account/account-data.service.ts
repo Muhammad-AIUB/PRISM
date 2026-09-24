@@ -31,28 +31,52 @@ export class AccountDataService {
   ) {}
 
   /**
-   * Erase it, before the caller deletes anything irreversible. On failure this
-   * throws and the caller stops: telling someone their data is gone while it
-   * is still stored would be the worse outcome than asking them to retry.
+   * Deletes an account: everything held in Redis, then whatever `deleteRows`
+   * removes (the users row, which cascades through Postgres, plus any step the
+   * caller must do while the row still exists, such as uninstalling webhooks).
+   *
+   * The erasure marker lives exactly as long as the attempt. It is set first,
+   * so work in flight cannot re-create what is being erased, and it is removed
+   * if any step fails, because an attempt that failed has not deleted the
+   * account: left in place, the marker would make the surviving account refuse
+   * new designs and skip saving review risk for an hour.
+   *
+   * On success it is left to expire on its own. The user id is never reused
+   * and a review still running for it may yet try to save; the marker is what
+   * refuses that write.
    */
-  async erase(user: User): Promise<void> {
+  async deleteAccount(user: User, deleteRows: () => Promise<void>): Promise<void> {
+    const marker = erasureMarkerKey(user.id);
+
     try {
       // Before any purge: from here every store refuses new writes for this
       // user, so work in flight (a review, a generation) cannot re-create what
       // is about to be erased. See erasure-marker.ts.
-      await this.redis.set(erasureMarkerKey(user.id), '1', 'EX', ERASURE_MARKER_TTL_SECONDS);
+      await this.redis.set(marker, '1', 'EX', ERASURE_MARKER_TTL_SECONDS);
 
       const ids = await this.pullRequestIds(user.id);
 
       await this.reviewedRisk.purge(ids);
       await this.designs.purgeOwner(user.id);
+      await deleteRows();
     } catch (error) {
       this.logger.error(
-        `Account data erasure failed (user_id=${user.id}): ${error instanceof Error ? error.message : String(error)}`,
+        `Account deletion failed (user_id=${user.id}): ${error instanceof Error ? error.message : String(error)}`,
       );
 
+      await this.redis.del(marker).catch((cleanupError: unknown) =>
+        this.logger.error(
+          `Could not clear the erasure marker after a failed deletion (user_id=${user.id}); ` +
+            `it expires within ${ERASURE_MARKER_TTL_SECONDS}s: ${String(cleanupError)}`,
+        ),
+      );
+
+      // Deliberately not "nothing was deleted": saved risk assessments may
+      // already be gone by the time a later step fails. They are derived from
+      // the reviews and regenerate on the next one; the account itself, and
+      // everything the user created, is intact.
       throw new ServiceUnavailableException(
-        'We could not delete all of your data just now, so nothing was deleted. Please try again in a minute.',
+        'We could not finish deleting your account, so it has not been deleted. Please try again in a minute.',
       );
     }
   }
