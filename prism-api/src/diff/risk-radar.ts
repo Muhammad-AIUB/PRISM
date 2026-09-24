@@ -124,7 +124,86 @@ interface ChangedFile {
   addedLines: string[];
 }
 
-const FILE_HEADER = /^diff --git a\/(\S+) b\/(\S+)/;
+const GIT_HEADER = 'diff --git ';
+
+/**
+ * Git's C-style quoting for a path: `"a/caf\303\251 menu.ts"`. Git quotes a
+ * path when it has non-ASCII or control characters (core.quotePath), and the
+ * escapes are octal UTF-8 bytes, so they are decoded as bytes, not characters.
+ */
+function unquotePath(raw: string): string {
+  if (!raw.startsWith('"') || !raw.endsWith('"') || raw.length < 2) {
+    return raw;
+  }
+
+  const bytes: number[] = [];
+  const body = raw.slice(1, -1);
+  const simple: Record<string, number> = { n: 10, t: 9, r: 13, b: 8, f: 12, v: 11, a: 7, '"': 34, '\\': 92 };
+
+  for (let i = 0; i < body.length; i += 1) {
+    const ch = body[i] as string;
+
+    if (ch !== '\\') {
+      bytes.push(...Buffer.from(ch, 'utf8'));
+      continue;
+    }
+
+    const next = body[i + 1] ?? '';
+    const octal = /^[0-7]{3}/.exec(body.slice(i + 1));
+
+    if (octal) {
+      bytes.push(parseInt(octal[0], 8));
+      i += 3;
+    } else if (next in simple) {
+      bytes.push(simple[next] as number);
+      i += 1;
+    } else {
+      bytes.push(...Buffer.from(next, 'utf8'));
+      i += 1;
+    }
+  }
+
+  return Buffer.from(bytes).toString('utf8');
+}
+
+/** `+++ b/path` or `--- a/path`, where git appends a tab when the path has spaces. */
+function markerPath(rest: string, prefix: 'a/' | 'b/'): string | null {
+  const trimmed = rest.replace(/\t.*$/, '').trimEnd();
+
+  if (trimmed === '/dev/null') {
+    return null;
+  }
+
+  const path = unquotePath(trimmed);
+
+  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
+}
+
+/**
+ * The new-side path from `diff --git a/X b/Y`. A best guess only: an unquoted
+ * path containing " b/" is ambiguous here, which is why the `+++` line, when
+ * the file has one, overrides it.
+ */
+function headerPath(rest: string): string {
+  if (rest.startsWith('"')) {
+    // Both sides quoted, or only one: take whatever follows the first token.
+    const first = /^"(?:[^"\\]|\\.)*"/.exec(rest)?.[0] ?? '';
+    const second = rest.slice(first.length).trim();
+
+    return (markerPath(second, 'b/') ?? markerPath(first, 'a/')) || rest;
+  }
+
+  // Unchanged paths make the line symmetric: "a/X b/X".
+  const half = (rest.length - 1) / 2;
+
+  if (Number.isInteger(half) && rest.slice(0, half).slice(2) === rest.slice(half + 1).slice(2)) {
+    return rest.slice(half + 3);
+  }
+
+  const split = /^a\/(.+?) (?:"?)b\/(.+?)"?$/.exec(rest);
+
+  return split ? unquotePath(split[2] as string) : rest;
+}
 
 /**
  * A narrower parser than hunk-index.ts on purpose. That one answers "is this
@@ -138,11 +217,9 @@ export function parseChangedFiles(diff: string): ChangedFile[] {
   let inHunk = false;
 
   for (const line of diff.split('\n')) {
-    const header = FILE_HEADER.exec(line);
-
-    if (header) {
+    if (line.startsWith(GIT_HEADER)) {
       current = {
-        path: header[2] as string,
+        path: headerPath(line.slice(GIT_HEADER.length)),
         status: 'modified',
         additions: 0,
         deletions: 0,
@@ -164,6 +241,12 @@ export function parseChangedFiles(diff: string): ChangedFile[] {
         current.status = 'deleted';
       } else if (line.startsWith('rename from')) {
         current.status = 'renamed';
+      } else if (line.startsWith('rename to ')) {
+        current.path = unquotePath(line.slice('rename to '.length));
+      } else if (line.startsWith('+++ ')) {
+        // The authoritative new-side path. /dev/null (a deletion) keeps the
+        // header's path, which is the file that was removed.
+        current.path = markerPath(line.slice(4), 'b/') ?? current.path;
       }
     }
 
@@ -221,6 +304,10 @@ const CONFIG_PATH =
 
 const NETWORK_CALL =
   /\bfetch\(|\baxios(\.\w+)?\(|\bhttps?\.(get|request)\(|\brequests\.(get|post|put|patch|delete|request)\(|\bhttpx\.|\burllib|\bHttpClient\b|\bgot\(|\bhttp\.(Get|Post|NewRequest)|\bnew\s+Pool\(|\bcreateConnection\(|\bsubprocess\.|\bexec(File|Sync)?\(|\bspawn\(/;
+
+/** How far from a call, in added lines, timeout evidence still counts for it. */
+const TIMEOUT_WINDOW_BEFORE = 2;
+const TIMEOUT_WINDOW_AFTER = 6;
 
 const TIMEOUT_EVIDENCE = /timeout|AbortSignal|AbortController|signal\s*[:=]|WithTimeout|WithDeadline|deadline/i;
 
@@ -525,11 +612,23 @@ export function assessRisk(diff: string): RiskAssessment {
   // excluded: a fetch() in a test is a mock, not a production dependency.
   const productionFiles = source;
 
+  // Per call, not per file: one well-behaved fetch must not vouch for another
+  // one elsewhere in the same file. Evidence counts only if it sits within a
+  // few added lines of the call (an options object usually spans several).
   const noTimeout = productionFiles
-    .filter(
-      (f) =>
-        f.addedLines.some((l) => NETWORK_CALL.test(l)) &&
-        !f.addedLines.some((l) => TIMEOUT_EVIDENCE.test(l)),
+    .filter((f) =>
+      f.addedLines.some((line, index) => {
+        if (!NETWORK_CALL.test(line)) {
+          return false;
+        }
+
+        const window = f.addedLines.slice(
+          Math.max(0, index - TIMEOUT_WINDOW_BEFORE),
+          index + TIMEOUT_WINDOW_AFTER + 1,
+        );
+
+        return !window.some((near) => TIMEOUT_EVIDENCE.test(near));
+      }),
     )
     .map((f) => f.path);
 

@@ -53,6 +53,54 @@ describe('parseChangedFiles', () => {
   });
 });
 
+describe('parseChangedFiles: paths git has to escape', () => {
+  const section = (header: string, minus: string, plus: string, added: string) =>
+    [header, 'index 1..2 100644', minus, plus, '@@ -0,0 +1 @@', `+${added}`].join('\n');
+
+  it('reads a path with spaces, which git leaves unquoted but tab-terminates', () => {
+    const [f] = parseChangedFiles(
+      section('diff --git a/src/auth/my login.ts b/src/auth/my login.ts', '--- a/src/auth/my login.ts\t', '+++ b/src/auth/my login.ts\t', 'x'),
+    );
+
+    expect(f?.path).toBe('src/auth/my login.ts');
+  });
+
+  it('decodes a quoted path with octal UTF-8 escapes', () => {
+    const [f] = parseChangedFiles(
+      section('diff --git "a/src/caf\\303\\251.ts" "b/src/caf\\303\\251.ts"', '--- "a/src/caf\\303\\251.ts"', '+++ "b/src/caf\\303\\251.ts"', 'x'),
+    );
+
+    expect(f?.path).toBe('src/café.ts');
+  });
+
+  it('takes the new side of a rename, and keeps the old path for a deletion', () => {
+    const files = parseChangedFiles(
+      [
+        'diff --git a/old name.ts b/new name.ts',
+        'similarity index 90%',
+        'rename from old name.ts',
+        'rename to new name.ts',
+        'diff --git a/gone.ts b/gone.ts',
+        'deleted file mode 100644',
+        '--- a/gone.ts',
+        '+++ /dev/null',
+        '@@ -1 +0,0 @@',
+        '-x',
+      ].join('\n'),
+    );
+
+    expect(files.map((f) => f.path)).toEqual(['new name.ts', 'gone.ts']);
+  });
+
+  it('still classifies a spaced path, so it cannot hide from the radar', () => {
+    const risk = assessRisk(
+      section('diff --git a/src/auth/my guard.ts b/src/auth/my guard.ts', '--- a/src/auth/my guard.ts\t', '+++ b/src/auth/my guard.ts\t', 'x'),
+    );
+
+    expect(risk.signals.map((s) => s.id)).toContain('auth');
+  });
+});
+
 describe('assessRisk', () => {
   it('rates a small, tested change as low risk with nothing to ask', () => {
     const risk = assessRisk(
@@ -176,6 +224,18 @@ describe('assessRisk', () => {
     );
 
     expect(risk.checklist.map((c) => c.id)).not.toContain('timeouts');
+  });
+
+  it('judges each call on its own: a covered fetch does not vouch for an uncovered one', () => {
+    const risk = assessRisk(
+      file('src/weather.ts', [
+        'const a = await fetch(one, { signal: AbortSignal.timeout(5000) });',
+        ...lines(10, '// unrelated work'),
+        'const b = await fetch(two);',
+      ]),
+    );
+
+    expect(risk.checklist.map((c) => c.id)).toContain('timeouts');
   });
 
   it('does not treat a fetch() inside a test as a production dependency', () => {

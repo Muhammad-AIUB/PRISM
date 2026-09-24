@@ -8,9 +8,9 @@ import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Review, ReviewComment, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
 import { orderFindings, verdictFor } from '../../ai/verdict';
-import type { RiskAssessment } from '../../diff/risk-radar';
 import { ReviewQueueService } from '../review/review-queue.service';
-import { ChangeRiskService } from '../risk/change-risk.service';
+import { ChangeRiskService, type ChangeRisk } from '../risk/change-risk.service';
+import { ReviewRiskStore } from '../risk/review-risk.store';
 
 /**
  * Port of ReviewController and CommitReviewController (the web ones).
@@ -36,6 +36,7 @@ export class ReviewsWebService {
     private readonly diffCache: DiffCacheService,
     private readonly auditLog: AuditLogService,
     private readonly changeRisk: ChangeRiskService,
+    private readonly reviewedRisk: ReviewRiskStore,
   ) {}
 
   // ── Pull requests ──────────────────────────────────────────────────
@@ -68,6 +69,10 @@ export class ReviewsWebService {
       await this.reviewComments.delete({ reviewId: pr.review.id });
       await this.reviews.delete(pr.review.id);
     }
+
+    // The review it described is gone. Until the new one lands, the panel
+    // falls back to a live assessment labelled as the current head.
+    await this.reviewedRisk.forget(pr.id);
 
     await this.queue.enqueuePullRequestReview(pr.id);
 
@@ -111,16 +116,16 @@ export class ReviewsWebService {
   }
 
   /** Risk Radar for the review page. Ownership is checked before any diff is read. */
-  async pullRequestRisk(user: User, id: number): Promise<{ risk: RiskAssessment }> {
+  async pullRequestRisk(user: User, id: number): Promise<ChangeRisk> {
     const pr = await this.findOwnedPullRequest(user, id, false);
 
-    return { risk: await this.changeRisk.forPullRequest(user, pr) };
+    return this.changeRisk.forPullRequest(user, pr);
   }
 
-  async commitRisk(user: User, id: number): Promise<{ risk: RiskAssessment }> {
+  async commitRisk(user: User, id: number): Promise<ChangeRisk> {
     const cr = await this.findOwnedCommitReview(user, id);
 
-    return { risk: await this.changeRisk.forCommit(user, cr) };
+    return this.changeRisk.forCommit(user, cr);
   }
 
   async exportData(user: User, id: number): Promise<{ pr: PullRequest; review: Review | null }> {

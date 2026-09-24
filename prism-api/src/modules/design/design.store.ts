@@ -20,6 +20,28 @@ import { REDIS_CLIENT } from '../../redis/redis.constants';
 export const DESIGN_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const DESIGN_HISTORY = 20;
 
+/**
+ * MULTI/EXEC resolves even when a command inside it failed: each failure comes
+ * back as the error half of its [error, result] pair, and an aborted
+ * transaction resolves to null. Treating "resolved" as "succeeded" would hand
+ * the caller a design id whose SET never happened.
+ */
+type ExecResult = [Error | null, unknown][] | null;
+
+function assertExec(result: ExecResult): [Error | null, unknown][] {
+  if (result === null) {
+    throw new Error('Redis transaction was aborted');
+  }
+
+  const failed = result.find(([error]) => error !== null);
+
+  if (failed) {
+    throw failed[0] as Error;
+  }
+
+  return result;
+}
+
 interface StoredDesign {
   owner_id: number;
   blueprint: Blueprint;
@@ -35,13 +57,15 @@ export class DesignStore {
     const record: StoredDesign = { owner_id: ownerId, blueprint };
 
     try {
-      await this.redis
-        .multi()
-        .set(this.designKey(blueprint.id), JSON.stringify(record), 'EX', DESIGN_TTL_SECONDS)
-        .lpush(this.historyKey(ownerId), blueprint.id)
-        .ltrim(this.historyKey(ownerId), 0, DESIGN_HISTORY - 1)
-        .expire(this.historyKey(ownerId), DESIGN_TTL_SECONDS)
-        .exec();
+      assertExec(
+        await this.redis
+          .multi()
+          .set(this.designKey(blueprint.id), JSON.stringify(record), 'EX', DESIGN_TTL_SECONDS)
+          .lpush(this.historyKey(ownerId), blueprint.id)
+          .ltrim(this.historyKey(ownerId), 0, DESIGN_HISTORY - 1)
+          .expire(this.historyKey(ownerId), DESIGN_TTL_SECONDS)
+          .exec(),
+      );
     } catch (error) {
       this.logger.error(`Design save failed: ${this.messageOf(error)}`);
 
@@ -85,36 +109,43 @@ export class DesignStore {
       return false;
     }
 
-    await this.redis
-      .multi()
-      .del(this.designKey(id))
-      .lrem(this.historyKey(ownerId), 0, id)
-      .exec();
+    assertExec(
+      await this.redis
+        .multi()
+        .del(this.designKey(id))
+        .lrem(this.historyKey(ownerId), 0, id)
+        .exec(),
+    );
 
     return true;
   }
 
   /**
    * INCR-and-expire counter for the per-user generation limit. Returns the
-   * count including this attempt. A Redis failure returns 0, which lets the
-   * request through: a cache outage should cost rate limiting, not the feature.
+   * count including this attempt.
+   *
+   * Fails closed. This limit is the only thing bounding Groq spend on this
+   * route, so an unreadable counter must not mean "unlimited". Failing open
+   * never bought availability anyway: with Redis down, save() fails too, so
+   * letting the request through only spent two model calls on a design that
+   * could not be stored.
    */
   async hit(ownerId: number, windowSeconds: number): Promise<number> {
     const bucket = Math.floor(Date.now() / 1000 / windowSeconds);
     const key = `design:rate:${ownerId}:${bucket}`;
 
     try {
-      const [[, count]] = (await this.redis
-        .multi()
-        .incr(key)
-        .expire(key, windowSeconds)
-        .exec()) as [[Error | null, number], [Error | null, number]];
+      const [incr] = assertExec(
+        await this.redis.multi().incr(key).expire(key, windowSeconds).exec(),
+      );
 
-      return count;
+      return Number(incr?.[1]);
     } catch (error) {
-      this.logger.warn(`Design rate counter failed: ${this.messageOf(error)}`);
+      this.logger.error(`Design rate counter failed, refusing: ${this.messageOf(error)}`);
 
-      return 0;
+      throw new ServiceUnavailableException(
+        'Design Studio is temporarily unavailable. Please try again shortly.',
+      );
     }
   }
 

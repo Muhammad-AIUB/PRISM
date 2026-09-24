@@ -148,13 +148,16 @@ See `docs/designs/risk-radar-and-design-studio.md`. Things that are easy to brea
 
 - `diff/risk-radar.ts` is **pure and deterministic**: no model, network or DB. The
   runners call `tryAssessRisk()`, which never throws; a risk bug must cost the
-  comment its risk section, never the review. `ChangeRiskService` reads the diff
-  through the runners' own `DiffCacheService` keys; keep them shared.
+  comment its risk section, never the review. The PR runner saves the assessment
+  of the diff it reviewed (`ReviewRiskStore`), and the pages serve that, so risk
+  always matches the verdict beside it. A live assessment of the current head is
+  only a fallback and must stay labelled `basis: "current"`.
 - `SummaryCommentBuilder` appends the risk section only when `risk` is supplied,
   so the existing byte-for-byte comment tests stay valid.
 - Design Studio runs **inline** (not on the concurrency-1 queue), bounded by
   `DESIGN_BUDGET_MS` (an `AbortSignal`) and a per-user Redis limit checked
-  *before* the model call. It uses a service-level limit because the global
+  *before* the model call. The limit **fails closed** (503) when Redis is
+  unreadable, and every `MULTI/EXEC` result is checked per command. It uses a service-level limit because the global
   `RateLimitGuard` runs before auth guards and buckets web traffic by the
   Next.js server's IP.
 - Every AI failure degrades to `baselineBlueprint()` with a `notice`. It never

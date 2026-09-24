@@ -32,10 +32,13 @@
     --accent-solid:       #4f46e5;
     --accent-solid-hover: #4338ca;
 
+    /* Status colours are used as text as well as fills, so each one clears
+       4.5:1 on every dark surface up to --bg-hover (#ef4444 and #3b82f6 did
+       not, at 4.2:1). */
     --success: #22c55e;
     --warning: #f59e0b;
-    --danger:  #ef4444;
-    --info:    #3b82f6;
+    --danger:  #f87171;
+    --info:    #60a5fa;
 
     --shadow-card: 0 0 0 1px transparent;
 
@@ -68,9 +71,12 @@ html.light {
     --accent-solid:       #4f46e5;
     --accent-solid-hover: #4338ca;
 
-    --success: #16a34a;
-    --warning: #d97706;
-    --danger:  #dc2626;
+    /* The 600 shades read as text at 2.9-3.3:1 on white. These clear 4.5:1 on
+       every light surface, the indigo hover tint and the 15% status tints. */
+    --success: #157a3a;
+    --warning: #a8500a;
+    --danger:  #b91c1c;
+    --info:    #1d4ed8;
 
     /* Cards need a visible drop shadow in light mode for separation. */
     --shadow-card: 0 1px 2px 0 rgba(15, 23, 42, 0.04), 0 1px 3px 0 rgba(15, 23, 42, 0.06);

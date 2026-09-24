@@ -52,10 +52,16 @@ is evidence of where to look, not proof that anything is wrong.
 returns `null` on any exception. A pattern bug costs the comment its risk
 section, never the user their review or a BullMQ retry.
 
-**No extra GitHub calls.** `ChangeRiskService` reads through the runners' own
-`DiffCacheService` keys. A risk panel opened within the hour costs nothing and
-can never describe a different diff than the one reviewed. It was verified
-live: seeding the runner's key makes the endpoint answer without touching GitHub.
+**Bound to the reviewed revision.** A pull request's diff moves with every
+push, while the page keeps showing the previous review until the next one
+completes. So the PR runner saves the assessment of the exact diff it reviewed
+(`ReviewRiskStore`, Redis, 90 days), and the pages serve that with
+`basis: "reviewed"`. Only when none exists (reviews older than this feature, or
+expired) is the live head assessed, through the runners' diff-cache keys, and it
+is returned as `basis: "current"` with a visible note. A commit's diff is
+immutable per SHA, so its risk is always the reviewed revision. This was
+tightened after review: the first version keyed on the live pull request, which
+could put a panel about a later push beside a verdict about an earlier one.
 
 ### Design Studio: a system design before the first commit
 

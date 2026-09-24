@@ -30,7 +30,10 @@ const DIFF = [
 describe('ChangeRiskService', () => {
   const keys = new DiffCacheService(null as never);
 
-  function build(loader: (key: string, load: () => Promise<string>) => Promise<string>) {
+  function build(
+    loader: (key: string, load: () => Promise<string>) => Promise<string>,
+    reviewedRisk: unknown = null,
+  ) {
     const diffCache = {
       remember: jest.fn(loader),
       pullRequestKey: keys.pullRequestKey.bind(keys),
@@ -41,21 +44,47 @@ describe('ChangeRiskService', () => {
       fetchCommitDiff: jest.fn().mockResolvedValue(DIFF),
     };
     const crypt = { decrypt: jest.fn().mockReturnValue('gho_token') };
-    const service = new ChangeRiskService(diffCache as never, github as never, crypt as never);
+    const reviewed = { find: jest.fn().mockResolvedValue(reviewedRisk) };
+    const service = new ChangeRiskService(
+      diffCache as never,
+      github as never,
+      crypt as never,
+      reviewed as never,
+    );
 
-    return { service, diffCache, github };
+    return { service, diffCache, github, reviewed };
   }
 
-  it('reads through the exact cache key the review runner wrote, so no extra GitHub call', async () => {
+  it('serves the assessment of the revision the review read, without touching the live diff', async () => {
+    const saved = { level: 'high', score: 70, stats: {}, signals: [], checklist: [] };
+    const { service, diffCache, github } = build(async () => DIFF, saved);
+
+    await expect(service.forPullRequest(owner, pr)).resolves.toEqual({
+      risk: saved,
+      basis: 'reviewed',
+    });
+    // A later push has moved the PR on; none of that may leak into this answer.
+    expect(diffCache.remember).not.toHaveBeenCalled();
+    expect(github.fetchPullRequestDiff).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the live head only when nothing was saved, and labels it as such', async () => {
     const { service, diffCache, github } = build(async () => DIFF);
 
-    const risk = await service.forPullRequest(owner, pr);
+    const { risk, basis } = await service.forPullRequest(owner, pr);
 
+    expect(basis).toBe('current');
     expect(diffCache.remember.mock.calls[0]?.[0]).toBe(
       keys.pullRequestKey(pr.id, pr.headBranch, pr.updatedAt),
     );
     expect(github.fetchPullRequestDiff).not.toHaveBeenCalled();
     expect(risk.signals.map((s) => s.id)).toContain('auth');
+  });
+
+  it('calls a commit\'s risk reviewed, since its diff cannot change', async () => {
+    const { service } = build(async () => DIFF);
+
+    await expect(service.forCommit(owner, commit)).resolves.toMatchObject({ basis: 'reviewed' });
   });
 
   it('fetches with the owner\'s decrypted token on a cache miss', async () => {

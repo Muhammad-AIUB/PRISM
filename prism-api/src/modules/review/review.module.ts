@@ -7,6 +7,7 @@ import { DiffCacheModule } from '../../cache/diff-cache.module';
 import { CommitReview, PullRequest, Review, ReviewComment } from '../../database/entities';
 import { GithubModule } from '../../github/github.module';
 import { NotificationsModule } from '../../notifications/notifications.module';
+import { RiskModule } from '../risk/risk.module';
 import { CommitReviewRunner } from './commit-review.runner';
 import { PullRequestReviewRunner } from './pr-review.runner';
 import { ReviewProcessor } from './review.processor';
@@ -28,6 +29,7 @@ import { SummaryCommentBuilder } from './summary-comment.builder';
     NotificationsModule,
     DiffCacheModule,
     AuditModule,
+    RiskModule,
   ],
   providers: [
     ReviewProcessor,

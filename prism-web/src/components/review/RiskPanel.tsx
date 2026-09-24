@@ -3,7 +3,7 @@
 import { ChevronDown, ListChecks, Radar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { loadRisk } from '@/app/reviews/actions';
-import type { RiskAssessment, RiskLevel } from '@/lib/types';
+import type { RiskAssessment, RiskBasis, RiskLevel } from '@/lib/types';
 
 /**
  * Risk Radar: how carefully to look, and what to ask before merging.
@@ -44,7 +44,11 @@ export default function RiskPanel({
   kind: 'pull-request' | 'commit';
   id: number;
 }) {
-  const [state, setState] = useState<{ risk: RiskAssessment | null; error: string | null } | null>(
+  const [state, setState] = useState<{
+    risk: RiskAssessment | null;
+    basis: RiskBasis | null;
+    error: string | null;
+  } | null>(
     null,
   );
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -129,6 +133,15 @@ export default function RiskPanel({
       <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         {level.note}
       </p>
+
+      {/* Never let a panel about one push sit beside a verdict about another
+          without saying so. */}
+      {state.basis === 'current' && (
+        <p className="mt-2 text-xs" style={{ color: 'var(--warning)' }}>
+          Assessed against the pull request&apos;s current head, which may include pushes made
+          after the review above.
+        </p>
+      )}
 
       {risk.signals.length > 0 && (
         <div className="mt-4">

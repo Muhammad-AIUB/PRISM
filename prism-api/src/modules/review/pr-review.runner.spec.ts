@@ -62,6 +62,7 @@ describe('PullRequestReviewRunner language detection', () => {
     reviews.findOne.mockResolvedValue(null);
     reviews.save.mockResolvedValue({ id: 99 });
 
+    const reviewedRisk = { save: jest.fn().mockResolvedValue(undefined) };
     const runner = new PullRequestReviewRunner(
       pullRequests as never,
       reviews as never,
@@ -87,9 +88,13 @@ describe('PullRequestReviewRunner language detection', () => {
       { buildForPullRequest: jest.fn().mockReturnValue('body') } as never,
       { sendPullRequestReview: jest.fn() } as never,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
+      reviewedRisk as never,
     );
 
     await runner.run(1, 1);
+
+    // The assessment the page will show is of this exact diff, saved under this PR.
+    expect(reviewedRisk.save).toHaveBeenCalledWith(1, expect.objectContaining({ level: expect.any(String) }));
 
     const languageWrite = pullRequests.update.mock.calls.find(
       (call) => (call[1] as Record<string, unknown>).detectedLanguages !== undefined,

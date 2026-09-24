@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { ApiError, apiGet, apiRaw, apiSend } from '@/lib/api';
-import type { RiskAssessment } from '@/lib/types';
+import type { RiskAssessment, RiskBasis } from '@/lib/types';
 
 /**
  * Re-analyze and diff loading for the review screens, kept server-side so the
@@ -68,16 +68,17 @@ export async function loadDiff(id: number): Promise<{ diff: string; error: strin
 export async function loadRisk(
   kind: 'pull-request' | 'commit',
   id: number,
-): Promise<{ risk: RiskAssessment | null; error: string | null }> {
+): Promise<{ risk: RiskAssessment | null; basis: RiskBasis | null; error: string | null }> {
   try {
-    const { risk } = await apiGet<{ risk: RiskAssessment }>(
+    const { risk, basis } = await apiGet<{ risk: RiskAssessment; basis: RiskBasis }>(
       kind === 'commit' ? `/commits/${id}/risk` : `/reviews/${id}/risk`,
     );
 
-    return { risk, error: null };
+    return { risk, basis, error: null };
   } catch (error) {
     return {
       risk: null,
+      basis: null,
       error: error instanceof ApiError ? error.message : 'Could not assess this change.',
     };
   }

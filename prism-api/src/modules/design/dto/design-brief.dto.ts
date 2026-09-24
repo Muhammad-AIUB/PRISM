@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayUnique,
@@ -24,7 +25,16 @@ import {
  * and a generic design is the thing this feature exists to replace. Twenty
  * characters is enough to force one real sentence.
  */
+/**
+ * Trim before validating, so the length rules measure what the model will
+ * actually see: twenty spaces is not a description. The ValidationPipe runs
+ * class-transformer before class-validator, so this applies first.
+ */
+const trimmed = () =>
+  Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
+
 export class DesignBriefDto {
+  @trimmed()
   @IsString()
   @MinLength(20, { message: 'product must describe what you are building in at least 20 characters' })
   @MaxLength(4000)
@@ -42,6 +52,7 @@ export class DesignBriefDto {
   priorities?: DesignPriority[];
 
   @IsOptional()
+  @trimmed()
   @IsString()
   @MaxLength(1500)
   constraints?: string;

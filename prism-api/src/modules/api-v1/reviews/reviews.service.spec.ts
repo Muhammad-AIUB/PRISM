@@ -151,11 +151,12 @@ describe('ReviewsService re-analyze', () => {
 
 describe('ReviewsService risk', () => {
   const risk = { level: 'low', score: 0, stats: {}, signals: [], checklist: [] };
+  const assessed = { risk, basis: 'reviewed' };
 
   function build(pr: unknown, commit: unknown) {
     const changeRisk = {
-      forPullRequest: jest.fn().mockResolvedValue(risk),
-      forCommit: jest.fn().mockResolvedValue(risk),
+      forPullRequest: jest.fn().mockResolvedValue(assessed),
+      forCommit: jest.fn().mockResolvedValue(assessed),
     };
     const service = new ReviewsService(
       {} as never,
@@ -173,7 +174,7 @@ describe('ReviewsService risk', () => {
   it('returns the assessment for a pull request the caller owns', async () => {
     const { service, changeRisk } = build(pullRequest, null);
 
-    await expect(service.pullRequestRisk(user, 42)).resolves.toEqual({ risk });
+    await expect(service.pullRequestRisk(user, 42)).resolves.toEqual(assessed);
     expect(changeRisk.forPullRequest).toHaveBeenCalledWith(user, pullRequest);
   });
 

@@ -20,6 +20,7 @@ import { reconcileScore, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
 import { SlackService } from '../../notifications/slack.service';
+import { ReviewRiskStore } from '../risk/review-risk.store';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
@@ -53,6 +54,7 @@ export class PullRequestReviewRunner {
     private readonly summaryComment: SummaryCommentBuilder,
     private readonly slack: SlackService,
     private readonly auditLog: AuditLogService,
+    private readonly reviewedRisk: ReviewRiskStore,
   ) {}
 
   async run(pullRequestId: number, attempt: number, signal?: AbortSignal): Promise<void> {
@@ -216,6 +218,16 @@ export class PullRequestReviewRunner {
       await this.reviews.update(review.id, { suggestedFixes: { fixes: checked.fixes } });
     }
 
+    // Computed from the whole diff, not the budgeted selection the model saw:
+    // blast radius is a property of the change, not of what fit. Saved against
+    // this pull request so the page shows risk for the revision this review
+    // read, not whatever was pushed after it.
+    const risk = tryAssessRisk(diffBody);
+
+    if (risk) {
+      await this.reviewedRisk.save(pr.id, risk);
+    }
+
     // 5. Post the summary back on the GitHub PR. Last checkpoint before the
     // one irreversible side effect: GitHub keeps every comment we post, so a
     // timed-out attempt that carried on here left two on the same PR.
@@ -235,9 +247,7 @@ export class PullRequestReviewRunner {
         performanceIssues: layers.performance as ReviewIssue[],
         codeQualityIssues: layers.code_quality as ReviewIssue[],
         aiModelUsed: model,
-        // Computed from the whole diff, not the budgeted selection the model
-        // saw: blast radius is a property of the change, not of what fit.
-        risk: tryAssessRisk(diffBody),
+        risk,
       }),
       signal,
     );

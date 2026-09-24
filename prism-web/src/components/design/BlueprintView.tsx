@@ -100,8 +100,16 @@ function useChecklist(id: string) {
     try {
       const saved = window.localStorage.getItem(key);
 
-      if (saved) {
-        setDone(JSON.parse(saved) as Record<string, boolean>);
+      const parsed: unknown = saved ? JSON.parse(saved) : null;
+
+      // Valid JSON is not the same as a valid shape: `null` or an array here
+      // would make every done[item.id] lookup throw and take the page down.
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        setDone(
+          Object.fromEntries(
+            Object.entries(parsed).filter(([, value]) => typeof value === 'boolean'),
+          ) as Record<string, boolean>,
+        );
       }
     } catch {
       // No storage: the checklist simply starts empty each visit.
@@ -129,11 +137,15 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
   const [copied, setCopied] = useState<'idle' | 'copied' | 'failed'>('idle');
   const { done, toggle } = useChecklist(design.id);
   const ready = design.readiness_checklist.filter((item) => done[item.id]).length;
+  const copyLabel =
+    copied === 'copied' ? 'Copied' : copied === 'failed' ? 'Copy failed' : 'Copy Markdown';
 
   const copyMarkdown = async () => {
-    const markdown = await loadDesignMarkdown(design.id);
-
     try {
+      // Inside the try: a failed server action must read as "Copy failed",
+      // not as an unhandled rejection that leaves the button looking idle.
+      const markdown = await loadDesignMarkdown(design.id);
+
       if (!markdown) {
         throw new Error('empty');
       }
@@ -166,21 +178,28 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
               type="button"
               onClick={copyMarkdown}
               className="btn btn-secondary min-h-[44px] transition active:scale-95"
+              // The visible text is hidden below sm; this keeps the control
+              // named, and announcing its result, on every screen size.
+              aria-label={copyLabel}
+              aria-live="polite"
             >
               {copied === 'copied' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              <span className="hidden sm:inline">
-                {copied === 'copied' ? 'Copied' : copied === 'failed' ? 'Copy failed' : 'Copy Markdown'}
-              </span>
+              <span className="hidden sm:inline">{copyLabel}</span>
             </button>
             {/* A plain anchor: a file download served by a route handler. */}
             <a
               href={`/design/${design.id}/markdown`}
               className="btn btn-secondary min-h-[44px] transition active:scale-95"
+              aria-label="Download as Markdown"
             >
               <FileDown className="h-4 w-4" />
               <span className="hidden sm:inline">Download .md</span>
             </a>
-            <Link href="/design" className="btn btn-primary min-h-[44px] transition active:scale-95">
+            <Link
+              href="/design"
+              className="btn btn-primary min-h-[44px] transition active:scale-95"
+              aria-label="New design"
+            >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New design</span>
             </Link>

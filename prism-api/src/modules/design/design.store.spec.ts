@@ -77,6 +77,58 @@ describe('DesignStore', () => {
     await expect(store.find(1, 'a')).resolves.toBeNull();
   });
 
+  it('treats a command error inside MULTI as a failed save, not a successful one', async () => {
+    const redis = fakeRedis();
+    const multi = redis.multi.bind(redis);
+
+    redis.multi = () => {
+      const chain = multi() as Record<string, unknown>;
+
+      chain.exec = async () => [[null, 'OK'], [new Error('WRONGTYPE'), null], [null, 1], [null, 1]];
+
+      return chain;
+    };
+
+    await expect(new DesignStore(redis as never).save(1, design('a'))).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('treats an aborted transaction (null) as a failure too', async () => {
+    const redis = fakeRedis();
+    const multi = redis.multi.bind(redis);
+
+    redis.multi = () => {
+      const chain = multi() as Record<string, unknown>;
+
+      chain.exec = async () => null;
+
+      return chain;
+    };
+
+    await expect(new DesignStore(redis as never).save(1, design('a'))).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('counts attempts per user and window', async () => {
+    const store = new DesignStore(fakeRedis() as never);
+
+    await expect(store.hit(1, 3600)).resolves.toBe(1);
+  });
+
+  it('fails closed when the rate counter cannot be read, rather than allowing unlimited spend', async () => {
+    const redis = fakeRedis();
+
+    redis.multi = () => {
+      throw new Error('ECONNREFUSED');
+    };
+
+    await expect(new DesignStore(redis as never).hit(1, 3600)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
   it('turns a failed save into a 503 rather than handing out a link that will 404', async () => {
     const redis = fakeRedis();
 

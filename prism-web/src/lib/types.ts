@@ -274,6 +274,13 @@ export interface ReliabilityCheck {
   files: string[];
 }
 
+/**
+ * Which revision a risk assessment describes. `reviewed` is the exact diff the
+ * review on the page read; `current` is the pull request's head right now,
+ * served only when no reviewed-revision assessment exists.
+ */
+export type RiskBasis = 'reviewed' | 'current';
+
 export interface RiskAssessment {
   level: RiskLevel;
   score: number;

@@ -77,9 +77,12 @@ function formatReview(r) {
 }
 
 /** Risk Radar as readable text: level, why, and the questions to answer before merging. */
-function formatRisk(risk) {
+function formatRisk(risk, basis) {
   const lines = [
     `Change risk: ${risk.level.toUpperCase()} (${risk.score}/100)`,
+    ...(basis === 'current'
+      ? ['(Assessed against the current head; it may include pushes made after the last review.)']
+      : []),
     `${risk.stats.files} files, +${risk.stats.additions} −${risk.stats.deletions}, ${risk.stats.testFiles} test files`,
   ];
   if (risk.signals.length) {
@@ -185,8 +188,8 @@ server.tool(
     id: z.number().int().describe('Pull request ID or commit review ID (from list_recent_reviews)'),
   },
   async ({ kind, id }) => {
-    const { risk } = await api(kind === 'commit' ? `/commits/${id}/risk` : `/pull-requests/${id}/risk`);
-    return text(formatRisk(risk));
+    const { risk, basis } = await api(kind === 'commit' ? `/commits/${id}/risk` : `/pull-requests/${id}/risk`);
+    return text(formatRisk(risk, basis));
   },
 );
 
@@ -200,7 +203,11 @@ server.tool(
     priorities: z.array(z.enum([
       'high_availability', 'low_latency', 'strong_consistency', 'low_cost',
       'fast_delivery', 'security_compliance', 'offline_first',
-    ])).max(4).optional().describe('Up to 4, most important first'),
+    ])).max(4)
+      // Mirrors the API's @ArrayUnique, so a repeat fails here with a clear
+      // message instead of coming back from the server as a 422.
+      .refine((list) => new Set(list).size === list.length, { message: 'priorities must not repeat' })
+      .optional().describe('Up to 4 distinct priorities, most important first'),
     constraints: z.string().max(1500).optional().describe('Stack, team size, cloud, budget, regulation'),
   },
   async (brief) => {
