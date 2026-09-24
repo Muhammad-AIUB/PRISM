@@ -7,6 +7,7 @@ import { headers } from 'next/headers';
 import '@fontsource-variable/inter/opsz.css';
 import '@fontsource-variable/jetbrains-mono';
 import './globals.css';
+import ThemeSync from '@/components/ui/ThemeSync';
 
 const TITLE = 'PRism · AI Code Review';
 const DESCRIPTION =
@@ -71,7 +72,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ThemeSync />
+        {children}
+      </body>
     </html>
   );
 }
