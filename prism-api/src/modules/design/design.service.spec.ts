@@ -26,6 +26,8 @@ function build(ai: { callWithFallback: jest.Mock }, hits = 1) {
     hit: jest.fn().mockResolvedValue(hits),
     save: jest.fn(async (_owner: number, blueprint: Blueprint) => {
       saved.push(blueprint);
+
+      return true;
     }),
     find: jest.fn(),
     list: jest.fn(),
@@ -139,5 +141,17 @@ describe('DesignService.show / remove', () => {
     store.delete.mockResolvedValue(false);
 
     await expect(service.remove(user, id)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('DesignService.create during account erasure', () => {
+  it('reports the account as gone when the store refuses the save', async () => {
+    const ai = { callWithFallback: jest.fn().mockResolvedValue({ model: 'm', parsed: GOOD, raw: '' }) };
+    const { service, store, auditLog } = build(ai);
+
+    store.save.mockResolvedValue(false);
+
+    await expect(service.create(user, brief)).rejects.toThrow('This account has been deleted.');
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 });

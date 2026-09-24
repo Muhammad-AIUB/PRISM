@@ -21,6 +21,32 @@ export const DESIGN_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const DESIGN_HISTORY = 20;
 
 /**
+ * How long an erased account's marker refuses new designs. Far longer than a
+ * generation can take (DESIGN_BUDGET_MS), which is the window it closes.
+ */
+export const ERASURE_MARKER_TTL_SECONDS = 60 * 60;
+
+/**
+ * The save, as one atomic script, so it can check the erasure marker and
+ * write in a single step. A MULTI cannot read before it writes, and WATCH is
+ * per connection, which this shared client cannot offer.
+ *
+ * KEYS: design, history, owned index, erasure marker
+ * ARGV: record JSON, design id, ttl seconds, history cap
+ * Returns 1 when saved, 0 when the owner's account is being erased.
+ */
+export const SAVE_SCRIPT = `
+if redis.call('EXISTS', KEYS[4]) == 1 then return 0 end
+redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
+redis.call('LPUSH', KEYS[2], ARGV[2])
+redis.call('LTRIM', KEYS[2], 0, tonumber(ARGV[4]) - 1)
+redis.call('EXPIRE', KEYS[2], ARGV[3])
+redis.call('SADD', KEYS[3], ARGV[2])
+redis.call('EXPIRE', KEYS[3], ARGV[3])
+return 1
+`;
+
+/**
  * MULTI/EXEC resolves even when a command inside it failed: each failure comes
  * back as the error half of its [error, result] pair, and an aborted
  * transaction resolves to null. Treating "resolved" as "succeeded" would hand
@@ -53,23 +79,32 @@ export class DesignStore {
 
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
-  async save(ownerId: number, blueprint: Blueprint): Promise<void> {
+  /**
+   * Returns false, having written nothing, when the owner's account is being
+   * erased. A generation can take most of a minute, and one that finishes
+   * after "delete my data" must not quietly leave the brief behind.
+   *
+   * The owned index is every id the owner has, untrimmed: the history list is
+   * capped for display, so it cannot be what erasure relies on.
+   */
+  async save(ownerId: number, blueprint: Blueprint): Promise<boolean> {
     const record: StoredDesign = { owner_id: ownerId, blueprint };
 
     try {
-      assertExec(
-        await this.redis
-          .multi()
-          .set(this.designKey(blueprint.id), JSON.stringify(record), 'EX', DESIGN_TTL_SECONDS)
-          .lpush(this.historyKey(ownerId), blueprint.id)
-          .ltrim(this.historyKey(ownerId), 0, DESIGN_HISTORY - 1)
-          .expire(this.historyKey(ownerId), DESIGN_TTL_SECONDS)
-          // Every id the owner has, untrimmed. The history list above is
-          // capped for display, so it cannot be what erasure relies on.
-          .sadd(this.ownedKey(ownerId), blueprint.id)
-          .expire(this.ownedKey(ownerId), DESIGN_TTL_SECONDS)
-          .exec(),
+      const saved = await this.redis.eval(
+        SAVE_SCRIPT,
+        4,
+        this.designKey(blueprint.id),
+        this.historyKey(ownerId),
+        this.ownedKey(ownerId),
+        this.erasedKey(ownerId),
+        JSON.stringify(record),
+        blueprint.id,
+        DESIGN_TTL_SECONDS,
+        DESIGN_HISTORY,
       );
+
+      return Number(saved) === 1;
     } catch (error) {
       this.logger.error(`Design save failed: ${this.messageOf(error)}`);
 
@@ -79,17 +114,11 @@ export class DesignStore {
     }
   }
 
-  /** Null for a missing, expired or foreign design — callers must not tell those apart. */
+  /** Null for a missing, expired, corrupt or foreign design — callers must not tell those apart. */
   async find(ownerId: number, id: string): Promise<Blueprint | null> {
-    const raw = await this.redis.get(this.designKey(id));
+    const record = this.parse(await this.redis.get(this.designKey(id)));
 
-    if (raw === null) {
-      return null;
-    }
-
-    const record = JSON.parse(raw) as StoredDesign;
-
-    return record.owner_id === ownerId ? record.blueprint : null;
+    return record?.owner_id === ownerId ? record.blueprint : null;
   }
 
   async list(ownerId: number): Promise<Blueprint[]> {
@@ -101,10 +130,10 @@ export class DesignStore {
 
     const raws = await this.redis.mget(...ids.map((id) => this.designKey(id)));
 
+    // One unreadable entry costs that entry, not the whole list.
     return raws
-      .filter((raw): raw is string => raw !== null)
-      .map((raw) => JSON.parse(raw) as StoredDesign)
-      .filter((record) => record.owner_id === ownerId)
+      .map((raw) => this.parse(raw))
+      .filter((record): record is StoredDesign => record?.owner_id === ownerId)
       .map((record) => record.blueprint);
   }
 
@@ -125,9 +154,29 @@ export class DesignStore {
     return true;
   }
 
-  /** How many designs the owner has stored, including ones past the history cap. */
+  /**
+   * How many designs the owner has stored, including ones past the history
+   * cap. Designs expire one by one while the index's own expiry is refreshed
+   * on every save, so the index collects ids of designs that no longer exist.
+   * Only live ones are counted, and the dead ones are pruned on the way.
+   */
   async count(ownerId: number): Promise<number> {
-    return this.redis.scard(this.ownedKey(ownerId));
+    const ids = await this.redis.smembers(this.ownedKey(ownerId));
+
+    if (ids.length === 0) {
+      return 0;
+    }
+
+    const exists = assertExec(
+      await ids.reduce((multi, id) => multi.exists(this.designKey(id)), this.redis.multi()).exec(),
+    );
+    const stale = ids.filter((_, index) => Number(exists[index]?.[1]) === 0);
+
+    if (stale.length > 0) {
+      await this.redis.srem(this.ownedKey(ownerId), ...stale);
+    }
+
+    return ids.length - stale.length;
   }
 
   /**
@@ -137,6 +186,11 @@ export class DesignStore {
    * person their data is gone and must not do so if it is not.
    */
   async purgeOwner(ownerId: number): Promise<void> {
+    // The marker goes first. From here on SAVE_SCRIPT refuses this owner, so a
+    // generation that finishes mid-erasure is either already in the index read
+    // below, or never written at all. There is no gap between the two.
+    await this.redis.set(this.erasedKey(ownerId), '1', 'EX', ERASURE_MARKER_TTL_SECONDS);
+
     const [owned, listed] = await Promise.all([
       this.redis.smembers(this.ownedKey(ownerId)),
       this.redis.lrange(this.historyKey(ownerId), 0, -1),
@@ -196,6 +250,24 @@ export class DesignStore {
 
   private ownedKey(ownerId: number): string {
     return `design:owned:${ownerId}`;
+  }
+
+  private erasedKey(ownerId: number): string {
+    return `design:erased:${ownerId}`;
+  }
+
+  private parse(raw: string | null): StoredDesign | null {
+    if (raw === null) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw) as StoredDesign;
+    } catch {
+      this.logger.warn('Skipping an unreadable stored design');
+
+      return null;
+    }
   }
 
   private messageOf(error: unknown): string {

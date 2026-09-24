@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  GoneException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { AiClientService, RateLimitedError } from '../../ai/ai-client.service';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { toIso8601String } from '../../common/utils/iso8601';
@@ -79,7 +86,11 @@ export class DesignService {
       created_at: toIso8601String(new Date()) ?? '',
     };
 
-    await this.store.save(user.id, blueprint);
+    // The account was erased while this design was generating. Nothing was
+    // written; there is no longer anyone to hand it to.
+    if (!(await this.store.save(user.id, blueprint))) {
+      throw new GoneException('This account has been deleted.');
+    }
 
     await this.auditLog.record(user.id, 'design_created', `Generated design "${blueprint.title}"`, {
       design_id: blueprint.id,

@@ -1,6 +1,6 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import type { Blueprint } from '../../design/blueprint';
-import { DesignStore } from './design.store';
+import { DesignStore, SAVE_SCRIPT } from './design.store';
 
 /** Just enough of ioredis for the store: strings, lists, and MULTI. */
 function fakeRedis() {
@@ -15,7 +15,8 @@ function fakeRedis() {
     expire: () => 1,
     del: (...ks: string[]) => ks.forEach((k) => (strings.delete(k), lists.delete(k), sets.delete(k))),
     sadd: (k: string, v: string) => sets.set(k, new Set([...(sets.get(k) ?? []), v])),
-    srem: (k: string, v: string) => sets.get(k)?.delete(v),
+    srem: (k: string, ...vs: string[]) => vs.forEach((v) => sets.get(k)?.delete(v)),
+    exists: (k: string) => (strings.has(k) ? 1 : 0),
     lrem: (k: string, _n: number, v: string) =>
       lists.set(k, (lists.get(k) ?? []).filter((x) => x !== v)),
     incr: () => 1,
@@ -28,6 +29,18 @@ function fakeRedis() {
     sets,
     lrange: jest.fn(async (k: string) => lists.get(k) ?? []),
     smembers: jest.fn(async (k: string) => [...(sets.get(k) ?? [])]),
+    set: jest.fn(async (k: string, v: string) => strings.set(k, v)),
+    srem: jest.fn(async (k: string, ...vs: string[]) => vs.forEach((v) => sets.get(k)?.delete(v))),
+    /** SAVE_SCRIPT's semantics, step for step; any other script is a test bug. */
+    eval: jest.fn(async (script: string, _n: number, ...args: (string | number)[]) => {
+      if (script !== SAVE_SCRIPT) throw new Error('unexpected script');
+      const [design, history, owned, erased, json, id, , cap] = args.map(String) as string[];
+      if (strings.has(erased as string)) return 0;
+      strings.set(design as string, json as string);
+      lists.set(history as string, [id as string, ...(lists.get(history as string) ?? [])].slice(0, Number(cap)));
+      sets.set(owned as string, new Set([...(sets.get(owned as string) ?? []), id as string]));
+      return 1;
+    }),
     scard: jest.fn(async (k: string) => sets.get(k)?.size ?? 0),
     mget: jest.fn(async (...ks: string[]) => ks.map((k) => strings.get(k) ?? null)),
     multi() {
@@ -84,38 +97,31 @@ describe('DesignStore', () => {
     await expect(store.find(1, 'a')).resolves.toBeNull();
   });
 
-  it('treats a command error inside MULTI as a failed save, not a successful one', async () => {
+  it('turns a failed save script into a 503 rather than handing out a link that will 404', async () => {
     const redis = fakeRedis();
-    const multi = redis.multi.bind(redis);
 
-    redis.multi = () => {
-      const chain = multi() as Record<string, unknown>;
-
-      chain.exec = async () => [[null, 'OK'], [new Error('WRONGTYPE'), null], [null, 1], [null, 1]];
-
-      return chain;
-    };
+    redis.eval = jest.fn().mockRejectedValue(new Error('ERR Error running script'));
 
     await expect(new DesignStore(redis as never).save(1, design('a'))).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
   });
 
-  it('treats an aborted transaction (null) as a failure too', async () => {
+  it('treats a command error inside MULTI as a failure (delete)', async () => {
     const redis = fakeRedis();
+    const store = new DesignStore(redis as never);
     const multi = redis.multi.bind(redis);
 
+    await store.save(1, design('a'));
     redis.multi = () => {
       const chain = multi() as Record<string, unknown>;
 
-      chain.exec = async () => null;
+      chain.exec = async () => [[null, 1], [new Error('WRONGTYPE'), null], [null, 1]];
 
       return chain;
     };
 
-    await expect(new DesignStore(redis as never).save(1, design('a'))).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(store.delete(1, 'a')).rejects.toThrow('WRONGTYPE');
   });
 
   it('counts attempts per user and window', async () => {
@@ -132,18 +138,6 @@ describe('DesignStore', () => {
     };
 
     await expect(new DesignStore(redis as never).hit(1, 3600)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
-  });
-
-  it('turns a failed save into a 503 rather than handing out a link that will 404', async () => {
-    const redis = fakeRedis();
-
-    redis.multi = () => {
-      throw new Error('ECONNREFUSED');
-    };
-
-    await expect(new DesignStore(redis as never).save(1, design('a'))).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
   });
@@ -187,6 +181,51 @@ describe('DesignStore', () => {
       redis.smembers = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
 
       await expect(new DesignStore(redis as never).purgeOwner(1)).rejects.toThrow('ECONNREFUSED');
+    });
+  });
+
+  describe('review fixes', () => {
+    it('counts only designs that still exist, and prunes the dead ids', async () => {
+      const redis = fakeRedis();
+      const store = new DesignStore(redis as never);
+
+      await store.save(1, design('day1'));
+      await store.save(1, design('day29'));
+      redis.strings.delete('design:day1'); // expired on day 31
+
+      await expect(store.count(1)).resolves.toBe(1);
+      expect([...(redis.sets.get('design:owned:1') ?? [])]).toEqual(['day29']);
+    });
+
+    it('refuses a save that lands after erasure began, writing nothing', async () => {
+      const redis = fakeRedis();
+      const store = new DesignStore(redis as never);
+
+      await store.purgeOwner(1); // erasure starts: the marker is set
+      await expect(store.save(1, design('late'))).resolves.toBe(false);
+
+      expect(redis.strings.has('design:late')).toBe(false);
+      await expect(store.count(1)).resolves.toBe(0);
+    });
+
+    it('still lets other owners save while one is being erased', async () => {
+      const store = new DesignStore(fakeRedis() as never);
+
+      await store.purgeOwner(1);
+
+      await expect(store.save(2, design('ok'))).resolves.toBe(true);
+    });
+
+    it('skips a corrupt entry instead of failing the whole list or lookup', async () => {
+      const redis = fakeRedis();
+      const store = new DesignStore(redis as never);
+
+      await store.save(1, design('good'));
+      await store.save(1, design('bad'));
+      redis.strings.set('design:bad', '{not json');
+
+      await expect(store.list(1)).resolves.toEqual([design('good')]);
+      await expect(store.find(1, 'bad')).resolves.toBeNull();
     });
   });
 });

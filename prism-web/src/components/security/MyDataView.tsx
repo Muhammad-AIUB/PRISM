@@ -51,7 +51,8 @@ function StatCard({
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
-  value: number;
+  /** Null renders as unavailable, never as a misleading zero. */
+  value: number | null;
 }) {
   return (
     <div className="card p-4">
@@ -60,7 +61,7 @@ function StatCard({
         <span className="uppercase tracking-wider">{label}</span>
       </div>
       <p className="mt-2 text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-        {value}
+        {value ?? <span aria-label="Unavailable">—</span>}
       </p>
     </div>
   );
@@ -234,10 +235,12 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
           <p className="mt-2 px-1 text-xs" style={{ color: 'var(--text-muted)' }}>
             Designs are kept for 30 days and risk assessments for 90. Both are erased immediately
             when you delete your data below.
+            {stats.saved_designs === null &&
+              ' Those two figures are temporarily unavailable; try again in a minute.'}
           </p>
         </section>
 
-        {designs.length > 0 && (
+        {designs && designs.length > 0 && (
           <section className="card-flat overflow-hidden">
             <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>

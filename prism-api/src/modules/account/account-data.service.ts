@@ -48,24 +48,39 @@ export class AccountDataService {
     }
   }
 
-  /** For the "my data" page: what is held outside the database. */
+  /**
+   * For the "my data" page: what is held outside the database.
+   *
+   * Never throws. The page's core is Postgres, and a Redis outage must cost
+   * these figures (reported as null, "unavailable") rather than the whole page.
+   * Zero would be worse than null here: it would tell someone they have
+   * nothing stored when the truth is that we could not look.
+   */
   async summary(user: User): Promise<{
-    saved_designs: number;
-    designs: BlueprintSummary[];
-    saved_risk_assessments: number;
+    saved_designs: number | null;
+    designs: BlueprintSummary[] | null;
+    saved_risk_assessments: number | null;
   }> {
-    const ids = await this.pullRequestIds(user.id);
-    const [savedDesigns, designs, savedRisk] = await Promise.all([
-      this.designs.count(user.id),
-      this.designs.list(user.id),
-      this.reviewedRisk.count(ids),
-    ]);
+    try {
+      const ids = await this.pullRequestIds(user.id);
+      const [savedDesigns, designs, savedRisk] = await Promise.all([
+        this.designs.count(user.id),
+        this.designs.list(user.id),
+        this.reviewedRisk.count(ids),
+      ]);
 
-    return {
-      saved_designs: savedDesigns,
-      designs: designs.map(summarise),
-      saved_risk_assessments: savedRisk,
-    };
+      return {
+        saved_designs: savedDesigns,
+        designs: designs.map(summarise),
+        saved_risk_assessments: savedRisk,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Account data summary unavailable (user_id=${user.id}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      return { saved_designs: null, designs: null, saved_risk_assessments: null };
+    }
   }
 
   /** Read while the rows still exist: they cascade away with the user. */

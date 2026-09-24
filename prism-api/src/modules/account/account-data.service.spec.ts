@@ -63,6 +63,20 @@ describe('AccountDataService', () => {
   });
 });
 
+describe('AccountDataService.summary when Redis is down', () => {
+  it('reports the Redis figures as unknown instead of failing the page', async () => {
+    const { service, designs } = build();
+
+    designs.count.mockRejectedValue(new Error('ECONNREFUSED'));
+
+    await expect(service.summary(user)).resolves.toEqual({
+      saved_designs: null,
+      designs: null,
+      saved_risk_assessments: null,
+    });
+  });
+});
+
 describe('SecurityService.deleteEverything', () => {
   function security(erase: jest.Mock) {
     const users = { delete: jest.fn().mockResolvedValue(undefined) };

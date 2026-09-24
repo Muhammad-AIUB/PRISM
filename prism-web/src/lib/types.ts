@@ -241,11 +241,14 @@ export interface MyData {
     connected_repos: number;
     total_reviews: number;
     audit_events: number;
-    /** Held in Redis, not Postgres, and erased with the account. */
-    saved_designs: number;
-    saved_risk_assessments: number;
+    /**
+     * Held in Redis, not Postgres, and erased with the account. Null when
+     * Redis could not be read: "unknown", which is not the same as zero.
+     */
+    saved_designs: number | null;
+    saved_risk_assessments: number | null;
   };
-  designs: BlueprintSummary[];
+  designs: BlueprintSummary[] | null;
   repositories: {
     full_name: string;
     created_at: string | null;
