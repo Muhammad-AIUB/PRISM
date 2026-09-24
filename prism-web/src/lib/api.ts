@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
 /**
@@ -70,6 +70,8 @@ async function request(path: string, init: ApiRequest = {}): Promise<Response> {
 async function send(path: string, init: ApiRequest): Promise<Response> {
   const store = await cookies();
   const session = store.get(SESSION_COOKIE)?.value;
+  // Set by src/middleware.ts, so every call made for one page shares its id.
+  const requestId = (await headers()).get('x-request-id');
 
   return fetch(`${API_ORIGIN}${path}`, {
     method: init.method ?? 'GET',
@@ -77,6 +79,7 @@ async function send(path: string, init: ApiRequest): Promise<Response> {
       Accept: 'application/json',
       ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(session ? { Cookie: `${SESSION_COOKIE}=${session}` } : {}),
+      ...(requestId ? { 'X-Request-Id': requestId } : {}),
     },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
     // Every response is user-specific. Caching one would serve it to the next

@@ -1,6 +1,7 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { runWithContext } from '../../common/observability/request-context';
 import { CommitReviewRunner } from './commit-review.runner';
 import { PullRequestReviewRunner } from './pr-review.runner';
 import {
@@ -41,7 +42,12 @@ export class ReviewProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  /** Every line logged while a job runs names that job. */
+  process(job: Job): Promise<void> {
+    return runWithContext({ jobId: String(job.id) }, () => this.route(job));
+  }
+
+  private async route(job: Job): Promise<void> {
     // attemptsMade is 0 while the first attempt runs; attempts() was 1-based,
     // and the number ends up in logs, so keep the 1-based convention.
     const attempt = job.attemptsMade + 1;
@@ -78,10 +84,16 @@ export class ReviewProcessor extends WorkerHost {
    * is only written once retries are exhausted — the original calls failed() once.
    */
   @OnWorkerEvent('failed')
-  async onFailed(job: Job | undefined, error: Error): Promise<void> {
+  onFailed(job: Job | undefined, error: Error): Promise<void> {
     if (!job) {
-      return;
+      return Promise.resolve();
     }
+
+    // Worker events fire outside process(), so the job id is set again here.
+    return runWithContext({ jobId: String(job.id) }, () => this.handleFailed(job, error));
+  }
+
+  private async handleFailed(job: Job, error: Error): Promise<void> {
 
     const attempts = job.opts.attempts ?? REVIEW_JOB_ATTEMPTS;
 

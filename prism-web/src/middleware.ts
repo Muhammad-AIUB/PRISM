@@ -1,7 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+/** Upstream ids are kept only in a shape that is safe to log (matches prism-api). */
+const SAFE_ID = /^[A-Za-z0-9._:-]{1,128}$/;
+
 /**
- * A strict, per-request Content-Security-Policy.
+ * Per request: a request id, and a strict Content-Security-Policy.
+ *
+ * The request id is forwarded by src/lib/api.ts on every API call this render
+ * makes, so prism-api's logs for all of them share one X-Request-Id, and the
+ * same id is returned to the browser to quote in a bug report.
+ *
+ * The Content-Security-Policy:
  *
  * Scripts run only if they carry this request's nonce ('strict-dynamic' lets
  * the scripts Next loads load their own chunks). Next reads the nonce from the
@@ -33,7 +42,11 @@ export function middleware(request: NextRequest): NextResponse {
     "frame-ancestors 'none'",
   ].join('; ');
 
+  const incoming = request.headers.get('x-request-id');
+  const requestId = incoming && SAFE_ID.test(incoming) ? incoming : crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
+
+  requestHeaders.set('x-request-id', requestId);
 
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', policy);
@@ -41,6 +54,7 @@ export function middleware(request: NextRequest): NextResponse {
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   response.headers.set('Content-Security-Policy', policy);
+  response.headers.set('X-Request-Id', requestId);
 
   return response;
 }
