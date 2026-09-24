@@ -17,6 +17,7 @@ import type { Request, Response } from 'express';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { User } from '../../database/entities';
 import { GithubOAuthService } from './github-oauth.service';
+import { SessionRevocationStore } from './session-revocation.store';
 import { WebAuthGuard } from './web-auth.guard';
 import { WebAuthService, type SessionUserDto } from './web-auth.service';
 
@@ -48,6 +49,7 @@ export class AuthController {
     private readonly oauth: GithubOAuthService,
     private readonly webAuth: WebAuthService,
     private readonly configService: ConfigService,
+    private readonly revocations: SessionRevocationStore,
   ) {}
 
   /** GET /auth/github — the previous OAuth helper's redirect(). */
@@ -128,10 +130,28 @@ export class AuthController {
     }
   }
 
-  /** Replaces Breeze's POST /logout. Clearing the cookie is the whole job. */
+  /**
+   * Replaces Breeze's POST /logout. Clearing the cookie ends the session in
+   * this browser; revoking the token ends it everywhere a copy of it exists.
+   * A revocation failure is logged and the cookie is cleared regardless: the
+   * user asked to be signed out here, and that part cannot fail.
+   */
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@Res({ passthrough: true }) response: Response): void {
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const token = (request.cookies as Record<string, string> | undefined)?.[this.webAuth.cookieName()];
+
+    if (token) {
+      await this.revocations.revoke(token).catch((error: unknown) =>
+        this.logger.warn(
+          `Session revocation failed on logout: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+    }
+
     response.clearCookie(this.webAuth.cookieName(), { path: '/' });
   }
 

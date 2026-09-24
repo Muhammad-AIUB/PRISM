@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { AuthController } from './auth.controller';
 import { GithubOAuthService } from './github-oauth.service';
+import { SessionRevocationStore } from './session-revocation.store';
 import { WebAuthGuard } from './web-auth.guard';
 import { WebAuthService } from './web-auth.service';
 
@@ -47,6 +48,7 @@ describe('AuthController throttling', () => {
         { provide: GithubOAuthService, useValue: { authorizeUrl: () => 'https://github.com/login' } },
         { provide: WebAuthService, useValue: { toSessionUser: () => ({ id: 1 }), cookieName: () => 'prism_session' } },
         { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SessionRevocationStore, useValue: { revoke: jest.fn(), isRevoked: jest.fn() } },
       ],
     })
       .overrideGuard(WebAuthGuard)
