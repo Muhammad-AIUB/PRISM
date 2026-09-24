@@ -40,7 +40,17 @@ async function bootstrap(): Promise<void> {
   // the guest rate limiter would bucket every user together.
   app.set('trust proxy', true);
 
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // The API answers JSON, redirects and one markdown download; it never serves
+  // a page. So the policy allows nothing: a response that somehow renders in a
+  // browser cannot run script, load anything or be framed.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      },
+    }),
+  );
 
   // The browser session JWT and the OAuth state both travel as httpOnly
   // cookies, so they have to be parsed before any guard runs.

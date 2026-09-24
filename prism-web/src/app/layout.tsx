@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 // Self-hosted, not the Google Fonts CDN: no render-blocking third-party
 // request, no visitor IPs sent to Google, and the font ships with the build,
 // so it cannot fail independently of the app. Inter's optical-size cut adjusts
@@ -52,14 +53,23 @@ export const viewport: Viewport = { themeColor: '#4f46e5' };
  */
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('prism-theme');var r=document.documentElement;r.classList.remove('light','dark');r.classList.add(t==='light'?'light':'dark');}catch(e){}})();`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Set per request by src/middleware.ts; the CSP only runs scripts carrying it.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     // THEME_SCRIPT swaps this class before React hydrates, so the server's
     // "dark" and the client's "light" legitimately differ. This suppresses the
     // mismatch warning for <html>'s own attributes only, not its children.
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Browsers blank a nonce attribute once it is read, so the client
+            always sees nonce="" here; that mismatch is expected, not a bug. */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
+        />
       </head>
       <body className="antialiased">{children}</body>
     </html>
