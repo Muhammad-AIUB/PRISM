@@ -37,34 +37,38 @@ export default function BranchPicker({
 
     setLoading(true);
 
-    void fetchBranches(fullName).then((list) => {
-      if (cancelled) {
-        return;
-      }
-
-      setBranches(list);
-      setLoading(false);
-
-      // Seeding only happens when the caller has no selection yet, so an
-      // existing repository's saved branches are never overwritten.
-      if (selected.length === 0 && list.length > 0) {
-        const preferred = list.find((branch) => branch.is_default);
-
-        if (preferred) {
-          onChange([preferred.name]);
-
+    // Same fallback the action applies server-side: no branches rather than a
+    // spinner that never stops, if the call itself fails to arrive.
+    fetchBranches(fullName)
+      .catch((): Branch[] => [])
+      .then((list) => {
+        if (cancelled) {
           return;
         }
 
-        const fallback = list
-          .filter((branch) => defaultPicks.includes(branch.name))
-          .map((branch) => branch.name);
+        setBranches(list);
+        setLoading(false);
 
-        if (fallback.length > 0) {
-          onChange(fallback);
+        // Seeding only happens when the caller has no selection yet, so an
+        // existing repository's saved branches are never overwritten.
+        if (selected.length === 0 && list.length > 0) {
+          const preferred = list.find((branch) => branch.is_default);
+
+          if (preferred) {
+            onChange([preferred.name]);
+
+            return;
+          }
+
+          const fallback = list
+            .filter((branch) => defaultPicks.includes(branch.name))
+            .map((branch) => branch.name);
+
+          if (fallback.length > 0) {
+            onChange(fallback);
+          }
         }
-      }
-    });
+      });
 
     return () => {
       cancelled = true;

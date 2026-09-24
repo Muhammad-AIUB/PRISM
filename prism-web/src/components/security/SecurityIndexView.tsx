@@ -155,7 +155,7 @@ function GuestSecurityLayout({ children }: { children: ReactNode }) {
                     </div>
                     <Link href="/login" className="btn btn-primary min-h-[44px] transition active:scale-95">
                         <LogIn className="h-4 w-4" />
-                        <span className="hidden sm:inline">Sign in</span>
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Sign in</span>
                     </Link>
                 </div>
             </header>

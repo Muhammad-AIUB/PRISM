@@ -1,3 +1,5 @@
+import { parseGitHeader } from './git-paths';
+
 export interface HunkLine {
   kind: 'added' | 'removed' | 'context';
   /** Null on an added line, which consumes no old-side number. */
@@ -22,7 +24,6 @@ export interface FileHunks {
 
 export type HunkIndex = Map<string, FileHunks>;
 
-const FILE_HEADER = /^diff --git a\/(\S+) b\/\S+/;
 const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
 export function buildHunkIndex(diff: string): HunkIndex {
@@ -33,11 +34,14 @@ export function buildHunkIndex(diff: string): HunkIndex {
   let newLine = 0;
 
   for (const line of diff.split('\n')) {
-    const file = FILE_HEADER.exec(line);
+    // Keyed by the old-side path, as it always has been. Paths with spaces or
+    // non-ASCII characters used to fail this match and fall into the previous
+    // file; see git-paths.ts.
+    const header = parseGitHeader(line);
 
-    if (file) {
+    if (header) {
       current = { added: new Map(), removed: new Map(), context: new Map(), lines: [] };
-      index.set(file[1] as string, current);
+      index.set(header.oldPath, current);
       inHunk = false;
       continue;
     }

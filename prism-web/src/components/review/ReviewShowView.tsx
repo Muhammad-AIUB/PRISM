@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { reAnalyzePullRequest } from '@/app/reviews/actions';
 import AuthenticatedLayout from '@/components/layouts/AuthenticatedLayout';
+import FlashBanner from '@/components/ui/FlashBanner';
 import DiffViewer from '@/components/review/DiffViewer';
 import RiskPanel from '@/components/review/RiskPanel';
 import {
@@ -54,6 +55,7 @@ export default function ReviewShowView({
   const [activeTab, setActiveTab] = useState<LayerKey>('security');
   const [severity, setSeverity] = useState('all');
   const [pending, startTransition] = useTransition();
+  const [reanalyzeError, setReanalyzeError] = useState<string | null>(null);
 
   const issuesByLayer = useMemo(
     () => ({
@@ -99,8 +101,22 @@ export default function ReviewShowView({
   }, [inFlight, router]);
 
   const reanalyze = () => {
+    setReanalyzeError(null);
+
     startTransition(async () => {
-      await reAnalyzePullRequest(pullRequest.id);
+      const result = await reAnalyzePullRequest(pullRequest.id).catch(() => ({
+        ok: false,
+        message: 'Could not reach the server.',
+      }));
+
+      // A refused re-analysis (rate limited, the row gone) must not look like
+      // one that started: the page would just refresh into the same state.
+      if (!result.ok) {
+        setReanalyzeError(`Could not start a re-analysis. ${result.message}`);
+
+        return;
+      }
+
       router.refresh();
     });
   };
@@ -123,7 +139,7 @@ export default function ReviewShowView({
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Back</span>
           </Link>
           <div className="flex items-center gap-2">
             {/* A plain anchor: this is a file download served by a route
@@ -134,22 +150,24 @@ export default function ReviewShowView({
               aria-label="Export PDF"
             >
               <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export PDF</span>
             </a>
             <button
               type="button"
               onClick={reanalyze}
               disabled={pending}
               className="btn btn-primary min-h-[44px] transition active:scale-95"
+              aria-label={pending ? 'Analyzing' : 'Re-analyze'}
             >
               <RefreshCw className={`h-4 w-4 ${pending ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{pending ? 'Analyzing…' : 'Re-analyze'}</span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">{pending ? 'Analyzing…' : 'Re-analyze'}</span>
             </button>
           </div>
         </div>
       }
     >
       <div className="space-y-6">
+        {reanalyzeError && <FlashBanner type="error" message={reanalyzeError} />}
         <div className="card-flat p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="order-2 min-w-0 flex-1 lg:order-1">

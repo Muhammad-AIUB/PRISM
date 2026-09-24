@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { reAnalyzeCommit } from '@/app/reviews/actions';
 import AuthenticatedLayout from '@/components/layouts/AuthenticatedLayout';
+import FlashBanner from '@/components/ui/FlashBanner';
 import {
   FixesTab,
   IssueCard,
@@ -45,6 +46,7 @@ export default function CommitShowView({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LayerKey>('security');
   const [pending, startTransition] = useTransition();
+  const [reanalyzeError, setReanalyzeError] = useState<string | null>(null);
 
   const issuesByLayer = useMemo(
     () => ({
@@ -73,8 +75,22 @@ export default function CommitShowView({
   }, [inFlight, router]);
 
   const reanalyze = () => {
+    setReanalyzeError(null);
+
     startTransition(async () => {
-      await reAnalyzeCommit(commitReview.id);
+      const result = await reAnalyzeCommit(commitReview.id).catch(() => ({
+        ok: false,
+        message: 'Could not reach the server.',
+      }));
+
+      // A refused re-analysis (rate limited, the row gone) must not look like
+      // one that started: the page would just refresh into the same state.
+      if (!result.ok) {
+        setReanalyzeError(`Could not start a re-analysis. ${result.message}`);
+
+        return;
+      }
+
       router.refresh();
     });
   };
@@ -90,7 +106,7 @@ export default function CommitShowView({
             style={{ padding: '0.375rem 0.625rem' }}
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Back</span>
           </Link>
           {commitReview.github_url && (
             <a
@@ -100,13 +116,14 @@ export default function CommitShowView({
               className="btn btn-secondary min-h-[44px] transition active:scale-95"
             >
               <ExternalLink className="h-4 w-4" />
-              <span className="hidden sm:inline">View Commit on GitHub</span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">View Commit on GitHub</span>
             </a>
           )}
         </div>
       }
     >
       <div className="space-y-6">
+        {reanalyzeError && <FlashBanner type="error" message={reanalyzeError} />}
         <div className="card-flat p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="order-2 min-w-0 flex-1 lg:order-1">

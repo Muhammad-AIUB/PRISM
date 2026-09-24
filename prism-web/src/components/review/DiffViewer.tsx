@@ -24,11 +24,16 @@ export default function DiffViewer({ pullRequestId }: { pullRequestId: number })
 
     setState({ loading: true, diff: '', error: null });
 
-    void loadDiff(pullRequestId).then((result) => {
-      if (!cancelled) {
-        setState({ loading: false, diff: result.diff, error: result.error });
-      }
-    });
+    // The server action itself can reject (network drop, a deploy while the
+    // tab is open); without the catch the tab would say "Loading diff…"
+    // forever instead of saying it failed.
+    loadDiff(pullRequestId)
+      .catch(() => ({ diff: '', error: 'could not reach the server' }))
+      .then((result) => {
+        if (!cancelled) {
+          setState({ loading: false, diff: result.diff, error: result.error });
+        }
+      });
 
     return () => {
       cancelled = true;

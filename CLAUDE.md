@@ -94,6 +94,12 @@ confirm a review id exists. Keep it that way.
   `JWT_SECRET`. It loads the user row rather than trusting the claims, so a deleted
   account stops working immediately.
 
+The global `RateLimitGuard` runs before either guard, so it verifies the
+session cookie itself to key signed-in browser traffic per user. Every browser
+request reaches the API from prism-web's one address, so keying those by IP
+put the whole site in a single 100/minute bucket. Never key a bucket on an
+unverified claim.
+
 `JWT_SECRET` and `APP_KEY` are not interchangeable: rotating `JWT_SECRET` signs
 everyone out; rotating `APP_KEY` makes every stored `github_token` permanently
 unreadable.
@@ -157,9 +163,10 @@ See `docs/designs/risk-radar-and-design-studio.md`. Things that are easy to brea
 - Design Studio runs **inline** (not on the concurrency-1 queue), bounded by
   `DESIGN_BUDGET_MS` (an `AbortSignal`) and a per-user Redis limit checked
   *before* the model call. The limit **fails closed** (503) when Redis is
-  unreadable, and every `MULTI/EXEC` result is checked per command. It uses a service-level limit because the global
-  `RateLimitGuard` runs before auth guards and buckets web traffic by the
-  Next.js server's IP.
+  unreadable, and every `MULTI/EXEC` result is checked per command. It is a
+  service-level limit, not `@Throttle`, because it has to be per user on both
+  the web and the API-token routes (the global guard keys token callers by
+  IP) and it lives in Redis, so it holds across restarts.
 - Every AI failure degrades to `baselineBlueprint()` with a `notice`. It never
   fails the request.
 - Blueprints live in **Redis** (`design:{uuid}`, 30-day TTL, owner stored beside
@@ -189,6 +196,12 @@ preferences, and they apply to every page and component:
 - **Touch targets:** at least 44×44px for icon-only buttons, 32px for inline
   chips.
 - **Motion** respects `prefers-reduced-motion` (handled globally).
+- **Labels hidden on mobile** use `sr-only sm:not-sr-only`, never `hidden`:
+  `hidden` removes the text from screen readers too, leaving an unnamed button.
+- **Server actions can reject** (network drop, a deploy mid-page). One called
+  from a `useEffect` must `.catch` into a visible state, or the component spins
+  forever. One whose result says `ok: false` must show that result: a failure
+  must never look like a success.
 - **Layout** works at 390px with no horizontal scroll. Grids that collapse on
   mobile use an explicit `grid-cols-1`, because an implicit `auto` column grows
   to fit `truncate`d text.

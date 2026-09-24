@@ -118,8 +118,13 @@ export class AiClientService {
         continue;
       }
 
+      // No raw text means the model never answered (an HTTP error or a
+      // timeout, already logged by post()). Calling that "unparseable output"
+      // sent whoever read the log looking at the wrong problem.
       this.logger.warn(
-        `Groq model returned unparseable output, trying next: ${model} — ${(result.raw ?? '').slice(0, 200)}`,
+        result.raw === null
+          ? `Groq model did not answer, trying next: ${model}`
+          : `Groq model returned unparseable output, trying next: ${model} — ${result.raw.slice(0, 200)}`,
       );
     }
 

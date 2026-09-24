@@ -171,7 +171,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
             aria-label="Back to Design Studio"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Design Studio</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Design Studio</span>
           </Link>
           <div className="flex items-center gap-2">
             <button
@@ -184,7 +184,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
               aria-live="polite"
             >
               {copied === 'copied' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              <span className="hidden sm:inline">{copyLabel}</span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">{copyLabel}</span>
             </button>
             {/* A plain anchor: a file download served by a route handler. */}
             <a
@@ -193,7 +193,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
               aria-label="Download as Markdown"
             >
               <FileDown className="h-4 w-4" />
-              <span className="hidden sm:inline">Download .md</span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Download .md</span>
             </a>
             <Link
               href="/design"
@@ -201,7 +201,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
               aria-label="New design"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New design</span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">New design</span>
             </Link>
           </div>
         </div>

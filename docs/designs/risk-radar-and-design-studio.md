@@ -100,10 +100,13 @@ Design choices, each deliberate:
   bounded instead: `AbortSignal.timeout(55s)` cancels the Groq fetch rather than
   abandoning it, and a per-user limit of 10 per hour applies, checked in Redis
   *before* the model is called. The 429 body is exactly `Too Many Attempts.`
-- **Why a service-level limit, not `@Throttle`:** the global `RateLimitGuard`
-  runs before the per-controller auth guards, so `request.user` is not set yet
-  and it buckets by IP. Every web request leaves from the Next.js server's one
-  IP, so a `@Throttle` limit would be shared by all users.
+- **Why a service-level limit, not `@Throttle`:** it has to be per user on both
+  the web and the API-token routes, and it has to fail closed. When this was
+  written, the global `RateLimitGuard` bucketed all browser traffic by the
+  Next.js server's single IP, so a `@Throttle` limit would have been shared by
+  every user. That guard has since been fixed to verify the session cookie and
+  key signed-in traffic per user, but it still keys API-token callers by IP and
+  keeps its counters in process memory, so this limit stays where it is.
 
 **Storage is Redis, 30 days, not Postgres.** A new table means hand-applied DDL
 against a production schema this codebase does not own the history of (the same

@@ -16,9 +16,10 @@ jest.mock('@nestjs/jwt', () => ({ JwtService: class {} }));
 /**
  * prism-web calls GET /auth/me server-side on every authenticated page, and
  * again on every router.refresh() the dashboard and review pages poll with.
- * Those calls all arrive from prism-web's own address, and the global guard
- * runs before WebAuthGuard has set request.user, so they share one per-IP
- * bucket across every visitor.
+ * Those calls all arrive from prism-web's own address. Signed-in requests now
+ * get a per-user bucket (RateLimitGuard verifies the session cookie itself),
+ * but a visitor whose cookie is missing or expired still lands in the shared
+ * per-IP bucket, which is why this endpoint keeps its own generous ceiling.
  *
  * When /auth/me sat under the OAuth handshake's 10/min ceiling, the 11th call
  * in a minute returned 429, getSessionUser() threw, and the dashboard rendered

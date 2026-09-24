@@ -1,3 +1,5 @@
+import { parseGitHeader } from './git-paths';
+
 /**
  * Chooses which part of a diff the model is shown.
  *
@@ -34,7 +36,6 @@ const NOISE =
   /(^|\/)(dist|build|vendor|node_modules|__snapshots__)\/|(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|Gemfile\.lock|go\.sum)$|\.min\.(js|css)$|\.(png|jpe?g|gif|ico|svg|pdf|woff2?|ttf|eot|zip|gz|lock)$/i;
 
 const FILE_START = /(?=^diff --git )/m;
-const PATH_OF = /^diff --git a\/(\S+)/;
 const HUNK_START = /(?=^@@ )/m;
 
 /** Whole lines only, so the renderer never sees half a line of code. */
@@ -97,7 +98,7 @@ export function selectForReview(diff: string, budget: number): Selection {
   };
 
   for (const body of chunks) {
-    const path = PATH_OF.exec(body)?.[1];
+    const path = parseGitHeader(body.split('\n', 1)[0] ?? '')?.oldPath;
 
     if (!path) {
       continue;
