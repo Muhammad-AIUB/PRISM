@@ -164,7 +164,7 @@ function CodeBlock({
         className="overflow-x-auto whitespace-pre p-3 font-mono text-xs leading-relaxed"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
-        {code || <em style={{ color: 'var(--text-muted)' }}>// (empty)</em>}
+        {code || <em style={{ color: 'var(--text-muted)' }}>{'// (empty)'}</em>}
       </pre>
     </div>
   );

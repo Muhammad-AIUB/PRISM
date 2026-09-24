@@ -2,12 +2,12 @@
   "name": "prism-web",
   "version": "0.1.0",
   "private": true,
-  "description": "PRism frontend — Next.js port of the Inertia/React app (strangler migration).",
+  "description": "PRism frontend \u2014 Next.js port of the Inertia/React app (strangler migration).",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -21,11 +21,14 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@tailwindcss/forms": "^0.5.9",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.26",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.0"

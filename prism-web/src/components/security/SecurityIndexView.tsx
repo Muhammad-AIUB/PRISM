@@ -247,10 +247,10 @@ export default function SecurityIndexView({
                             </div>
                             <ul className="mt-4 space-y-2.5">
                                 <NoRow>Your source code is NEVER stored</NoRow>
-                                <NoRow>We don't read your commit history</NoRow>
+                                <NoRow>We don&apos;t read your commit history</NoRow>
                                 <NoRow>We never push code to your repos</NoRow>
-                                <NoRow>We don't access private messages</NoRow>
-                                <NoRow>No access to other apps you've connected</NoRow>
+                                <NoRow>We don&apos;t access private messages</NoRow>
+                                <NoRow>No access to other apps you&apos;ve connected</NoRow>
                             </ul>
                         </div>
                     </div>
@@ -372,8 +372,8 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                     <div className="card mt-8 p-5 sm:p-7">
                         <ol className="space-y-2.5 pl-5 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)', listStyle: 'decimal' }}>
                             <li>Go to <code className="rounded font-mono px-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>github.com/settings/applications</code></li>
-                            <li>Find <strong style={{ color: 'var(--text-primary)' }}>"PRism"</strong> in your authorized apps</li>
-                            <li>Click <strong style={{ color: 'var(--text-primary)' }}>"Revoke access"</strong></li>
+                            <li>Find <strong style={{ color: 'var(--text-primary)' }}>&quot;PRism&quot;</strong> in your authorized apps</li>
+                            <li>Click <strong style={{ color: 'var(--text-primary)' }}>&quot;Revoke access&quot;</strong></li>
                             <li>Your data is automatically deleted from PRism</li>
                         </ol>
                         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -452,7 +452,7 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                             <SectionHeading title="Why does PRism need these permissions?" align="left" />
                         </div>
                         <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                            We understand <em>"access to your repositories"</em> can sound scary. Here's exactly why we need it and what we don't do.
+                            We understand <em>&quot;access to your repositories&quot;</em> can sound scary. Here&apos;s exactly why we need it and what we don&apos;t do.
                         </p>
 
                         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -473,7 +473,7 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                                 <ul className="mt-3 space-y-2.5">
                                     <NoRow>Push code to your repositories</NoRow>
                                     <NoRow>Modify or delete any files</NoRow>
-                                    <NoRow>Access repositories you don't connect to PRism</NoRow>
+                                    <NoRow>Access repositories you don&apos;t connect to PRism</NoRow>
                                     <NoRow>Share your code with any third party</NoRow>
                                     <NoRow>Store your source code in our database</NoRow>
                                 </ul>
@@ -489,7 +489,7 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                                 🚀 Coming Soon — GitHub App Migration
                             </p>
                             <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                We're working on migrating to <strong style={{ color: 'var(--text-primary)' }}>GitHub App architecture</strong>, which will:
+                                We&apos;re working on migrating to <strong style={{ color: 'var(--text-primary)' }}>GitHub App architecture</strong>, which will:
                             </p>
                             <ul className="mt-3 space-y-1.5 pl-5 text-sm leading-relaxed"
                                 style={{ color: 'var(--text-secondary)', listStyle: 'disc' }}>
@@ -543,7 +543,7 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                                 <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                                     <strong>Sign in to manage your data.</strong>{' '}
                                     <span style={{ color: 'var(--text-secondary)' }}>
-                                        After signing in, you'll be able to view a copy of everything we store about you and your full activity log.
+                                        After signing in, you&apos;ll be able to view a copy of everything we store about you and your full activity log.
                                     </span>
                                 </p>
                                 <Link href="/login" className="btn btn-primary mt-3 inline-flex min-h-[44px] transition active:scale-95">

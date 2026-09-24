@@ -429,7 +429,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                                     <ul className="mt-2 space-y-1 pl-5" style={{ listStyle: 'disc' }}>
                                         <li><strong style={{ color: 'var(--success)' }}>70+ (green):</strong> Safe to merge.</li>
                                         <li><strong style={{ color: 'var(--warning)' }}>40-70 (yellow):</strong> Needs review, has warnings.</li>
-                                        <li><strong style={{ color: 'var(--danger)' }}>Below 40 (red):</strong> Has critical issues, don't merge yet.</li>
+                                        <li><strong style={{ color: 'var(--danger)' }}>Below 40 (red):</strong> Has critical issues, don&apos;t merge yet.</li>
                                     </ul>
                                 </>
                             }
@@ -455,11 +455,11 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                             title="Auto-Fixes Tab"
                             body={
                                 <>
-                                    PRism doesn't just complain — it shows you HOW to fix issues.
+                                    PRism doesn&apos;t just complain — it shows you HOW to fix issues.
                                     <ul className="mt-2 space-y-1 pl-5" style={{ listStyle: 'disc' }}>
                                         <li>Side-by-side comparison: current code vs suggested fix</li>
                                         <li>Click <em>Copy Fix</em> to copy the corrected code to your clipboard</li>
-                                        <li>Each fix includes an explanation of why it's better</li>
+                                        <li>Each fix includes an explanation of why it&apos;s better</li>
                                         <li>Limited to top 5 most impactful fixes per PR</li>
                                     </ul>
                                 </>
@@ -473,7 +473,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="📄"
                             title="Export PDF"
-                            body={<>Need to share a review with a teammate who doesn't have PRism? Click <em>Export PDF</em> on any review page to download a polished report with all issues, scores, and the summary.</>}
+                            body={<>Need to share a review with a teammate who doesn&apos;t have PRism? Click <em>Export PDF</em> on any review page to download a polished report with all issues, scores, and the summary.</>}
                         />
                         <AccordionItem
                             icon="🏷️"
@@ -503,7 +503,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                     <ol className="mt-8 space-y-3 rounded-md p-5 sm:p-6"
                         style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', listStyle: 'decimal', paddingLeft: '2.25rem' }}>
                         <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                            Connect a repo from the <strong style={{ color: 'var(--text-primary)' }}>Repositories</strong> page and choose <strong style={{ color: 'var(--text-primary)' }}>"Direct commits to main/master"</strong> in the mode picker.
+                            Connect a repo from the <strong style={{ color: 'var(--text-primary)' }}>Repositories</strong> page and choose <strong style={{ color: 'var(--text-primary)' }}>&quot;Direct commits to main/master&quot;</strong> in the mode picker.
                         </li>
                         <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                             Push directly to <code className="rounded px-1 font-mono" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>main</code> as you normally would.
@@ -519,7 +519,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         </li>
                     </ol>
                     <p className="mt-4 text-center text-xs italic" style={{ color: 'var(--text-muted)' }}>
-                        You can also pick <strong>"Both PRs and commits"</strong> on the mode picker to cover both workflows.
+                        You can also pick <strong>&quot;Both PRs and commits&quot;</strong> on the mode picker to cover both workflows.
                     </p>
                 </section>
 
@@ -554,7 +554,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                     <ul className="mt-8 space-y-3 rounded-md p-5 sm:p-6"
                         style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                         <CheckTip>Keep PRs small (under 400 lines) for the most accurate AI analysis.</CheckTip>
-                        <CheckTip>Open PRs against your main branch — that's what triggers PRism.</CheckTip>
+                        <CheckTip>Open PRs against your main branch — that&apos;s what triggers PRism.</CheckTip>
                         <CheckTip>Re-analyze after pushing fixes to see your score improve.</CheckTip>
                         <CheckTip>Use the Auto-Fixes tab first — those are the highest-impact changes.</CheckTip>
                         <CheckTip>Check the score trend chart weekly to track team improvement.</CheckTip>
@@ -573,7 +573,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="⏱️"
                             title="How long does a review take?"
-                            body={<>Most reviews complete in 10-30 seconds. Larger PRs (1000+ lines) may take up to a minute. If a review is stuck on "analyzing" for over 5 minutes, click <em>Re-analyze</em> to retry.</>}
+                            body={<>Most reviews complete in 10-30 seconds. Larger PRs (1000+ lines) may take up to a minute. If a review is stuck on &quot;analyzing&quot; for over 5 minutes, click <em>Re-analyze</em> to retry.</>}
                         />
                         <AccordionItem
                             icon="🔑"
@@ -587,7 +587,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                                         <li>Post review comments (to share results)</li>
                                     </ul>
                                     <p className="mt-2">
-                                        We never push code, modify files, or access repositories you haven't connected. All access is logged and you can revoke anytime from your{' '}
+                                        We never push code, modify files, or access repositories you haven&apos;t connected. All access is logged and you can revoke anytime from your{' '}
                                         <a href="https://github.com/settings/applications" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--accent)' }}>GitHub settings</a>.
                                     </p>
                                 </>
@@ -600,7 +600,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                                 <>
                                     Currently PRism uses GitHub OAuth which grants access to all your repos (though we only use the ones you explicitly connect).
                                     <p className="mt-2">
-                                        We're actively working on <strong style={{ color: 'var(--text-primary)' }}>GitHub App migration</strong> which will let you choose specific repositories during installation. This is coming in our near-term roadmap — track progress on the{' '}
+                                        We&apos;re actively working on <strong style={{ color: 'var(--text-primary)' }}>GitHub App migration</strong> which will let you choose specific repositories during installation. This is coming in our near-term roadmap — track progress on the{' '}
                                         <a href="/security" className="underline" style={{ color: 'var(--accent)' }}>Security &amp; Privacy</a> page.
                                     </p>
                                 </>
@@ -634,7 +634,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         <AccordionItem
                             icon="🔒"
                             title="Can I use PRism on private repositories?"
-                            body={<>Yes! When you authorize PRism, it gets access to your private repos too. The repository data stays within PRism's encrypted database.</>}
+                            body={<>Yes! When you authorize PRism, it gets access to your private repos too. The repository data stays within PRism&apos;s encrypted database.</>}
                         />
                         <AccordionItem
                             icon="💸"
