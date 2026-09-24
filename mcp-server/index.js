@@ -46,7 +46,9 @@ function formatReview(r) {
   } else {
     lines.push(`PR #${r.pr_number} on ${r.repository}: ${r.title ?? '—'}`);
   }
-  lines.push(`Status: ${r.status} · Score: ${r.overall_score ?? 'N/A'}/100 · Model: ${r.ai_model_used ?? '—'}`);
+  // A missing score is "N/A", not "N/A/100".
+  const score = r.overall_score === null || r.overall_score === undefined ? 'N/A' : `${r.overall_score}/100`;
+  lines.push(`Status: ${r.status} · Score: ${score} · Model: ${r.ai_model_used ?? '—'}`);
   if (r.summary) lines.push(`\nSummary: ${r.summary}`);
 
   for (const [label, key] of [
