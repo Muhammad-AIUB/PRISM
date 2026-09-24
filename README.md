@@ -47,7 +47,7 @@ When a developer opens a pull request on a connected repository, PRism:
 5. **Generates** an overall quality score (0–100)
 6. **Produces** concrete code fixes — not just complaints, but `before → after` snippets
 7. **Posts** a summary comment back to the PR on GitHub
-8. **Notifies** the developer via email (Resend) and Slack
+8. **Notifies** the developer in Slack (optional)
 9. **Displays** everything in a beautiful dashboard with score trends over time
 
 All of this — with zero recurring cost on free tiers.
@@ -134,9 +134,9 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
                  │              │
         ┌────────▼─────┐  ┌────▼──────────────┐
         │  PostgreSQL  │  │  Notifications    │
-        │  (Neon.tech) │  │  ├─ Email (Resend)│
-        │              │  │  ├─ Slack Webhook │
-        │  Encrypted   │  │  └─ GitHub Comment│
+        │  (Neon.tech) │  │  ├─ Slack Webhook │
+        │              │  │  └─ GitHub Comment│
+        │  Encrypted   │  │                   │
         │  tokens      │  └───────────────────┘
         └──────────────┘
                  │
@@ -195,9 +195,7 @@ Visit `/security` in the app for full transparency.
 - 🔁 Trigger re-analysis without leaving your editor
 
 ### Notifications
-- 📧 **Email notifications** via Resend (3000/month free)
-- 💬 **Slack notifications** with rich attachments, color-coded by score
-- ⚙️ **User-controlled preferences** — opt in/out per channel
+- 💬 **Slack notifications** with rich attachments, color-coded by score — opt in by adding a webhook URL in Settings
 
 ### Security
 - 🔐 **AES-256 encrypted GitHub tokens** at rest (AES-256-CBC, MAC-verified)
@@ -243,7 +241,6 @@ Visit `/security` in the app for full transparency.
 | **Cache & Queue** | Redis (Upstash) — BullMQ for the review queue |
 | **AI** | Groq (Llama 3.3 70B, then 3.1 8B — native JSON mode) |
 | **Auth** | GitHub OAuth; JWT session cookie for the browser, bearer tokens for the API |
-| **Email** | Resend |
 | **Styling** | Tailwind CSS + lucide-react |
 | **Charts** | Chart.js + react-chartjs-2 |
 | **PDF** | pdfmake |
@@ -263,7 +260,7 @@ Visit `/security` in the app for full transparency.
 | N+1 query risk on dashboard | Eager loading + composite indexes | Sub-50ms dashboard load |
 | Untraceable production errors | Structured JSON logs + `X-Request-Id` | Debug single request across services |
 | Generic AI review missing framework issues | Language-specific rule injection | Catches N+1 query patterns, React key-prop, etc. |
-| Email failures crashing reviews | Try-catch with `Log::warning`, no rethrow | Notifications fail-safe |
+| Slack failures crashing reviews | Try-catch with a logged warning, no rethrow | Notifications fail-safe |
 | Solo developers don't use PR workflow | Commit-based review mode with branch filtering | PRism now serves both teams and solo devs |
 | Users unsure what data we collect | Dedicated Security page + "View My Data" + Audit log | Full transparency = user trust |
 | No way to delete account/data | One-click data deletion with webhook cleanup | GDPR-compliant data control |

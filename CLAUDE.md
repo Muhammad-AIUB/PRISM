@@ -110,7 +110,9 @@ type, and `concurrency: 1` is what keeps peak memory inside 512MB.
 two original jobs; a change to one usually belongs in the other. Each: fetch diff
 (Redis-cached 1h) → `detectLanguages()` → **first AI pass** (analysis) → persist →
 **second AI pass** (`FixesService`, reusing the model that succeeded) → post a
-GitHub comment → audit log → email/Slack.
+GitHub comment → audit log → Slack (if configured).
+There are no email notifications; that feature was removed. `users.email_notifications`
+still exists in the database but is unmapped and unread.
 
 Deliberate behaviours to preserve:
 

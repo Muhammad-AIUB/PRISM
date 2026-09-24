@@ -19,7 +19,6 @@ import { validateFixes } from '../../ai/fix-validator';
 import { reconcileScore, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
-import { EmailService } from '../../notifications/email.service';
 import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
@@ -52,7 +51,6 @@ export class PullRequestReviewRunner {
     private readonly diffCache: DiffCacheService,
     private readonly crypt: CryptService,
     private readonly summaryComment: SummaryCommentBuilder,
-    private readonly email: EmailService,
     private readonly slack: SlackService,
     private readonly auditLog: AuditLogService,
   ) {}
@@ -257,26 +255,7 @@ export class PullRequestReviewRunner {
       { pull_request_id: pr.id, score: overallScore },
     );
 
-    // 6. Out-of-band notifications, individually guarded.
-    if (user?.email && user.emailNotifications) {
-      try {
-        await this.email.sendPullRequestReview({
-          to: user.email,
-          recipientName: user.name || (user.githubUsername ?? ''),
-          pullRequestId: pr.id,
-          title: pr.title,
-          author: pr.author,
-          repositoryFullName: repository.fullName,
-          headBranch: pr.headBranch,
-          baseBranch: pr.baseBranch,
-          summary,
-          score: overallScore,
-        });
-      } catch (error) {
-        this.logger.warn(`Email notification failed: ${this.messageOf(error)}`);
-      }
-    }
-
+    // 6. Out-of-band notification (Slack), guarded so it cannot fail the review.
     if (user?.slackWebhookUrl) {
       try {
         const [criticalCount, warningCount] = await Promise.all([

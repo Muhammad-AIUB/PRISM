@@ -20,8 +20,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   githubUsername!: string | null;
 
-  @Column({ type: 'boolean', default: true })
-  emailNotifications!: boolean;
+  // users.email_notifications still exists in the database (default true) but
+  // is deliberately not mapped: email notifications were removed, and dropping
+  // the column is hand-applied DDL, a separate decision (see schema.sql).
 
   @Column({ type: 'varchar', nullable: true })
   slackWebhookUrl!: string | null;

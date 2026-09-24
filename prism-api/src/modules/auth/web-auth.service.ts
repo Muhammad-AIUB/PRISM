@@ -28,7 +28,6 @@ export interface SessionUserDto {
   email: string;
   github_username: string | null;
   github_avatar: string | null;
-  email_notifications: boolean;
 }
 
 export interface JwtPayload {
@@ -73,7 +72,6 @@ export class WebAuthService {
         this.users.create({
           ...values,
           githubId: githubUser.id,
-          emailNotifications: true,
           createdAt: now,
           updatedAt: now,
         }),
@@ -101,7 +99,6 @@ export class WebAuthService {
       email: user.email,
       github_username: user.githubUsername,
       github_avatar: user.githubAvatar,
-      email_notifications: user.emailNotifications,
     };
   }
 

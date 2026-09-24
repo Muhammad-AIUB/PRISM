@@ -44,12 +44,6 @@ services:
       # to boot rather than failing every review one at a time.
       - key: GROQ_API_KEY
         sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: MAIL_FROM_ADDRESS
-        value: onboarding@resend.dev
-      - key: MAIL_FROM_NAME
-        value: PRism AI
       - key: API_RATE_LIMIT
         value: 100
       # The same GitHub OAuth app the PHP service used. GITHUB_REDIRECT_URI

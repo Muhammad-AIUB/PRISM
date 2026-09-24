@@ -50,8 +50,3 @@ export const aiConfig = registerAs('ai', () => ({
   groqKey: process.env.GROQ_API_KEY ?? '',
 }));
 
-export const mailConfig = registerAs('mail', () => ({
-  resendKey: process.env.RESEND_API_KEY ?? '',
-  fromAddress: process.env.MAIL_FROM_ADDRESS ?? '',
-  fromName: process.env.MAIL_FROM_NAME ?? '',
-}));

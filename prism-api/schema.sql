@@ -17,6 +17,10 @@
 -- They still exist in the current production database and are harmless there;
 -- dropping them is a separate decision, not something this file does.
 --
+-- users.email_notifications is below and still created, but nothing reads or
+-- writes it since email notifications were removed. Its DEFAULT keeps inserts
+-- working without it; dropping it is hand-applied DDL and a separate decision.
+--
 -- The CHECK constraints below are what Laravel's enum() compiles to on
 -- Postgres. Keep them: the entities declare those columns as varchar with a
 -- TypeScript union, and the database is what actually enforces the values.

@@ -24,48 +24,6 @@ import FlashBanner from '@/components/ui/FlashBanner';
 import type { ApiToken, SessionUser, SettingsData } from '@/lib/types';
 
 /** Port of Pages/Settings/Index.jsx. */
-function Toggle({
-  checked,
-  onChange,
-  label,
-  hint,
-}: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  label: string;
-  hint?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="flex w-full items-start justify-between gap-4 text-left"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-          {label}
-        </p>
-        {hint && (
-          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {hint}
-          </p>
-        )}
-      </div>
-      <span
-        role="switch"
-        aria-checked={checked}
-        className="relative inline-block h-6 w-11 shrink-0 rounded-full transition"
-        style={{ backgroundColor: checked ? 'var(--accent)' : 'var(--border)' }}
-      >
-        <span
-          className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
-          style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
-        />
-      </span>
-    </button>
-  );
-}
-
 function ApiTokensSection({
   tokens,
   onFlash,
@@ -240,7 +198,6 @@ export default function SettingsView({
 }) {
   const { user, api_tokens } = data;
 
-  const [emailNotifications, setEmailNotifications] = useState(user.email_notifications);
   const [slackUrl, setSlackUrl] = useState(user.slack_webhook_url ?? '');
   const [flash, setFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -255,7 +212,6 @@ export default function SettingsView({
 
     startSaving(async () => {
       const result = await updateSettings({
-        email_notifications: emailNotifications,
         // An empty field means "disable", which the API expects as null
         // rather than an empty string — that would fail URL validation.
         slack_webhook_url: slackUrl.trim() === '' ? null : slackUrl.trim(),
@@ -357,23 +313,11 @@ export default function SettingsView({
               <Bell className="h-4 w-4" /> Notifications
             </h2>
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Control where review completions are sent.
+              Send review completions to a Slack channel.
             </p>
 
             <div
               className="mt-6 rounded-md p-4"
-              style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-            >
-              <Toggle
-                checked={emailNotifications}
-                onChange={setEmailNotifications}
-                label="Email notifications"
-                hint={`Send a completion email to ${user.email || 'your email'} when a review finishes.`}
-              />
-            </div>
-
-            <div
-              className="mt-4 rounded-md p-4"
               style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
             >
               <label

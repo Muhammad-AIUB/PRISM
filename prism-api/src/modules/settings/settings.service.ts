@@ -34,7 +34,6 @@ export class SettingsService {
       email: string;
       github_username: string | null;
       github_avatar: string | null;
-      email_notifications: boolean;
       slack_webhook_url: string | null;
     };
     api_tokens: ApiTokenDto[];
@@ -45,7 +44,6 @@ export class SettingsService {
         email: user.email,
         github_username: user.githubUsername,
         github_avatar: user.githubAvatar,
-        email_notifications: Boolean(user.emailNotifications),
         slack_webhook_url: user.slackWebhookUrl,
       },
       api_tokens: await this.apiTokens.listFor(user),
@@ -78,18 +76,12 @@ export class SettingsService {
   }
 
   /**
-   * Only the keys actually sent are written. The original's validate() returns the
-   * present subset, so posting just a Slack URL must not silently reset the
-   * email preference.
+   * Only the keys actually sent are written: undefined means absent, while null
+   * is an explicit "clear the webhook".
    */
   async update(user: User, dto: UpdateSettingsDto): Promise<{ message: string }> {
     const changes: Partial<User> = {};
 
-    if (dto.email_notifications !== undefined) {
-      changes.emailNotifications = dto.email_notifications;
-    }
-
-    // undefined means absent; null is an explicit "clear the webhook".
     if (dto.slack_webhook_url !== undefined) {
       changes.slackWebhookUrl = dto.slack_webhook_url;
     }
@@ -99,7 +91,6 @@ export class SettingsService {
     }
 
     await this.auditLog.record(user.id, 'settings_updated', 'Updated notification preferences', {
-      email_notifications: dto.email_notifications ?? null,
       has_slack_webhook: Boolean(dto.slack_webhook_url),
     });
 

@@ -10,7 +10,6 @@ export interface SessionUser {
   email: string;
   github_username: string | null;
   github_avatar: string | null;
-  email_notifications: boolean;
 }
 
 export interface RepositorySummary {
@@ -215,7 +214,6 @@ export interface SettingsData {
     email: string;
     github_username: string | null;
     github_avatar: string | null;
-    email_notifications: boolean;
     slack_webhook_url: string | null;
   };
   api_tokens: ApiToken[];

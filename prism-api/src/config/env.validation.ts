@@ -80,18 +80,6 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  RESEND_API_KEY?: string;
-
-  @IsString()
-  @IsOptional()
-  MAIL_FROM_ADDRESS?: string;
-
-  @IsString()
-  @IsOptional()
-  MAIL_FROM_NAME?: string;
-
-  @IsString()
-  @IsOptional()
   FRONTEND_URL?: string;
 
   // ── GitHub OAuth (same app registration as the original uses) ──

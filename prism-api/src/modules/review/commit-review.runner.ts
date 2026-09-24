@@ -17,7 +17,6 @@ import { validateFixes } from '../../ai/fix-validator';
 import { reconcileScore, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
-import { EmailService } from '../../notifications/email.service';
 import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
@@ -44,7 +43,6 @@ export class CommitReviewRunner {
     private readonly diffCache: DiffCacheService,
     private readonly crypt: CryptService,
     private readonly summaryComment: SummaryCommentBuilder,
-    private readonly email: EmailService,
     private readonly slack: SlackService,
     private readonly auditLog: AuditLogService,
   ) {}
@@ -230,22 +228,7 @@ export class CommitReviewRunner {
       { commit_review_id: review.id, score: overallScore },
     );
 
-    // 5. Notifications. Failure here must not retry or roll back the review.
-    if (user?.email && user.emailNotifications) {
-      try {
-        await this.email.sendCommitReview({
-          to: user.email,
-          commitReviewId: review.id,
-          shortSha: review.shortSha(),
-          repositoryFullName: repository.fullName,
-          summary,
-          score: overallScore,
-        });
-      } catch (error) {
-        this.logger.warn(`Email notification (commit) failed: ${this.messageOf(error)}`);
-      }
-    }
-
+    // 5. Notification (Slack). Failure here must not retry or roll back the review.
     if (user?.slackWebhookUrl) {
       try {
         await this.slack.sendCommitReview({

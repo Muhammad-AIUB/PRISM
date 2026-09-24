@@ -8,7 +8,6 @@ import {
     GitCommit,
     GitPullRequest,
     Info,
-    Mail,
     MessageSquare,
     Shield,
     Sparkles,
@@ -406,7 +405,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                                         'Same Security / Performance / Code Quality breakdown as PRs',
                                         'A summary comment is also posted on the commit on GitHub',
                                     ]}
-                                    note="Email and Slack notifications still fire — same as PR reviews."
+                                    note="Slack notifications still fire — same as PR reviews."
                                 />
                             </>
                         )}
@@ -513,7 +512,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                             PRism receives the <code className="rounded px-1 font-mono" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-primary)' }}>push</code> webhook automatically and reviews the head commit.
                         </li>
                         <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                            Get notified via Email and Slack (if configured) — same as PR reviews.
+                            Get notified in Slack (if configured) — same as PR reviews.
                         </li>
                         <li className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                             View commit reviews on the Dashboard under the <strong style={{ color: 'var(--text-primary)' }}>Commits</strong> tab.
@@ -531,17 +530,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
                         title="Stay Notified"
                         subtitle="Get reviews delivered wherever you work."
                     />
-                    <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <NotificationCard
-                            icon={Mail}
-                            title="Email Notifications"
-                            blurb="PRism sends you a beautiful email when each review completes. Includes the score, summary, and a link to the full review."
-                            steps={[
-                                'Go to Settings (sidebar)',
-                                'Toggle "Email Notifications" ON',
-                                'That\'s it — you\'re done',
-                            ]}
-                        />
+                    <div className="mx-auto mt-8 grid max-w-xl grid-cols-1 gap-4">
                         <NotificationCard
                             icon={MessageSquare}
                             title="Slack Notifications"

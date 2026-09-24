@@ -86,7 +86,6 @@ describe('PullRequestReviewRunner language detection', () => {
       { decrypt: jest.fn().mockReturnValue('token') } as never,
       { buildForPullRequest: jest.fn().mockReturnValue('body') } as never,
       { sendPullRequestReview: jest.fn() } as never,
-      { sendPullRequestReview: jest.fn() } as never,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
