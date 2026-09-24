@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import type { RiskAssessment } from '../../diff/risk-radar';
 import { REDIS_CLIENT } from '../../redis/redis.constants';
+import { erasureMarkerKey } from '../account/erasure-marker';
 
 /**
  * The Risk Radar assessment of the exact diff a pull-request review read.
@@ -20,18 +21,48 @@ import { REDIS_CLIENT } from '../../redis/redis.constants';
  */
 export const REVIEW_RISK_TTL_SECONDS = 90 * 24 * 60 * 60;
 
+/**
+ * Check-and-write in one atomic step: refuse while the owner's account is
+ * being erased (account/erasure-marker.ts). A review running during erasure
+ * would otherwise save an assessment of their code after the purge, keyed by a
+ * pull request whose row is about to cascade away - unfindable for 90 days.
+ *
+ * KEYS: assessment, erasure marker    ARGV: assessment JSON, ttl seconds
+ * Returns 1 when saved, 0 when refused.
+ */
+export const SAVE_RISK_SCRIPT = `
+if redis.call('EXISTS', KEYS[2]) == 1 then return 0 end
+redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
+return 1
+`;
+
 @Injectable()
 export class ReviewRiskStore {
   private readonly logger = new Logger(ReviewRiskStore.name);
 
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
-  /** Never throws: losing this costs the page its reviewed-revision risk, not the review. */
-  async save(pullRequestId: number, risk: RiskAssessment): Promise<void> {
+  /**
+   * Never throws: losing this costs the page its reviewed-revision risk, not
+   * the review. Returns whether it was written; false when the owner's
+   * account is being erased, or on a Redis failure.
+   */
+  async save(pullRequestId: number, ownerId: number, risk: RiskAssessment): Promise<boolean> {
     try {
-      await this.redis.set(this.key(pullRequestId), JSON.stringify(risk), 'EX', REVIEW_RISK_TTL_SECONDS);
+      const saved = await this.redis.eval(
+        SAVE_RISK_SCRIPT,
+        2,
+        this.key(pullRequestId),
+        erasureMarkerKey(ownerId),
+        JSON.stringify(risk),
+        REVIEW_RISK_TTL_SECONDS,
+      );
+
+      return Number(saved) === 1;
     } catch (error) {
       this.logger.warn(`Review risk save failed (pr_id=${pullRequestId}): ${this.messageOf(error)}`);
+
+      return false;
     }
   }
 

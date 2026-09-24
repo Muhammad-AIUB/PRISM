@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs
 import Redis from 'ioredis';
 import type { Blueprint } from '../../design/blueprint';
 import { REDIS_CLIENT } from '../../redis/redis.constants';
+import { ERASURE_MARKER_TTL_SECONDS, erasureMarkerKey } from '../account/erasure-marker';
 
 /**
  * Where blueprints live: Redis, for thirty days.
@@ -21,19 +22,14 @@ export const DESIGN_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const DESIGN_HISTORY = 20;
 
 /**
- * How long an erased account's marker refuses new designs. Far longer than a
- * generation can take (DESIGN_BUDGET_MS), which is the window it closes.
- */
-export const ERASURE_MARKER_TTL_SECONDS = 60 * 60;
-
-/**
  * The save, as one atomic script, so it can check the erasure marker and
  * write in a single step. A MULTI cannot read before it writes, and WATCH is
  * per connection, which this shared client cannot offer.
  *
  * KEYS: design, history, owned index, erasure marker
  * ARGV: record JSON, design id, ttl seconds, history cap
- * Returns 1 when saved, 0 when the owner's account is being erased.
+ * Returns 1 when saved, 0 when the owner's account is being erased
+ * (see account/erasure-marker.ts).
  */
 export const SAVE_SCRIPT = `
 if redis.call('EXISTS', KEYS[4]) == 1 then return 0 end
@@ -253,7 +249,7 @@ export class DesignStore {
   }
 
   private erasedKey(ownerId: number): string {
-    return `design:erased:${ownerId}`;
+    return erasureMarkerKey(ownerId);
   }
 
   private parse(raw: string | null): StoredDesign | null {

@@ -24,13 +24,15 @@ function build(overrides: { purgeOwner?: jest.Mock; purge?: jest.Mock } = {}) {
     purge: overrides.purge ?? jest.fn().mockResolvedValue(undefined),
     count: jest.fn().mockResolvedValue(2),
   };
+  const redis = { set: jest.fn().mockResolvedValue('OK') };
   const service = new AccountDataService(
     { createQueryBuilder: () => query } as never,
     designs as never,
     risk as never,
+    redis as never,
   );
 
-  return { service, designs, risk };
+  return { service, designs, risk, redis };
 }
 
 describe('AccountDataService', () => {
@@ -41,6 +43,19 @@ describe('AccountDataService', () => {
 
     expect(risk.purge).toHaveBeenCalledWith([41, 42]);
     expect(designs.purgeOwner).toHaveBeenCalledWith(1);
+  });
+
+  it('sets the erasure marker before any purge, so work in flight cannot re-create data', async () => {
+    const { service, designs, risk, redis } = build();
+
+    await service.erase(user);
+
+    expect(redis.set).toHaveBeenCalledWith('account:erased:1', '1', 'EX', expect.any(Number));
+
+    const [marked] = redis.set.mock.invocationCallOrder;
+
+    expect(marked).toBeLessThan(risk.purge.mock.invocationCallOrder[0] as number);
+    expect(marked).toBeLessThan(designs.purgeOwner.mock.invocationCallOrder[0] as number);
   });
 
   it('turns a storage failure into a 503 that says nothing was deleted', async () => {

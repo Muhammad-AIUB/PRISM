@@ -1,10 +1,13 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import Redis from 'ioredis';
 import { Repository as OrmRepository } from 'typeorm';
 import { PullRequest, type User } from '../../database/entities';
 import { summarise, type BlueprintSummary } from '../../design/blueprint';
 import { DesignStore } from '../design/design.store';
+import { REDIS_CLIENT } from '../../redis/redis.constants';
 import { ReviewRiskStore } from '../risk/review-risk.store';
+import { ERASURE_MARKER_TTL_SECONDS, erasureMarkerKey } from './erasure-marker';
 
 /**
  * A user's data that lives outside Postgres, in one place.
@@ -24,6 +27,7 @@ export class AccountDataService {
     private readonly pullRequests: OrmRepository<PullRequest>,
     private readonly designs: DesignStore,
     private readonly reviewedRisk: ReviewRiskStore,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   /**
@@ -33,6 +37,11 @@ export class AccountDataService {
    */
   async erase(user: User): Promise<void> {
     try {
+      // Before any purge: from here every store refuses new writes for this
+      // user, so work in flight (a review, a generation) cannot re-create what
+      // is about to be erased. See erasure-marker.ts.
+      await this.redis.set(erasureMarkerKey(user.id), '1', 'EX', ERASURE_MARKER_TTL_SECONDS);
+
       const ids = await this.pullRequestIds(user.id);
 
       await this.reviewedRisk.purge(ids);

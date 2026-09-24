@@ -127,7 +127,7 @@ export class PullRequestReviewRunner {
         performanceIssues: [],
         codeQualityIssues: [],
       });
-      await this.recordReviewedRisk(pr.id, risk);
+      await this.recordReviewedRisk(pr.id, repository.userId, risk);
 
       await this.pullRequests.update(pr.id, { status: 'completed' });
 
@@ -185,7 +185,7 @@ export class PullRequestReviewRunner {
       aiModelUsed: model,
       suggestedFixes: null,
     });
-    await this.recordReviewedRisk(pr.id, risk);
+    await this.recordReviewedRisk(pr.id, repository.userId, risk);
 
     // Comments are replaced wholesale, so a re-analyze cannot accumulate them.
     await this.reviewComments.delete({ reviewId: review.id });
@@ -299,9 +299,14 @@ export class PullRequestReviewRunner {
    * assessment (the scan threw) clears the saved one rather than leaving the
    * previous push's risk labelled as this review's.
    */
-  private async recordReviewedRisk(pullRequestId: number, risk: RiskAssessment | null): Promise<void> {
+  private async recordReviewedRisk(
+    pullRequestId: number,
+    ownerId: number,
+    risk: RiskAssessment | null,
+  ): Promise<void> {
     if (risk) {
-      await this.reviewedRisk.save(pullRequestId, risk);
+      // Refused, harmlessly, if the owner's account is being erased.
+      await this.reviewedRisk.save(pullRequestId, ownerId, risk);
     } else {
       await this.reviewedRisk.forget(pullRequestId);
     }

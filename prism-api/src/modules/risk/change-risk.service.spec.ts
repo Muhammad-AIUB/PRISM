@@ -1,6 +1,7 @@
 import { BadGatewayException } from '@nestjs/common';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import type { CommitReview, PullRequest, User } from '../../database/entities';
+import * as riskRadar from '../../diff/risk-radar';
 import { ChangeRiskService } from './change-risk.service';
 
 const owner = { id: 1, githubToken: 'encrypted' } as User;
@@ -104,5 +105,13 @@ describe('ChangeRiskService', () => {
 
     await expect(failure).rejects.toBeInstanceOf(BadGatewayException);
     await expect(failure).rejects.toThrow('Could not fetch the diff from GitHub (HTTP 404).');
+  });
+
+  it('answers a scanner failure with a plain 503, not a 500', async () => {
+    const spy = jest.spyOn(riskRadar, 'tryAssessRisk').mockReturnValue(null);
+    const { service } = build(async () => DIFF);
+
+    await expect(service.forCommit(owner, commit)).rejects.toThrow('Could not assess this change.');
+    spy.mockRestore();
   });
 });

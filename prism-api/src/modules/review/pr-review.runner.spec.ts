@@ -58,7 +58,7 @@ describe('PullRequestReviewRunner language detection', () => {
       headBranch: 'f',
       baseBranch: 'main',
       updatedAt: new Date(),
-      repository: { fullName: 'o/r', user: { id: 1, githubToken: null } },
+      repository: { fullName: 'o/r', userId: 1, user: { id: 1, githubToken: null } },
     });
     reviews.findOne.mockResolvedValue(null);
     reviews.save.mockResolvedValue({ id: 99 });
@@ -95,7 +95,7 @@ describe('PullRequestReviewRunner language detection', () => {
     await runner.run(1, 1);
 
     // The assessment the page will show is of this exact diff, saved under this PR.
-    expect(reviewedRisk.save).toHaveBeenCalledWith(1, expect.objectContaining({ level: expect.any(String) }));
+    expect(reviewedRisk.save).toHaveBeenCalledWith(1, 1, expect.objectContaining({ level: expect.any(String) }));
 
     const languageWrite = pullRequests.update.mock.calls.find(
       (call) => (call[1] as Record<string, unknown>).detectedLanguages !== undefined,
@@ -140,7 +140,7 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
       headBranch: 'f',
       baseBranch: 'main',
       updatedAt: new Date(),
-      repository: { fullName: 'o/r', user: { id: 1, githubToken: null } },
+      repository: { fullName: 'o/r', userId: 1, user: { id: 1, githubToken: null } },
     });
     reviews.findOne.mockResolvedValue(null);
     reviews.save.mockResolvedValue({ id: 99 });
@@ -176,7 +176,7 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
 
     await runner.run(1, 1);
 
-    expect(reviewedRisk.save).toHaveBeenCalledWith(1, expect.objectContaining({ level: expect.any(String) }));
+    expect(reviewedRisk.save).toHaveBeenCalledWith(1, 1, expect.objectContaining({ level: expect.any(String) }));
 
     const [rowWrite] = reviews.save.mock.invocationCallOrder;
     const [riskWrite] = reviewedRisk.save.mock.invocationCallOrder;
@@ -192,7 +192,7 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
     await runner.run(1, 1);
 
     expect(reviews.save).toHaveBeenCalled();
-    expect(reviewedRisk.save).toHaveBeenCalledWith(1, expect.objectContaining({ level: expect.any(String) }));
+    expect(reviewedRisk.save).toHaveBeenCalledWith(1, 1, expect.objectContaining({ level: expect.any(String) }));
   });
 
   it('clears the saved risk when the scan fails, instead of leaving the last push\'s', async () => {

@@ -65,7 +65,10 @@ export default function RiskPanel({
   useEffect(() => {
     let cancelled = false;
 
+    // A new assessment gets a fresh checklist: ticks answered questions about
+    // the previous revision, and would otherwise sit on the new one's.
     setState(null);
+    setDone({});
 
     // A server action can reject outright (network drop, a deploy while the
     // page is open). Without the catch the panel would sit on its loading

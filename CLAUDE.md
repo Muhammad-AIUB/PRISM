@@ -169,6 +169,12 @@ See `docs/designs/risk-radar-and-design-studio.md`. Things that are easy to brea
   IP) and it lives in Redis, so it holds across restarts.
 - Every AI failure degrades to `baselineBlueprint()` with a `notice`. It never
   fails the request.
+- **User data in Redis must be erasable.** Account deletion clears Redis first
+  (`AccountDataService`), after setting the account's erasure marker
+  (`account/erasure-marker.ts`). Any store that holds a user's data must write
+  through an atomic script that refuses while that marker exists, as
+  `DesignStore` and `ReviewRiskStore` do, and must be purged there. Otherwise
+  work in flight during deletion re-creates data nothing can find again.
 - Blueprints live in **Redis** (`design:{uuid}`, 30-day TTL, owner stored beside
   the payload), deliberately not Postgres: no DDL. Missing, expired, malformed
   and foreign ids must stay one indistinguishable 404.

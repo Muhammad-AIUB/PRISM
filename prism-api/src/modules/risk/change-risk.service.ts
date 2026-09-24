@@ -1,8 +1,8 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import type { CommitReview, PullRequest, User } from '../../database/entities';
-import { assessRisk, type RiskAssessment } from '../../diff/risk-radar';
+import { tryAssessRisk, type RiskAssessment } from '../../diff/risk-radar';
 import { GithubClientService } from '../../github/github-client.service';
 import { ReviewRiskStore } from './review-risk.store';
 
@@ -56,7 +56,7 @@ export class ChangeRiskService {
       owner,
     );
 
-    return { risk: assessRisk(diff), basis: 'current' };
+    return { risk: this.assess(diff), basis: 'current' };
   }
 
   async forCommit(owner: User, commit: CommitReview): Promise<ChangeRisk> {
@@ -67,7 +67,22 @@ export class ChangeRiskService {
       owner,
     );
 
-    return { risk: assessRisk(diff), basis: 'reviewed' };
+    return { risk: this.assess(diff), basis: 'reviewed' };
+  }
+
+  /**
+   * The same never-throw scan the runner uses. A diff the scanner chokes on is
+   * a 503 with a plain message, which the panel shows as "unavailable" - not a
+   * 500 from a stack trace.
+   */
+  private assess(diff: string): RiskAssessment {
+    const risk = tryAssessRisk(diff);
+
+    if (!risk) {
+      throw new ServiceUnavailableException('Could not assess this change.');
+    }
+
+    return risk;
   }
 
   private async load(
