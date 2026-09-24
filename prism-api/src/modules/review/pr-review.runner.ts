@@ -13,7 +13,7 @@ import { PullRequest, Review, ReviewComment } from '../../database/entities';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 import type { ReviewLayer, ReviewSeverity } from '../../database/entities/review-comment.entity';
 import { prepareDiff } from '../../diff/prepare';
-import { tryAssessRisk } from '../../diff/risk-radar';
+import { tryAssessRisk, type RiskAssessment } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
 import { reconcileScore, verdictFor } from '../../ai/verdict';
@@ -95,6 +95,12 @@ export class PullRequestReviewRunner {
     const prepared = prepareDiff(diffBody, DIFF_LIMIT);
     const languages = prepared.languages;
 
+    // Risk Radar reads the whole diff, not the budgeted selection the model
+    // saw: blast radius is a property of the change, not of what fit. It is
+    // recorded together with every review row below, never later, so the page
+    // cannot pair this review with the previous push's risk.
+    const risk = tryAssessRisk(diffBody);
+
     if (languages.length > 0) {
       await this.pullRequests.update(pr.id, { detectedLanguages: languages });
     }
@@ -121,6 +127,7 @@ export class PullRequestReviewRunner {
         performanceIssues: [],
         codeQualityIssues: [],
       });
+      await this.recordReviewedRisk(pr.id, risk);
 
       await this.pullRequests.update(pr.id, { status: 'completed' });
 
@@ -178,6 +185,7 @@ export class PullRequestReviewRunner {
       aiModelUsed: model,
       suggestedFixes: null,
     });
+    await this.recordReviewedRisk(pr.id, risk);
 
     // Comments are replaced wholesale, so a re-analyze cannot accumulate them.
     await this.reviewComments.delete({ reviewId: review.id });
@@ -216,16 +224,6 @@ export class PullRequestReviewRunner {
       }
 
       await this.reviews.update(review.id, { suggestedFixes: { fixes: checked.fixes } });
-    }
-
-    // Computed from the whole diff, not the budgeted selection the model saw:
-    // blast radius is a property of the change, not of what fit. Saved against
-    // this pull request so the page shows risk for the revision this review
-    // read, not whatever was pushed after it.
-    const risk = tryAssessRisk(diffBody);
-
-    if (risk) {
-      await this.reviewedRisk.save(pr.id, risk);
     }
 
     // 5. Post the summary back on the GitHub PR. Last checkpoint before the
@@ -296,6 +294,19 @@ export class PullRequestReviewRunner {
   }
 
   /** The original ORM's an update-or-create keyed on pull_request_id. */
+  /**
+   * Called immediately after each review-row write, on every path. A missing
+   * assessment (the scan threw) clears the saved one rather than leaving the
+   * previous push's risk labelled as this review's.
+   */
+  private async recordReviewedRisk(pullRequestId: number, risk: RiskAssessment | null): Promise<void> {
+    if (risk) {
+      await this.reviewedRisk.save(pullRequestId, risk);
+    } else {
+      await this.reviewedRisk.forget(pullRequestId);
+    }
+  }
+
   private async upsertReview(
     pullRequestId: number,
     values: Partial<Review>,

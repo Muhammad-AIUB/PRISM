@@ -103,6 +103,7 @@ export default function DesignStudioView({
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [pending, startTransition] = useTransition();
   const [deleting, startDelete] = useTransition();
@@ -137,7 +138,14 @@ export default function DesignStudioView({
     setMessage(null);
 
     startTransition(async () => {
-      const result = await createDesign(brief);
+      // A rejected server action (network drop, a deploy mid-request) would
+      // otherwise leave the form with no message at all.
+      const result = await createDesign(brief).catch(() => ({
+        ok: false as const,
+        id: undefined,
+        message: 'Could not reach the server. Check your connection and try again.',
+        errors: undefined,
+      }));
 
       if (result.ok && result.id) {
         router.push(`/design/${result.id}`);
@@ -151,8 +159,22 @@ export default function DesignStudioView({
   };
 
   const remove = (id: string) => {
+    setListError(null);
+
     startDelete(async () => {
-      await deleteDesign(id);
+      const result = await deleteDesign(id).catch(() => ({
+        ok: false,
+        message: 'Could not reach the server.',
+      }));
+
+      // A failed delete must not look like a successful one: say so, and
+      // leave the list as it is rather than refreshing it into the same state.
+      if (!result.ok) {
+        setListError(`Could not delete that design. ${result.message}`);
+
+        return;
+      }
+
       router.refresh();
     });
   };
@@ -337,6 +359,19 @@ export default function DesignStudioView({
           >
             Your designs
           </h2>
+          {listError && (
+            <p
+              role="alert"
+              className="mt-3 rounded-md p-2 text-xs"
+              style={{
+                backgroundColor: 'rgba(239,68,68,0.10)',
+                color: 'var(--danger)',
+                border: '1px solid rgba(239,68,68,0.30)',
+              }}
+            >
+              {listError}
+            </p>
+          )}
           {designs.length === 0 ? (
             <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
               Nothing yet. Designs are kept for 30 days; export the ones you want to keep.

@@ -57,11 +57,16 @@ export default function RiskPanel({
   useEffect(() => {
     let cancelled = false;
 
-    void loadRisk(kind, id).then((result) => {
-      if (!cancelled) {
-        setState(result);
-      }
-    });
+    // A server action can reject outright (network drop, a deploy while the
+    // page is open). Without the catch the panel would sit on its loading
+    // state forever; with it, it says quietly that risk is unavailable.
+    loadRisk(kind, id)
+      .catch(() => ({ risk: null, basis: null, error: 'could not reach the server' }))
+      .then((result) => {
+        if (!cancelled) {
+          setState(result);
+        }
+      });
 
     return () => {
       cancelled = true;
