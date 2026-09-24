@@ -6,11 +6,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ParseIdPipe } from '../../common/pipes/parse-id.pipe';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { User } from '../../database/entities';
 import { WebAuthGuard } from '../auth/web-auth.guard';
@@ -65,7 +65,7 @@ export class RepositoriesController {
   }
 
   @Get(':repository/settings')
-  settings(@CurrentUser() user: User, @Param('repository', ParseIntPipe) id: number) {
+  settings(@CurrentUser() user: User, @Param('repository', ParseIdPipe) id: number) {
     return this.repositories.settings(user, id);
   }
 
@@ -73,7 +73,7 @@ export class RepositoriesController {
   @HttpCode(HttpStatus.OK)
   updateSettings(
     @CurrentUser() user: User,
-    @Param('repository', ParseIntPipe) id: number,
+    @Param('repository', ParseIdPipe) id: number,
     @Body() dto: UpdateRepositorySettingsDto,
   ) {
     return this.repositories.updateSettings(user, id, dto);

@@ -6,10 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ParseIdPipe } from '../../common/pipes/parse-id.pipe';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { User } from '../../database/entities';
 import { WebAuthGuard } from '../auth/web-auth.guard';
@@ -53,7 +53,7 @@ export class SettingsController {
   @HttpCode(HttpStatus.OK)
   revokeApiToken(
     @CurrentUser() user: User,
-    @Param('tokenId', ParseIntPipe) tokenId: number,
+    @Param('tokenId', ParseIdPipe) tokenId: number,
   ) {
     return this.settings.revokeApiToken(user, tokenId);
   }

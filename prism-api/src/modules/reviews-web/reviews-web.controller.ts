@@ -5,11 +5,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ParseIdPipe } from '../../common/pipes/parse-id.pipe';
 import type { Response } from 'express';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { User } from '../../database/entities';
@@ -27,18 +27,18 @@ export class ReviewsWebController {
   ) {}
 
   @Get(':pullRequest')
-  show(@CurrentUser() user: User, @Param('pullRequest', ParseIntPipe) id: number) {
+  show(@CurrentUser() user: User, @Param('pullRequest', ParseIdPipe) id: number) {
     return this.reviews.showPullRequest(user, id);
   }
 
   @Post(':pullRequest/re-analyze')
   @HttpCode(HttpStatus.OK)
-  reAnalyze(@CurrentUser() user: User, @Param('pullRequest', ParseIntPipe) id: number) {
+  reAnalyze(@CurrentUser() user: User, @Param('pullRequest', ParseIdPipe) id: number) {
     return this.reviews.reAnalyzePullRequest(user, id);
   }
 
   @Get(':pullRequest/risk')
-  risk(@CurrentUser() user: User, @Param('pullRequest', ParseIntPipe) id: number) {
+  risk(@CurrentUser() user: User, @Param('pullRequest', ParseIdPipe) id: number) {
     return this.reviews.pullRequestRisk(user, id);
   }
 
@@ -50,7 +50,7 @@ export class ReviewsWebController {
   @Header('Content-Type', 'text/plain; charset=utf-8')
   async diff(
     @CurrentUser() user: User,
-    @Param('pullRequest', ParseIntPipe) id: number,
+    @Param('pullRequest', ParseIdPipe) id: number,
     @Res({ passthrough: true }) response: Response,
   ): Promise<string> {
     const result = await this.reviews.pullRequestDiff(user, id);
@@ -69,7 +69,7 @@ export class ReviewsWebController {
   @Get(':pullRequest/export')
   async exportPdf(
     @CurrentUser() user: User,
-    @Param('pullRequest', ParseIntPipe) id: number,
+    @Param('pullRequest', ParseIdPipe) id: number,
     @Res() response: Response,
   ): Promise<void> {
     const { pr, review } = await this.reviews.exportData(user, id);

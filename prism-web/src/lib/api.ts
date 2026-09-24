@@ -134,8 +134,12 @@ export async function apiGetAuthed<T>(path: string): Promise<T> {
    * 403 is folded in on purpose: a distinct "forbidden" screen would confirm
    * that a given review id exists, which is a small leak with no upside for
    * the person seeing it.
+   *
+   * So is 400. These are page loads, and the only 400 a GET for a page gets is
+   * a malformed id in the URL (/reviews/abc) - which is a page that does not
+   * exist, not a server error. It rendered the 500 error screen before.
    */
-  if (response.status === 404 || response.status === 403) {
+  if (response.status === 404 || response.status === 403 || response.status === 400) {
     notFound();
   }
 
