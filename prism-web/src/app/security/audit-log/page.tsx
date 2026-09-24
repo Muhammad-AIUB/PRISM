@@ -5,6 +5,7 @@ import {
   FileSearch,
   GitBranch,
   LogIn,
+  Network,
   Settings,
   Shield,
   Trash2,
@@ -35,6 +36,7 @@ const ACTION_META: Record<
   review_completed: { icon: FileSearch, color: 'var(--success)', label: 'Review completed' },
   review_reanalyzed: { icon: FileSearch, color: 'var(--info)', label: 'Review re-analyzed' },
   data_exported: { icon: Download, color: 'var(--accent)', label: 'Data exported' },
+  design_created: { icon: Network, color: 'var(--accent)', label: 'Design generated' },
   account_deleted: { icon: Trash2, color: 'var(--danger)', label: 'Account deleted' },
 };
 

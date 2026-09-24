@@ -64,6 +64,9 @@ Running from a local clone instead of npm:
 | `get_pr_review` | Full review for a pull request |
 | `reanalyze_commit` | Trigger a fresh AI review of a commit |
 | `reanalyze_pull_request` | Trigger a fresh AI review of a PR |
+| `get_change_risk` | Risk Radar for a PR or commit: 0-100 blast-radius score and the questions to answer before merging |
+| `design_system` | Generate a production system design (failure modes, scaling plan, SLOs, readiness checklist) as a Markdown doc |
+| `get_design` | Fetch a saved design as Markdown, or list your recent designs |
 
 ## The killer workflow
 

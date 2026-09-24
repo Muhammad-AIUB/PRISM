@@ -32,6 +32,7 @@ import {
 import { AuthWebModule } from './modules/auth/auth-web.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DemoModule } from './modules/demo/demo.module';
+import { DesignModule } from './modules/design/design.module';
 import { HealthModule } from './modules/health/health.module';
 import { ReviewsModule } from './modules/api-v1/reviews/reviews.module';
 import { ProfileModule } from './modules/profile/profile.module';
@@ -146,6 +147,7 @@ import { RedisModule } from './redis/redis.module';
     ReviewsWebModule,
     SecurityModule,
     DemoModule,
+    DesignModule,
     ReviewModule,
     WebhookModule,
   ],

@@ -19,7 +19,7 @@ import { extractJson, type ExtractedJson } from './json-extractor';
  * Model ids, ordering, temperature and timeouts are observable behaviour.
  * Do not reorder or "modernise" the list without re-measuring parse rates.
  */
-export type AiCallContext = 'commit_review' | 'pr_review';
+export type AiCallContext = 'commit_review' | 'pr_review' | 'design_advice';
 
 export interface RawAiResult {
   parsed: ExtractedJson | null;

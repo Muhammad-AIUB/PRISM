@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Network,
   Settings,
   Shield,
   User as UserIcon,
@@ -305,6 +306,12 @@ export default function AuthenticatedLayout({
       icon: FileSearch,
       label: 'Reviews',
       isActive: pathname.startsWith('/reviews') || pathname.startsWith('/commits'),
+    },
+    {
+      href: '/design',
+      icon: Network,
+      label: 'Design Studio',
+      isActive: pathname.startsWith('/design'),
     },
     {
       href: '/settings',

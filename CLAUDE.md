@@ -140,6 +140,29 @@ Deliberate behaviours to preserve:
   version left the timed-out runner alive, which double-posted GitHub comments and
   raced `markFailed` against its own `status: 'completed'`.
 
+### Risk Radar and Design Studio
+
+See `docs/designs/risk-radar-and-design-studio.md`. Things that are easy to break:
+
+- `diff/risk-radar.ts` is **pure and deterministic**: no model, network or DB. The
+  runners call `tryAssessRisk()`, which never throws; a risk bug must cost the
+  comment its risk section, never the review. `ChangeRiskService` reads the diff
+  through the runners' own `DiffCacheService` keys; keep them shared.
+- `SummaryCommentBuilder` appends the risk section only when `risk` is supplied,
+  so the existing byte-for-byte comment tests stay valid.
+- Design Studio runs **inline** (not on the concurrency-1 queue), bounded by
+  `DESIGN_BUDGET_MS` (an `AbortSignal`) and a per-user Redis limit checked
+  *before* the model call. It uses a service-level limit because the global
+  `RateLimitGuard` runs before auth guards and buckets web traffic by the
+  Next.js server's IP.
+- Every AI failure degrades to `baselineBlueprint()` with a `notice`. It never
+  fails the request.
+- Blueprints live in **Redis** (`design:{uuid}`, 30-day TTL, owner stored beside
+  the payload), deliberately not Postgres: no DDL. Missing, expired, malformed
+  and foreign ids must stay one indistinguishable 404.
+- `design/design-prompt.ts` is separate from `prompt-builder.service.ts`, so the
+  frozen fixtures are unaffected by design-prompt changes.
+
 ## Stored-data invariants
 
 These are not legacy cruft; they are load-bearing against live production data.

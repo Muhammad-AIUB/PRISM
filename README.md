@@ -52,6 +52,26 @@ When a developer opens a pull request on a connected repository, PRism:
 
 All of this — with zero recurring cost on free tiers.
 
+### 🛰️ Risk Radar: how carefully to look
+
+Every review now carries a deterministic **change-risk score** (0–100) built from
+where the change lands: auth code, migrations, hardcoded secrets, missing or
+removed tests, CI/deploy config, dependencies, public API. It comes with a
+**"Before merging" checklist** triggered by what the added lines actually do: a
+network call with no timeout, string-built SQL, a swallowed error, at-least-once
+delivery, a migration with no way back. It shows up in the GitHub comment, on
+the review page and through MCP (`get_change_risk`), and it still works when the
+AI is down.
+
+### 🧭 Design Studio: a reliable design before the first commit
+
+Describe what you're building, pick a scale and what matters most, and get a
+blueprint sized to your real load. It covers components, request flow, **failure
+modes with concrete mitigations**, reliability patterns, SLOs, a scaling plan
+with numeric triggers, trade-offs, and a production-readiness checklist.
+Export it as Markdown and commit it next to the code, or ask for it from your
+editor through MCP (`design_system`).
+
 ---
 
 ## 📸 Screenshots
