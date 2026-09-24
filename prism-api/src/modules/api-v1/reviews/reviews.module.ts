@@ -5,6 +5,7 @@ import { DiffCacheModule } from '../../../cache/diff-cache.module';
 import { AuthModule } from '../../../auth/auth.module';
 import { CommitReview, PullRequest, Repository, Review } from '../../../database/entities';
 import { ReviewModule } from '../../review/review.module';
+import { RiskModule } from '../../risk/risk.module';
 import { ReviewsController } from './reviews.controller';
 import { ReviewsService } from './reviews.service';
 
@@ -16,6 +17,7 @@ import { ReviewsService } from './reviews.service';
     ReviewModule,
     DiffCacheModule,
     AuditModule,
+    RiskModule,
   ],
   controllers: [ReviewsController],
   providers: [ReviewsService],

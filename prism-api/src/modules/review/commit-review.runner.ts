@@ -9,14 +9,13 @@ import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { CommitReview } from '../../database/entities';
-import type { ReviewIssue } from '../../database/entities/review.entity';
 import { prepareDiff } from '../../diff/prepare';
+import { tryAssessRisk } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
-import { reconcileScore, verdictFor } from '../../ai/verdict';
+import { incompleteReviewSummary, reconcileScore, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
-import { EmailService } from '../../notifications/email.service';
 import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
@@ -43,7 +42,6 @@ export class CommitReviewRunner {
     private readonly diffCache: DiffCacheService,
     private readonly crypt: CryptService,
     private readonly summaryComment: SummaryCommentBuilder,
-    private readonly email: EmailService,
     private readonly slack: SlackService,
     private readonly auditLog: AuditLogService,
   ) {}
@@ -107,14 +105,12 @@ export class CommitReviewRunner {
       await this.commitReviews.update(review.id, {
         status: 'completed',
         overallScore: null,
-        summary: attemptResult.raw
-          ? `AI review couldn't be parsed cleanly. Click Re-analyze to retry.\n\n— Raw output —\n${attemptResult.raw.slice(0, 1500)}`
-          : "AI review didn't return any usable content. Click Re-analyze to retry.",
+        summary: incompleteReviewSummary(attemptResult.raw),
         aiModelUsed: model ?? 'multi-fallback',
       });
 
       this.logger.warn(
-        `Commit review: all AI models failed to return parseable JSON (review_id=${review.id})`,
+        `Commit review: no AI model returned a usable review (review_id=${review.id})`,
       );
 
       return;
@@ -205,10 +201,13 @@ export class CommitReviewRunner {
         id: review.id,
         overallScore,
         summary,
-        securityIssues: layers.security as ReviewIssue[],
-        performanceIssues: layers.performance as ReviewIssue[],
-        codeQualityIssues: layers.code_quality as ReviewIssue[],
+        securityIssues: layers.security,
+        performanceIssues: layers.performance,
+        codeQualityIssues: layers.code_quality,
         aiModelUsed: model,
+        // Computed from the whole diff, not the budgeted selection the model
+        // saw: blast radius is a property of the change, not of what fit.
+        risk: tryAssessRisk(diffBody),
       }),
       signal,
     );
@@ -226,22 +225,7 @@ export class CommitReviewRunner {
       { commit_review_id: review.id, score: overallScore },
     );
 
-    // 5. Notifications. Failure here must not retry or roll back the review.
-    if (user?.email && user.emailNotifications) {
-      try {
-        await this.email.sendCommitReview({
-          to: user.email,
-          commitReviewId: review.id,
-          shortSha: review.shortSha(),
-          repositoryFullName: repository.fullName,
-          summary,
-          score: overallScore,
-        });
-      } catch (error) {
-        this.logger.warn(`Email notification (commit) failed: ${this.messageOf(error)}`);
-      }
-    }
-
+    // 5. Notification (Slack). Failure here must not retry or roll back the review.
     if (user?.slackWebhookUrl) {
       try {
         await this.slack.sendCommitReview({

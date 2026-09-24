@@ -7,6 +7,7 @@ import { toIso8601String } from '../../common/utils/iso8601';
 import { formatShortDate } from '../../common/utils/short-date';
 import { AuditLog, Repository, Review, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
+import { AccountDataService } from '../account/account-data.service';
 
 /**
  * Port of SecurityController, AuditController and DataController.
@@ -30,6 +31,7 @@ export class SecurityService {
     private readonly github: GithubClientService,
     private readonly crypt: CryptService,
     private readonly auditLog: AuditLogService,
+    private readonly accountData: AccountDataService,
   ) {}
 
   /** GET /security — public. `user` is null for anonymous visitors. */
@@ -70,7 +72,7 @@ export class SecurityService {
     // preview is of the real token, not of the ciphertext.
     const token = this.crypt.decrypt(user.githubToken) ?? '';
 
-    const [repositories, connectedRepos, totalReviews, auditEvents] = await Promise.all([
+    const [repositories, connectedRepos, totalReviews, auditEvents, stored] = await Promise.all([
       this.repositories.find({ where: { userId: user.id } }),
       this.repositories.count({ where: { userId: user.id } }),
       this.reviews
@@ -80,6 +82,7 @@ export class SecurityService {
         .where('repo.user_id = :userId', { userId: user.id })
         .getCount(),
       this.auditLogs.count({ where: { userId: user.id } }),
+      this.accountData.summary(user),
     ]);
 
     return {
@@ -100,7 +103,11 @@ export class SecurityService {
         connected_repos: connectedRepos,
         total_reviews: totalReviews,
         audit_events: auditEvents,
+        saved_designs: stored.saved_designs,
+        saved_risk_assessments: stored.saved_risk_assessments,
       },
+      // Held in Redis rather than Postgres, and erased with the account.
+      designs: stored.designs,
       repositories: repositories.map((repo) => ({
         full_name: repo.fullName,
         created_at: formatShortDate(repo.createdAt),
@@ -118,21 +125,25 @@ export class SecurityService {
    * gone, leaving GitHub delivering to a repository nothing recognises.
    */
   async deleteEverything(user: User): Promise<{ message: string }> {
-    const token = this.crypt.decrypt(user.githubToken) ?? '';
-    const repositories = await this.repositories.find({ where: { userId: user.id } });
+    // Redis-held data first, inside deleteAccount: a failure anywhere stops
+    // the deletion and says so, rather than a false "everything is deleted".
+    await this.accountData.deleteAccount(user, async () => {
+      const token = this.crypt.decrypt(user.githubToken) ?? '';
+      const repositories = await this.repositories.find({ where: { userId: user.id } });
 
-    for (const repo of repositories) {
-      if (!repo.webhookId) {
-        continue;
+      for (const repo of repositories) {
+        if (!repo.webhookId) {
+          continue;
+        }
+
+        await this.github.deleteWebhook(token, repo.fullName, repo.webhookId);
       }
 
-      await this.github.deleteWebhook(token, repo.fullName, repo.webhookId);
-    }
+      // Recorded while the user still exists; the row cascades away with them.
+      await this.auditLog.record(user.id, 'account_deleted', 'User-initiated full data deletion');
 
-    // Recorded while the user still exists; the row cascades away with them.
-    await this.auditLog.record(user.id, 'account_deleted', 'User-initiated full data deletion');
-
-    await this.users.delete(user.id);
+      await this.users.delete(user.id);
+    });
 
     return { message: 'All your data has been permanently deleted.' };
   }

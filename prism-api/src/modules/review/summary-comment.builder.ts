@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 import { orderFindings, verdictFor, type Verdict } from '../../ai/verdict';
+import type { RiskAssessment, RiskLevel } from '../../diff/risk-radar';
 
 /**
  * The comment PRism posts on a pull request or a commit.
@@ -22,6 +23,9 @@ const VERDICT_LABELS: Record<Verdict, string> = {
   blocking: '**BLOCKING**',
   worth_a_look: '**WORTH A LOOK**',
   nothing_found: '**NOTHING FOUND**',
+  // Never posted today (the runners skip the comment when no model answered);
+  // present so the label table stays exhaustive over Verdict.
+  not_reviewed: '**NOT REVIEWED**',
 };
 
 interface CommentReview {
@@ -32,7 +36,21 @@ interface CommentReview {
   performanceIssues: ReviewIssue[] | null;
   codeQualityIssues: ReviewIssue[] | null;
   aiModelUsed: string | null;
+  /**
+   * Risk Radar's read of the diff. Optional so a caller that has no diff to
+   * hand still gets the comment it always got, byte for byte.
+   */
+  risk?: RiskAssessment | null;
 }
+
+const RISK_LABELS: Record<RiskLevel, string> = {
+  high: '**Change risk: HIGH**',
+  medium: '**Change risk: MEDIUM**',
+  low: '**Change risk: LOW**',
+};
+
+/** Signals named inline on the risk line. The rest are one click away. */
+const RISK_SIGNALS_SHOWN = 3;
 
 @Injectable()
 export class SummaryCommentBuilder {
@@ -81,7 +99,36 @@ export class SummaryCommentBuilder {
     }
 
     // PHP's `?:` treated an empty summary as absent, not just null. Kept.
-    return `${out}**Summary:** ${review.summary ? review.summary : '_No summary provided._'}\n\n`;
+    out += `**Summary:** ${review.summary ? review.summary : '_No summary provided._'}\n\n`;
+
+    return out + (review.risk ? this.risk(review.risk) : '');
+  }
+
+  /**
+   * After the findings, not before: the verdict answers "is this wrong", which
+   * is the question the reader came with. Risk answers "how carefully should I
+   * look", and a checklist of questions is the thing a reviewer can act on
+   * without leaving the pull request.
+   */
+  private risk(risk: RiskAssessment): string {
+    const reasons = risk.signals.slice(0, RISK_SIGNALS_SHOWN).map((signal) => signal.label);
+    let out = `${RISK_LABELS[risk.level]} (${risk.score}/100)`;
+
+    out += reasons.length > 0 ? ` — ${reasons.join(' · ')}\n\n` : '\n\n';
+
+    if (risk.checklist.length === 0) {
+      return out;
+    }
+
+    out += `<details><summary>Before merging (${risk.checklist.length})</summary>\n\n`;
+
+    for (const check of risk.checklist) {
+      const where = check.files.map((file) => `\`${file}\``).join(', ');
+
+      out += `- [ ] ${check.question}${where ? ` ${where}` : ''}\n`;
+    }
+
+    return `${out}\n</details>\n\n`;
   }
 
   private finding(finding: ReviewIssue, position: number): string {

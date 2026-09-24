@@ -19,7 +19,12 @@ import { BLOCKING_CATEGORIES, type IssueCategory } from './prompt-builder.servic
  * diff in seconds: an auth check was removed, a public contract changed shape,
  * a new outbound call has no timeout.
  */
-export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found';
+/**
+ * `not_reviewed` is not a softer "nothing found": it means no model produced a
+ * review at all, so nothing was checked. Showing that as a green all-clear is
+ * the most misleading thing this product could say.
+ */
+export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found' | 'not_reviewed';
 
 const SEVERITY_RANK: Record<string, number> = {
   critical: 0,
@@ -29,6 +34,17 @@ const SEVERITY_RANK: Record<string, number> = {
 
 const isBlocking = (issue: ReviewIssue): boolean =>
   BLOCKING_CATEGORIES.includes(issue.category as IssueCategory);
+
+/**
+ * The verdict for a stored review. Its findings alone cannot tell "checked and
+ * clean" from "never checked"; the fallback summary the runners write can.
+ */
+export function verdictForReview(
+  findings: readonly ReviewIssue[],
+  summary: string | null | undefined,
+): Verdict {
+  return isIncompleteReview(summary) ? 'not_reviewed' : verdictFor(findings);
+}
 
 export function verdictFor(findings: readonly ReviewIssue[]): Verdict {
   if (findings.length === 0) {
@@ -102,4 +118,22 @@ export function orderFindings(findings: readonly ReviewIssue[]): ReviewIssue[] {
       return severity !== 0 ? severity : a.index - b.index;
     })
     .map(({ finding }) => finding);
+}
+
+/**
+ * What a review says when no model produced a usable answer. The review still
+ * completes (documented graceful degradation), but it has checked nothing, so
+ * every surface must be able to tell it apart from a clean one - see
+ * `verdictForReview`. Both runners write exactly these, which is what makes
+ * them safe to recognise; do not reword one without the other.
+ */
+export const UNPARSEABLE_REVIEW = "AI review couldn't be parsed cleanly. Click Re-analyze to retry.";
+export const EMPTY_REVIEW = "AI review didn't return any usable content. Click Re-analyze to retry.";
+
+export function incompleteReviewSummary(raw: string | null): string {
+  return raw ? `${UNPARSEABLE_REVIEW}\n\n— Raw output —\n${raw.slice(0, 1500)}` : EMPTY_REVIEW;
+}
+
+export function isIncompleteReview(summary: string | null | undefined): boolean {
+  return Boolean(summary && (summary.startsWith(UNPARSEABLE_REVIEW) || summary.startsWith(EMPTY_REVIEW)));
 }

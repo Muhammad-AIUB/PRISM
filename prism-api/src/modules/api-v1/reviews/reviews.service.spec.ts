@@ -52,11 +52,11 @@ describe('ReviewsService re-analyze', () => {
     pullRequests = {
       findOne: jest.fn().mockResolvedValue(pullRequest),
       update: jest.fn().mockResolvedValue(undefined),
-    } as never;
+    };
     commitReviews = {
       findOne: jest.fn().mockResolvedValue(commitReview),
       update: jest.fn().mockResolvedValue(undefined),
-    } as never;
+    };
     reviewQueue = {
       enqueueCommitReview: jest.fn().mockResolvedValue(undefined),
       enqueuePullRequestReview: jest.fn().mockResolvedValue(undefined),
@@ -66,8 +66,8 @@ describe('ReviewsService re-analyze', () => {
       // Delegated, not stubbed: the assertion below compares against the real
       // key, so a change to the key format must show up here.
       commitKey: jest.fn((repoId: number, sha: string) => keys.commitKey(repoId, sha)),
-    } as never;
-    auditLog = { record: jest.fn().mockResolvedValue(undefined) } as never;
+    };
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
 
     service = new ReviewsService(
       {} as never,
@@ -76,6 +76,7 @@ describe('ReviewsService re-analyze', () => {
       reviewQueue,
       diffCache as never,
       auditLog as never,
+      {} as never,
     );
   });
 
@@ -145,5 +146,53 @@ describe('ReviewsService re-analyze', () => {
         suggestedFixes: null,
       });
     });
+  });
+});
+
+describe('ReviewsService risk', () => {
+  const risk = { level: 'low', score: 0, stats: {}, signals: [], checklist: [] };
+  const assessed = { risk, basis: 'reviewed' };
+
+  function build(pr: unknown, commit: unknown) {
+    const changeRisk = {
+      forPullRequest: jest.fn().mockResolvedValue(assessed),
+      forCommit: jest.fn().mockResolvedValue(assessed),
+    };
+    const service = new ReviewsService(
+      {} as never,
+      { findOne: jest.fn().mockResolvedValue(commit) } as never,
+      { findOne: jest.fn().mockResolvedValue(pr) } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      changeRisk as never,
+    );
+
+    return { service, changeRisk };
+  }
+
+  it('returns the assessment for a pull request the caller owns', async () => {
+    const { service, changeRisk } = build(pullRequest, null);
+
+    await expect(service.pullRequestRisk(user, 42)).resolves.toEqual(assessed);
+    expect(changeRisk.forPullRequest).toHaveBeenCalledWith(user, pullRequest);
+  });
+
+  it('refuses someone else\'s repository before any diff is read', async () => {
+    const foreign = { ...pullRequest, repository: { userId: 2 } };
+    const { service, changeRisk } = build(foreign, { ...commitReview, repository: { userId: 2 } });
+
+    await expect(service.pullRequestRisk(user, 42)).rejects.toThrow('Not your repository');
+    await expect(service.commitRisk(user, 66)).rejects.toThrow('Not your repository');
+    expect(changeRisk.forPullRequest).not.toHaveBeenCalled();
+    expect(changeRisk.forCommit).not.toHaveBeenCalled();
+  });
+
+  it('answers a missing row with the same 404 body the show routes use', async () => {
+    const { service } = build(null, null);
+
+    await expect(service.commitRisk(user, 9)).rejects.toThrow(
+      'No query results for model [App\\Models\\CommitReview] 9',
+    );
   });
 });

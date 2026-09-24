@@ -1,4 +1,5 @@
-import { Controller, Get, NotFoundException, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
+import { ParseIdPipe } from '../../common/pipes/parse-id.pipe';
 import {
   DEMO_REPOSITORIES,
   DEMO_REVIEWS,
@@ -23,9 +24,9 @@ export class DemoController {
     };
   }
 
-  /** The original constrained this to ->whereNumber('id'); ParseIntPipe does the same. */
+  /** The original constrained this to ->whereNumber('id'); ParseIdPipe does the same. */
   @Get('review/:id')
-  review(@Param('id', ParseIntPipe) id: number): { isDemo: true; review: DemoReview } {
+  review(@Param('id', ParseIdPipe) id: number): { isDemo: true; review: DemoReview } {
     const review = DEMO_REVIEWS.find((entry) => entry.id === id);
 
     if (!review) {

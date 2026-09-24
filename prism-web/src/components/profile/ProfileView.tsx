@@ -86,7 +86,7 @@ export default function ProfileView({ user }: { user: SessionUser }) {
       header={
         <div className="min-w-0">
           <p
-            className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+            className="text-xs font-medium uppercase tracking-wider sm:text-xs"
             style={{ color: 'var(--text-muted)' }}
           >
             Account

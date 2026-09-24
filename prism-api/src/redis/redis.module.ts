@@ -1,4 +1,4 @@
-import { Global, Logger, Module, type OnApplicationShutdown } from '@nestjs/common';
+import { Global, Inject, Logger, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from './redis.constants';
@@ -38,7 +38,20 @@ import { REDIS_CLIENT } from './redis.constants';
 export class RedisModule implements OnApplicationShutdown {
   private readonly logger = new Logger(RedisModule.name);
 
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+
+  /**
+   * It used to log "closing" and not close anything. QUIT lets commands
+   * already sent finish before the socket goes, so a deploy does not cut off
+   * a write mid-flight; disconnect() is the fallback if Redis is unreachable.
+   */
   async onApplicationShutdown(): Promise<void> {
     this.logger.log('Redis connection closing.');
+
+    try {
+      await this.redis.quit();
+    } catch {
+      this.redis.disconnect();
+    }
   }
 }

@@ -5,6 +5,7 @@ import {
   FileSearch,
   GitBranch,
   LogIn,
+  Network,
   Settings,
   Shield,
   Trash2,
@@ -35,6 +36,7 @@ const ACTION_META: Record<
   review_completed: { icon: FileSearch, color: 'var(--success)', label: 'Review completed' },
   review_reanalyzed: { icon: FileSearch, color: 'var(--info)', label: 'Review re-analyzed' },
   data_exported: { icon: Download, color: 'var(--accent)', label: 'Data exported' },
+  design_created: { icon: Network, color: 'var(--accent)', label: 'Design generated' },
   account_deleted: { icon: Trash2, color: 'var(--danger)', label: 'Account deleted' },
 };
 
@@ -66,7 +68,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
             {meta.label}
           </span>
           <span
-            className="text-[11px]"
+            className="text-xs"
             style={{ color: 'var(--text-muted)' }}
             title={absoluteTime(log.created_at)}
           >
@@ -79,7 +81,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
           </p>
         )}
         <div
-          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]"
+          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
           style={{ color: 'var(--text-muted)' }}
         >
           <span className="font-mono">{log.action}</span>
@@ -88,7 +90,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
             <details className="cursor-pointer">
               <summary className="select-none">metadata</summary>
               <pre
-                className="mt-1 max-w-full overflow-x-auto rounded p-2 text-[11px]"
+                className="mt-1 max-w-full overflow-x-auto rounded p-2 text-xs"
                 style={{
                   backgroundColor: 'var(--bg-primary)',
                   border: '1px solid var(--border)',
@@ -118,7 +120,7 @@ export default async function AuditLogPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Security
@@ -133,7 +135,7 @@ export default async function AuditLogPage() {
             style={{ padding: '0.375rem 0.625rem' }}
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Security</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Back to Security</span>
           </Link>
         </div>
       }

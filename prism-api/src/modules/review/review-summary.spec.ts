@@ -10,8 +10,8 @@ import { composeSummary } from './review-summary';
  * anything we found" are opposite messages.
  *
  * They go in `reviews.summary` because that column is already rendered verbatim
- * by every surface — the web views, the GitHub comment, the PDF, the MCP client,
- * email and Slack. One write reaches all of them.
+ * by every surface — the web views, the GitHub comment, the PDF, the MCP client
+ * and Slack. One write reaches all of them.
  */
 describe('composeSummary', () => {
   it('leaves a clean full review exactly as the model wrote it', () => {

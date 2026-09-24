@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository as OrmRepository } from 'typeorm';
 import { compare } from 'bcryptjs';
 import { User } from '../../database/entities';
+import { AccountDataService } from '../account/account-data.service';
 import type { UpdateProfileDto } from './dto/profile.dto';
 
 /**
@@ -17,6 +18,7 @@ export class ProfileService {
   constructor(
     @InjectRepository(User)
     private readonly users: OrmRepository<User>,
+    private readonly accountData: AccountDataService,
   ) {}
 
   /**
@@ -76,6 +78,11 @@ export class ProfileService {
     // left behind here exactly as they are in the original. They cannot be used to
     // authenticate — ApiTokenAuthGuard looks the user up and finds nothing —
     // but they do accumulate.
-    await this.users.delete(user.id);
+    //
+    // Redis-held data (designs, saved risk) is outside that cascade, so it is
+    // erased first; a failure there stops the deletion rather than leaving it.
+    await this.accountData.deleteAccount(user, async () => {
+      await this.users.delete(user.id);
+    });
   }
 }

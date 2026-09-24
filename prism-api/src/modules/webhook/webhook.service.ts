@@ -93,7 +93,7 @@ export class WebhookService {
     const action = this.get(data, 'action');
 
     if (action !== 'opened' && action !== 'synchronize') {
-      return { status: 200, body: { message: `Ignored action: ${String(action ?? '')}` } };
+      return { status: 200, body: { message: `Ignored action: ${this.text(action)}` } };
     }
 
     const pr = (this.get(data, 'pull_request') ?? {}) as Record<string, unknown>;
@@ -101,10 +101,10 @@ export class WebhookService {
 
     const values = {
       prNumber: Number(this.get(pr, 'number')),
-      title: String(this.get(pr, 'title') ?? ''),
-      author: String(this.get(this.get(pr, 'user'), 'login') ?? ''),
-      baseBranch: String(this.get(this.get(pr, 'base'), 'ref') ?? ''),
-      headBranch: String(this.get(this.get(pr, 'head'), 'ref') ?? ''),
+      title: this.text(this.get(pr, 'title')),
+      author: this.text(this.get(this.get(pr, 'user'), 'login')),
+      baseBranch: this.text(this.get(this.get(pr, 'base'), 'ref')),
+      headBranch: this.text(this.get(this.get(pr, 'head'), 'ref')),
       status: 'pending' as const,
       diffUrl: (this.get(pr, 'diff_url') as string | undefined) ?? null,
     };
@@ -148,7 +148,7 @@ export class WebhookService {
     repository: Repository,
     data: Record<string, unknown>,
   ): Promise<WebhookResult> {
-    const ref = String(this.get(data, 'ref') ?? '');
+    const ref = this.text(this.get(data, 'ref'));
     const branch = ref.replace(/^refs\/heads\//, '');
 
     if (repository.reviewMode === 'pr_only') {
@@ -163,7 +163,9 @@ export class WebhookService {
       return { status: 200, body: { message: 'Branch deleted, skipping' } };
     }
 
-    const headSha = this.get(data, 'after');
+    // Normalised before it is checked, so a malformed `after` cannot become a
+    // commit review whose SHA is "[object Object]".
+    const headSha = this.text(this.get(data, 'after'));
 
     if (!headSha || headSha === NULL_SHA) {
       return { status: 200, body: { message: 'No head commit' } };
@@ -175,7 +177,7 @@ export class WebhookService {
         ? (commits as Record<string, unknown>[]).find((c) => this.get(c, 'id') === headSha)
         : undefined) ?? (this.get(data, 'head_commit') as Record<string, unknown> | undefined);
 
-    const commitSha = String(headSha);
+    const commitSha = headSha;
 
     // The original ORM first-or-create: an existing row is NOT updated — a re-push of the
     // same SHA keeps the original message and author.
@@ -196,7 +198,7 @@ export class WebhookService {
           commitSha,
           branch,
           commitMessage: (this.get(headCommit, 'message') as string | undefined) ?? null,
-          author: author === undefined || author === null ? null : String(author),
+          author: this.text(author) || null,
           status: 'pending',
           createdAt: now,
           updatedAt: now,
@@ -243,6 +245,15 @@ export class WebhookService {
   }
 
   /** The original's a one-level safe getter for one level. */
+  /**
+   * A payload field as text. Payloads are untrusted input: a field GitHub
+   * documents as a string that arrives as an object must not be stored as
+   * "[object Object]" in a title, author or branch column.
+   */
+  private text(value: unknown): string {
+    return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  }
+
   private get(source: unknown, key: string): unknown {
     if (typeof source !== 'object' || source === null) {
       return undefined;

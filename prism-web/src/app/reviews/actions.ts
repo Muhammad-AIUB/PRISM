@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { ApiError, apiRaw, apiSend } from '@/lib/api';
+import { ApiError, apiGet, apiRaw, apiSend } from '@/lib/api';
+import type { RiskAssessment, RiskBasis } from '@/lib/types';
 
 /**
  * Re-analyze and diff loading for the review screens, kept server-side so the
@@ -57,4 +58,28 @@ export async function loadDiff(id: number): Promise<{ diff: string; error: strin
   }
 
   return { diff: await response.text(), error: null };
+}
+
+/**
+ * Risk Radar for a pull request or a commit. Loaded after the page renders,
+ * like the diff: it may need a GitHub round trip, and the verdict above it
+ * should not wait for that.
+ */
+export async function loadRisk(
+  kind: 'pull-request' | 'commit',
+  id: number,
+): Promise<{ risk: RiskAssessment | null; basis: RiskBasis | null; error: string | null }> {
+  try {
+    const { risk, basis } = await apiGet<{ risk: RiskAssessment; basis: RiskBasis }>(
+      kind === 'commit' ? `/commits/${id}/risk` : `/reviews/${id}/risk`,
+    );
+
+    return { risk, basis, error: null };
+  } catch (error) {
+    return {
+      risk: null,
+      basis: null,
+      error: error instanceof ApiError ? error.message : 'Could not assess this change.',
+    };
+  }
 }

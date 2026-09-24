@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ChangeRiskService, type ChangeRisk } from '../../risk/change-risk.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository as OrmRepository } from 'typeorm';
 import { AuditLogService } from '../../../audit/audit-log.service';
@@ -43,6 +44,7 @@ export class ReviewsService {
     private readonly reviewQueue: ReviewQueueService,
     private readonly diffCache: DiffCacheService,
     private readonly auditLog: AuditLogService,
+    private readonly changeRisk: ChangeRiskService,
   ) {}
 
   /**
@@ -243,6 +245,40 @@ export class ReviewsService {
     this.assertOwnership(user, pullRequest.repository?.userId ?? null);
 
     return { review: this.pullRequestDetail(pullRequest) };
+  }
+
+  /**
+   * Additive routes for the MCP server's get_change_risk tool. Same ownership
+   * rule and the same error bodies as the show routes beside them.
+   */
+  async commitRisk(user: User, id: number): Promise<ChangeRisk> {
+    const commit = await this.commitReviews.findOne({
+      where: { id },
+      relations: { repository: true },
+    });
+
+    if (!commit) {
+      throw new NotFoundException('No query results for model [App\\Models\\CommitReview] ' + id);
+    }
+
+    this.assertOwnership(user, commit.repository?.userId ?? null);
+
+    return this.changeRisk.forCommit(user, commit);
+  }
+
+  async pullRequestRisk(user: User, id: number): Promise<ChangeRisk> {
+    const pullRequest = await this.pullRequests.findOne({
+      where: { id },
+      relations: { repository: true },
+    });
+
+    if (!pullRequest) {
+      throw new NotFoundException('No query results for model [App\\Models\\PullRequest] ' + id);
+    }
+
+    this.assertOwnership(user, pullRequest.repository?.userId ?? null);
+
+    return this.changeRisk.forPullRequest(user, pullRequest);
   }
 
   // -- Internals -------------------------------------------------------

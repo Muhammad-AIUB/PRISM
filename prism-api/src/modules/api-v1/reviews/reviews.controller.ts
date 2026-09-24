@@ -4,11 +4,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ParseIdPipe } from '../../../common/pipes/parse-id.pipe';
 import { CurrentUser } from '../../../auth/current-user.decorator';
 import { ApiTokenAuthGuard } from '../../../auth/api-token-auth.guard';
 import type { User } from '../../../database/entities';
@@ -58,7 +58,7 @@ export class ReviewsController {
   @Get('commits/:id')
   showCommit(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
   ): Promise<ShowReviewResponseDto> {
     return this.reviewsService.showCommit(user, id);
   }
@@ -66,9 +66,19 @@ export class ReviewsController {
   @Get('pull-requests/:id')
   showPullRequest(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
   ): Promise<ShowReviewResponseDto> {
     return this.reviewsService.showPullRequest(user, id);
+  }
+
+  @Get('commits/:id/risk')
+  commitRisk(@CurrentUser() user: User, @Param('id', ParseIdPipe) id: number) {
+    return this.reviewsService.commitRisk(user, id);
+  }
+
+  @Get('pull-requests/:id/risk')
+  pullRequestRisk(@CurrentUser() user: User, @Param('id', ParseIdPipe) id: number) {
+    return this.reviewsService.pullRequestRisk(user, id);
   }
 
   /**
@@ -79,7 +89,7 @@ export class ReviewsController {
   @HttpCode(HttpStatus.OK)
   reAnalyzeCommit(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
   ): Promise<{ message: string; id: number }> {
     return this.reviewsService.reAnalyzeCommit(user, id);
   }
@@ -88,7 +98,7 @@ export class ReviewsController {
   @HttpCode(HttpStatus.OK)
   reAnalyzePullRequest(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
   ): Promise<{ message: string; id: number }> {
     return this.reviewsService.reAnalyzePullRequest(user, id);
   }

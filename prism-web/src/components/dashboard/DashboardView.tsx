@@ -242,7 +242,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
                   <Icon className="h-4 w-4" />
                   {label}
                   <span
-                    className="rounded-full px-1.5 text-[10px]"
+                    className="rounded-full px-1.5 text-xs"
                     style={{
                       backgroundColor: 'var(--bg-hover)',
                       color: isActive ? 'var(--accent)' : 'var(--text-muted)',
@@ -328,7 +328,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p
-                          className="truncate font-mono text-[11px]"
+                          className="truncate font-mono text-xs"
                           style={{ color: 'var(--text-muted)' }}
                         >
                           {row.repository?.full_name ?? '—'}
@@ -357,7 +357,7 @@ export default function DashboardView({ data }: { data: DashboardData }) {
                         </p>
                         <div className="mt-2 flex items-center gap-3">
                           <StatusPill status={row.status} />
-                          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                             {relativeTime(row.created_at)}
                           </span>
                         </div>

@@ -5,7 +5,7 @@ const error = (
   property: string,
   constraints: Record<string, string>,
   children: ValidationError[] = [],
-): ValidationError => ({ property, constraints, children }) as ValidationError;
+): ValidationError => ({ property, constraints, children });
 
 describe('collectValidationErrors', () => {
   it('keys by the property name, not by parsing the message', () => {

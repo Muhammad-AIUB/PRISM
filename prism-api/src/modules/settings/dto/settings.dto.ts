@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -24,10 +23,6 @@ export class CreateApiTokenDto {
 }
 
 export class UpdateSettingsDto {
-  @IsOptional()
-  @IsBoolean()
-  email_notifications?: boolean;
-
   /**
    * Explicitly nullable — sending null is how the UI clears a configured
    * webhook, so it must not be conflated with the key being absent.

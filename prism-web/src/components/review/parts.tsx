@@ -31,6 +31,11 @@ const VERDICTS: Record<Verdict, { label: string; color: string; note: string }> 
     color: 'var(--success)',
     note: 'No issue survived checking against the lines this change actually touched.',
   },
+  not_reviewed: {
+    label: 'Not reviewed',
+    color: 'var(--warning)',
+    note: 'The AI did not return a review for this change, so nothing was checked. Re-analyze to try again.',
+  },
 };
 
 /**
@@ -70,9 +75,12 @@ export function VerdictPanel({
         <span className="text-lg font-semibold tracking-tight" style={{ color: style.color }}>
           {style.label}
         </span>
-        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-          {findings.length === 1 ? '1 finding' : `${findings.length} findings`}
-        </span>
+        {/* "0 findings" beside "Not reviewed" would read as a result. */}
+        {verdict !== 'not_reviewed' && (
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {findings.length === 1 ? '1 finding' : `${findings.length} findings`}
+          </span>
+        )}
       </div>
       <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
         {style.note}
@@ -97,7 +105,7 @@ export function VerdictPanel({
                   </code>
                   {finding.category && finding.category !== 'other' && (
                     <span
-                      className="rounded font-mono text-[10px]"
+                      className="rounded font-mono text-xs"
                       style={{
                         backgroundColor: 'var(--bg-hover)',
                         color: 'var(--text-secondary)',
@@ -229,7 +237,7 @@ export function ScoreCircle({ score }: { score: number | null }) {
             {value}
           </div>
           <div
-            className="text-[10px] uppercase tracking-wider"
+            className="text-xs uppercase tracking-wider"
             style={{ color: 'var(--text-muted)' }}
           >
             / 100
@@ -248,7 +256,7 @@ export function LanguageBadges({ languages }: { languages: string[] }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <span
-        className="text-[10px] uppercase tracking-wider"
+        className="text-xs uppercase tracking-wider"
         style={{ color: 'var(--text-muted)' }}
       >
         Languages:
@@ -286,7 +294,7 @@ function CodeBlock({
   return (
     <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${border}` }}>
       <div
-        className="flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+        className="flex items-center justify-between px-3 py-1.5 text-xs font-semibold uppercase tracking-wider"
         style={{ backgroundColor: tint, color: accent, borderBottom: `1px solid ${border}` }}
       >
         <span className="flex items-center gap-1.5">
@@ -301,7 +309,7 @@ function CodeBlock({
         className="overflow-x-auto whitespace-pre p-3 font-mono text-xs leading-relaxed"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
-        {code || <em style={{ color: 'var(--text-muted)' }}>// (empty)</em>}
+        {code || <em style={{ color: 'var(--text-muted)' }}>{'// (empty)'}</em>}
       </pre>
     </div>
   );
@@ -318,7 +326,7 @@ function FixCard({ fix, onCopy }: { fix: SuggestedFix; onCopy: (text: string) =>
       <div className="flex flex-wrap items-center gap-2">
         {(fix.file || fix.line) && (
           <span
-            className="inline-flex items-center gap-1 rounded font-mono text-[11px]"
+            className="inline-flex items-center gap-1 rounded font-mono text-xs"
             style={{
               backgroundColor: 'var(--bg-hover)',
               color: 'var(--text-secondary)',
@@ -330,7 +338,7 @@ function FixCard({ fix, onCopy }: { fix: SuggestedFix; onCopy: (text: string) =>
         )}
         {fix.line ? (
           <span
-            className="inline-flex items-center gap-1 rounded font-mono text-[11px] font-semibold"
+            className="inline-flex items-center gap-1 rounded font-mono text-xs font-semibold"
             style={{
               backgroundColor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
               color: 'var(--accent)',
@@ -476,7 +484,7 @@ export function IssueCard({ issue }: { issue: ReviewIssue }) {
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
               {issue.file && (
                 <span
-                  className="inline-flex items-center gap-1 rounded font-mono text-[11px]"
+                  className="inline-flex items-center gap-1 rounded font-mono text-xs"
                   style={{
                     backgroundColor: 'var(--bg-hover)',
                     color: 'var(--text-secondary)',
@@ -488,7 +496,7 @@ export function IssueCard({ issue }: { issue: ReviewIssue }) {
               )}
               {issue.line ? (
                 <span
-                  className="inline-flex items-center gap-1 rounded font-mono text-[11px] font-semibold"
+                  className="inline-flex items-center gap-1 rounded font-mono text-xs font-semibold"
                   style={{
                     backgroundColor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
                     color: 'var(--accent)',
@@ -558,7 +566,7 @@ export function SeverityFilters({
             )}
             {label}
             <span
-              className="ml-1 rounded-full px-1.5 py-px text-[10px]"
+              className="ml-1 rounded-full px-1.5 py-px text-xs"
               style={{
                 backgroundColor: 'var(--bg-primary)',
                 color: isActive ? 'var(--accent)' : 'var(--text-muted)',

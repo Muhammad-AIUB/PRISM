@@ -1,6 +1,16 @@
 'use client';
 
-import { AlertTriangle, ArrowLeft, FileText, GitBranch, Lock, Shield, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  FileText,
+  GitBranch,
+  Lock,
+  Network,
+  Radar,
+  Shield,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ComponentType } from 'react';
@@ -41,7 +51,8 @@ function StatCard({
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
-  value: number;
+  /** Null renders as unavailable, never as a misleading zero. */
+  value: number | null;
 }) {
   return (
     <div className="card p-4">
@@ -50,7 +61,7 @@ function StatCard({
         <span className="uppercase tracking-wider">{label}</span>
       </div>
       <p className="mt-2 text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-        {value}
+        {value ?? <span aria-label="Unavailable">—</span>}
       </p>
     </div>
   );
@@ -58,7 +69,7 @@ function StatCard({
 
 export default function MyDataView({ user, data }: { user: SessionUser; data: MyData }) {
   const router = useRouter();
-  const { profile, token_preview, stats, repositories } = data;
+  const { profile, token_preview, stats, repositories, designs } = data;
 
   const [confirm, setConfirm] = useState('');
   const [armed, setArmed] = useState(false);
@@ -98,7 +109,7 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Security
@@ -113,7 +124,7 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
             style={{ padding: '0.375rem 0.625rem' }}
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Security</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Back to Security</span>
           </Link>
         </div>
       }
@@ -140,7 +151,7 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
             ) : (
               <div
                 className="grid h-14 w-14 place-items-center rounded-full text-lg font-semibold text-white"
-                style={{ backgroundColor: 'var(--accent)' }}
+                style={{ backgroundColor: 'var(--accent-solid)' }}
               >
                 {(profile.name || '?').charAt(0).toUpperCase()}
               </div>
@@ -218,8 +229,38 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
             <StatCard icon={GitBranch} label="Connected repos" value={stats.connected_repos} />
             <StatCard icon={FileText} label="Total reviews" value={stats.total_reviews} />
             <StatCard icon={Shield} label="Audit events" value={stats.audit_events} />
+            <StatCard icon={Network} label="Saved designs" value={stats.saved_designs} />
+            <StatCard icon={Radar} label="Saved risk assessments" value={stats.saved_risk_assessments} />
           </div>
+          <p className="mt-2 px-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            Designs are kept for 30 days and risk assessments for 90. Both are erased immediately
+            when you delete your data below.
+            {stats.saved_designs === null &&
+              ' Those two figures are temporarily unavailable; try again in a minute.'}
+          </p>
         </section>
+
+        {designs && designs.length > 0 && (
+          <section className="card-flat overflow-hidden">
+            <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Saved designs
+              </h2>
+            </div>
+            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              {designs.map((design) => (
+                <li key={design.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                  <Link href={`/design/${design.id}`} className="min-w-0 truncate hover:opacity-80">
+                    {design.title}
+                  </Link>
+                  <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {design.scale}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="card-flat overflow-hidden">
           <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>

@@ -152,7 +152,7 @@ function ModeModal({
               <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Branches to watch
               </label>
-              <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                 Auto-loaded from your repo. Default branch is pre-selected — toggle as you like.
               </p>
               <div className="mt-2">
@@ -381,7 +381,7 @@ export default function RepositoriesView({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Connect

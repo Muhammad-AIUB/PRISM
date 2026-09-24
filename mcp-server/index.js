@@ -20,19 +20,21 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-async function api(path, { method = 'GET' } = {}) {
+async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${PRISM_URL}/api/v1${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${TOKEN}`,
       Accept: 'application/json',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const body = await res.text();
+  const payload = await res.text();
   if (!res.ok) {
-    throw new Error(`PRism API ${res.status}: ${body.slice(0, 300)}`);
+    throw new Error(`PRism API ${res.status}: ${payload.slice(0, 300)}`);
   }
-  return JSON.parse(body);
+  return JSON.parse(payload);
 }
 
 /** Render a review object (commit or PR) as readable text for the model. */
@@ -44,7 +46,9 @@ function formatReview(r) {
   } else {
     lines.push(`PR #${r.pr_number} on ${r.repository}: ${r.title ?? '—'}`);
   }
-  lines.push(`Status: ${r.status} · Score: ${r.overall_score ?? 'N/A'}/100 · Model: ${r.ai_model_used ?? '—'}`);
+  // A missing score is "N/A", not "N/A/100".
+  const score = r.overall_score === null || r.overall_score === undefined ? 'N/A' : `${r.overall_score}/100`;
+  lines.push(`Status: ${r.status} · Score: ${score} · Model: ${r.ai_model_used ?? '—'}`);
   if (r.summary) lines.push(`\nSummary: ${r.summary}`);
 
   for (const [label, key] of [
@@ -74,11 +78,36 @@ function formatReview(r) {
   return lines.join('\n');
 }
 
+/** Risk Radar as readable text: level, why, and the questions to answer before merging. */
+function formatRisk(risk, basis) {
+  const lines = [
+    `Change risk: ${risk.level.toUpperCase()} (${risk.score}/100)`,
+    ...(basis === 'current'
+      ? ['(Assessed against the current head; it may include pushes made after the last review.)']
+      : []),
+    `${risk.stats.files} files, +${risk.stats.additions} −${risk.stats.deletions}, ${risk.stats.testFiles} test files`,
+  ];
+  if (risk.signals.length) {
+    lines.push('\nWhy:');
+    for (const s of risk.signals) {
+      lines.push(`  - ${s.label} (+${s.weight}): ${s.detail}${s.files.length ? ` [${s.files.join(', ')}]` : ''}`);
+    }
+  }
+  if (risk.checklist.length) {
+    lines.push('\nBefore merging:');
+    for (const c of risk.checklist) {
+      lines.push(`  [ ] ${c.question}${c.files.length ? ` [${c.files.join(', ')}]` : ''}`);
+      lines.push(`      ${c.why}`);
+    }
+  }
+  return lines.join('\n');
+}
+
 const indent = (s, n) => String(s).split('\n').map((l) => ' '.repeat(n) + l).join('\n');
 
 const text = (s) => ({ content: [{ type: 'text', text: s }] });
 
-const server = new McpServer({ name: 'prism-code-review', version: '1.0.0' });
+const server = new McpServer({ name: 'prism-code-review', version: '1.1.0' });
 
 server.tool(
   'get_latest_review',
@@ -150,6 +179,57 @@ server.tool(
   async ({ id }) => {
     const res = await api(`/pull-requests/${id}/re-analyze`, { method: 'POST' });
     return text(res.message ?? 'Re-analysis queued');
+  },
+);
+
+server.tool(
+  'get_change_risk',
+  'Risk Radar for a reviewed pull request or commit: a deterministic 0-100 blast-radius score (auth, migrations, secrets, missing tests, infra, public API…) plus the reliability questions to answer before merging. Use it to decide how carefully to review, or to self-check your own change.',
+  {
+    kind: z.enum(['pull_request', 'commit']).describe('Which kind of review the id belongs to'),
+    id: z.number().int().describe('Pull request ID or commit review ID (from list_recent_reviews)'),
+  },
+  async ({ kind, id }) => {
+    const { risk, basis } = await api(kind === 'commit' ? `/commits/${id}/risk` : `/pull-requests/${id}/risk`);
+    return text(formatRisk(risk, basis));
+  },
+);
+
+server.tool(
+  'design_system',
+  'Generate a production system design with PRism Design Studio before writing code: components sized to the stated load, request flow, failure modes with concrete mitigations, reliability patterns, SLOs, a scaling plan with triggers, trade-offs and a production-readiness checklist. Returns a Markdown design doc you can commit (e.g. docs/design/<name>.md). Takes 10-30 seconds.',
+  {
+    product: z.string().min(20).max(4000).describe('What is being built: users, what they do, what must never go wrong'),
+    scale: z.enum(['prototype', 'startup', 'growth', 'enterprise']).optional()
+      .describe('prototype <1k users; startup ~10k DAU; growth ~1M DAU; enterprise 10M+ multi-region (default startup)'),
+    priorities: z.array(z.enum([
+      'high_availability', 'low_latency', 'strong_consistency', 'low_cost',
+      'fast_delivery', 'security_compliance', 'offline_first',
+    ])).max(4)
+      // Mirrors the API's @ArrayUnique, so a repeat fails here with a clear
+      // message instead of coming back from the server as a 422.
+      .refine((list) => new Set(list).size === list.length, { message: 'priorities must not repeat' })
+      .optional().describe('Up to 4 distinct priorities, most important first'),
+    constraints: z.string().max(1500).optional().describe('Stack, team size, cloud, budget, regulation'),
+  },
+  async (brief) => {
+    const { design, markdown } = await api('/designs', { method: 'POST', body: brief });
+    return text(`Design id: ${design.id}\n\n${markdown}`);
+  },
+);
+
+server.tool(
+  'get_design',
+  'Get a previously generated PRism Design Studio design as Markdown. Omit id to list your recent designs.',
+  { id: z.string().uuid().optional().describe('Design id (from design_system or the list)') },
+  async ({ id }) => {
+    if (!id) {
+      const { designs } = await api('/designs');
+      if (!designs.length) return text('No designs yet. Use design_system to create one.');
+      return text(designs.map((d) => `[${d.id}] ${d.title} — ${d.scale}, ${d.created_at}`).join('\n'));
+    }
+    const { markdown } = await api(`/designs/${id}`);
+    return text(markdown);
   },
 );
 

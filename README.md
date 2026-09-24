@@ -47,10 +47,30 @@ When a developer opens a pull request on a connected repository, PRism:
 5. **Generates** an overall quality score (0–100)
 6. **Produces** concrete code fixes — not just complaints, but `before → after` snippets
 7. **Posts** a summary comment back to the PR on GitHub
-8. **Notifies** the developer via email (Resend) and Slack
+8. **Notifies** the developer in Slack (optional)
 9. **Displays** everything in a beautiful dashboard with score trends over time
 
 All of this — with zero recurring cost on free tiers.
+
+### 🛰️ Risk Radar: how carefully to look
+
+Every review now carries a deterministic **change-risk score** (0–100) built from
+where the change lands: auth code, migrations, hardcoded secrets, missing or
+removed tests, CI/deploy config, dependencies, public API. It comes with a
+**"Before merging" checklist** triggered by what the added lines actually do: a
+network call with no timeout, string-built SQL, a swallowed error, at-least-once
+delivery, a migration with no way back. It shows up in the GitHub comment, on
+the review page and through MCP (`get_change_risk`), and it still works when the
+AI is down.
+
+### 🧭 Design Studio: a reliable design before the first commit
+
+Describe what you're building, pick a scale and what matters most, and get a
+blueprint sized to your real load. It covers components, request flow, **failure
+modes with concrete mitigations**, reliability patterns, SLOs, a scaling plan
+with numeric triggers, trade-offs, and a production-readiness checklist.
+Export it as Markdown and commit it next to the code, or ask for it from your
+editor through MCP (`design_system`).
 
 ---
 
@@ -97,7 +117,7 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
         ┌────────────────────────────────────────┐
         │  prism-api (NestJS)                    │
         │  ├─ Webhook Controller                 │
-        │  ├─ Rate Limiter (60/min per IP)       │
+        │  ├─ Rate Limiter (60/min, webhook)     │
         │  └─ Security Headers (helmet)          │
         └────────────────┬───────────────────────┘
                          │ enqueue job
@@ -114,9 +134,9 @@ Searchable grid of your GitHub repos with language dots, stars, "last updated" �
                  │              │
         ┌────────▼─────┐  ┌────▼──────────────┐
         │  PostgreSQL  │  │  Notifications    │
-        │  (Neon.tech) │  │  ├─ Email (Resend)│
-        │              │  │  ├─ Slack Webhook │
-        │  Encrypted   │  │  └─ GitHub Comment│
+        │  (Neon.tech) │  │  ├─ Slack Webhook │
+        │              │  │  └─ GitHub Comment│
+        │  Encrypted   │  │                   │
         │  tokens      │  └───────────────────┘
         └──────────────┘
                  │
@@ -175,16 +195,15 @@ Visit `/security` in the app for full transparency.
 - 🔁 Trigger re-analysis without leaving your editor
 
 ### Notifications
-- 📧 **Email notifications** via Resend (3000/month free)
-- 💬 **Slack notifications** with rich attachments, color-coded by score
-- ⚙️ **User-controlled preferences** — opt in/out per channel
+- 💬 **Slack notifications** with rich attachments, color-coded by score — opt in by adding a webhook URL in Settings
 
 ### Security
 - 🔐 **AES-256 encrypted GitHub tokens** at rest (AES-256-CBC, MAC-verified)
 - ✅ **HMAC-SHA256 webhook signature verification**
-- 🛡️ **GitHub IP whitelist** with CIDR matching (cached 24h)
-- 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min, auth 10/min
-- 🔒 **Security headers** — CSP, HSTS, X-Frame-Options, Permissions-Policy
+- 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min per signed-in user (per IP for guests and API tokens), OAuth 10/min
+- 🔒 **Content-Security-Policy** — a per-request nonce on the web app, so injected scripts do not run; `default-src 'none'` on the API, which never serves a page
+- 🪖 **Security headers** — HSTS, X-Frame-Options, nosniff and friends via helmet on the API; `frame-ancestors 'none'` on both
+- 🚪 **Real sign-out** — logout revokes the session server-side, so a copied cookie stops working too
 - 🚪 **GitHub OAuth-only login** — no password attack surface
 - 🛡️ **Dedicated Security & Privacy page** with full transparency
 - 👁️ **"View My Data" page** showing exactly what PRism stores
@@ -203,11 +222,12 @@ Visit `/security` in the app for full transparency.
 - ⚡ **Redis caching** (Upstash) — GitHub API responses cached 5min, diffs 1hr
 - 📑 **Composite database indexes** on every hot foreign-key path
 - 🔗 **Eager loading enforced** — zero N+1 queries on dashboard
-- 🎯 **Selective column projection** via explicit `->select()`
+- 🎯 **Selective column projection** via explicit TypeORM `select`
 
 ### Reliability & Observability
 - 🔁 **Job retry with exponential backoff** — `[60s, 180s, 600s]`, 3 attempts
-- 📝 **Structured JSON logging** with `X-Request-Id` tracing
+- 📝 **Structured JSON logging** — one JSON object per line in production, each carrying the `X-Request-Id` (or queue job id) it was logged under; prism-web forwards its id, so a page render and every API call it made share one
+- ✅ **CI on every pull request** — typecheck, lint, tests, build and a dependency audit for all three packages
 - 🏥 **Health check endpoint** (`/health`) — DB, Redis, Queue status
 - 📊 **AI call metrics** — model, duration, token usage logged per call
 
@@ -223,7 +243,6 @@ Visit `/security` in the app for full transparency.
 | **Cache & Queue** | Redis (Upstash) — BullMQ for the review queue |
 | **AI** | Groq (Llama 3.3 70B, then 3.1 8B — native JSON mode) |
 | **Auth** | GitHub OAuth; JWT session cookie for the browser, bearer tokens for the API |
-| **Email** | Resend |
 | **Styling** | Tailwind CSS + lucide-react |
 | **Charts** | Chart.js + react-chartjs-2 |
 | **PDF** | pdfmake |
@@ -237,13 +256,13 @@ Visit `/security` in the app for full transparency.
 | Problem | Solution | Impact |
 |---|---|---|
 | GitHub tokens stored in plaintext | AES-256-CBC with a verified MAC | Tokens unreadable even with a DB dump |
-| Webhook endpoint open to abuse | HMAC verify + GitHub IP whitelist + rate limit | Triple-layer DDoS & spoof protection |
+| Webhook endpoint open to abuse | HMAC over the exact bytes GitHub sent + rate limit | Spoofed deliveries rejected, floods capped |
 | Repeated GitHub API calls | Redis caching with TTL | ~80% reduction in upstream calls |
 | Job failure cascades | `tries=3`, exponential backoff, `failed()` handler | Auto-recovery without data loss |
 | N+1 query risk on dashboard | Eager loading + composite indexes | Sub-50ms dashboard load |
 | Untraceable production errors | Structured JSON logs + `X-Request-Id` | Debug single request across services |
 | Generic AI review missing framework issues | Language-specific rule injection | Catches N+1 query patterns, React key-prop, etc. |
-| Email failures crashing reviews | Try-catch with `Log::warning`, no rethrow | Notifications fail-safe |
+| Slack failures crashing reviews | Try-catch with a logged warning, no rethrow | Notifications fail-safe |
 | Solo developers don't use PR workflow | Commit-based review mode with branch filtering | PRism now serves both teams and solo devs |
 | Users unsure what data we collect | Dedicated Security page + "View My Data" + Audit log | Full transparency = user trust |
 | No way to delete account/data | One-click data deletion with webhook cleanup | GDPR-compliant data control |

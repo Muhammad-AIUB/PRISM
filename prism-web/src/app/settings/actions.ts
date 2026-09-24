@@ -19,7 +19,6 @@ function toResult(error: unknown, fallback: string): ActionResult {
 }
 
 export async function updateSettings(input: {
-  email_notifications: boolean;
   slack_webhook_url: string | null;
 }): Promise<ActionResult> {
   try {

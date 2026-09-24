@@ -27,7 +27,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Overview
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
             className="btn btn-primary min-h-[44px] shrink-0 transition active:scale-95"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Connect Repository</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Connect Repository</span>
             <span className="sm:hidden">Connect</span>
           </Link>
         </div>

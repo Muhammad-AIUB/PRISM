@@ -1,3 +1,5 @@
+import { parseGitHeader } from './git-paths';
+
 /**
  * Port of detectLanguages(), duplicated verbatim in both the original jobs.
  *
@@ -32,11 +34,18 @@ function extensionOf(path: string): string {
 }
 
 export function detectLanguages(diff: string): string[] {
-  const pattern = /^diff --git a\/(\S+) b\/\S+/gm;
   const languages: string[] = [];
 
-  for (const match of diff.matchAll(pattern)) {
-    const language = EXTENSION_LANGUAGES[extensionOf(match[1] ?? '')];
+  // Line by line through the shared header parser, so a path with a space in
+  // it is still seen (see git-paths.ts). Old-side path, as before.
+  for (const line of diff.split('\n')) {
+    const header = parseGitHeader(line);
+
+    if (!header) {
+      continue;
+    }
+
+    const language = EXTENSION_LANGUAGES[extensionOf(header.oldPath)];
 
     // array_unique keeps the first occurrence, so first-seen order wins.
     if (language !== undefined && !languages.includes(language)) {

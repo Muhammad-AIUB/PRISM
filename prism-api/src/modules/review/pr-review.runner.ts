@@ -10,16 +10,16 @@ import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { PullRequest, Review, ReviewComment } from '../../database/entities';
-import type { ReviewIssue } from '../../database/entities/review.entity';
 import type { ReviewLayer, ReviewSeverity } from '../../database/entities/review-comment.entity';
 import { prepareDiff } from '../../diff/prepare';
+import { tryAssessRisk, type RiskAssessment } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
-import { reconcileScore, verdictFor } from '../../ai/verdict';
+import { incompleteReviewSummary, reconcileScore, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
-import { EmailService } from '../../notifications/email.service';
 import { SlackService } from '../../notifications/slack.service';
+import { ReviewRiskStore } from '../risk/review-risk.store';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
@@ -51,9 +51,9 @@ export class PullRequestReviewRunner {
     private readonly diffCache: DiffCacheService,
     private readonly crypt: CryptService,
     private readonly summaryComment: SummaryCommentBuilder,
-    private readonly email: EmailService,
     private readonly slack: SlackService,
     private readonly auditLog: AuditLogService,
+    private readonly reviewedRisk: ReviewRiskStore,
   ) {}
 
   async run(pullRequestId: number, attempt: number, signal?: AbortSignal): Promise<void> {
@@ -94,6 +94,12 @@ export class PullRequestReviewRunner {
     const prepared = prepareDiff(diffBody, DIFF_LIMIT);
     const languages = prepared.languages;
 
+    // Risk Radar reads the whole diff, not the budgeted selection the model
+    // saw: blast radius is a property of the change, not of what fit. It is
+    // recorded together with every review row below, never later, so the page
+    // cannot pair this review with the previous push's risk.
+    const risk = tryAssessRisk(diffBody);
+
     if (languages.length > 0) {
       await this.pullRequests.update(pr.id, { detectedLanguages: languages });
     }
@@ -112,19 +118,18 @@ export class PullRequestReviewRunner {
     if (!parsed) {
       await this.upsertReview(pr.id, {
         overallScore: null,
-        summary: attemptResult.raw
-          ? `AI review couldn't be parsed cleanly. Click Re-analyze to retry.\n\n— Raw output —\n${attemptResult.raw.slice(0, 1500)}`
-          : "AI review didn't return any usable content. Click Re-analyze to retry.",
+        summary: incompleteReviewSummary(attemptResult.raw),
         aiModelUsed: model ?? 'multi-fallback',
         securityIssues: [],
         performanceIssues: [],
         codeQualityIssues: [],
       });
+      await this.recordReviewedRisk(pr.id, repository.userId, risk);
 
       await this.pullRequests.update(pr.id, { status: 'completed' });
 
       this.logger.warn(
-        `PR review: all AI models failed to return parseable JSON (pr_id=${pr.id})`,
+        `PR review: no AI model returned a usable review (pr_id=${pr.id})`,
       );
 
       return;
@@ -177,6 +182,7 @@ export class PullRequestReviewRunner {
       aiModelUsed: model,
       suggestedFixes: null,
     });
+    await this.recordReviewedRisk(pr.id, repository.userId, risk);
 
     // Comments are replaced wholesale, so a re-analyze cannot accumulate them.
     await this.reviewComments.delete({ reviewId: review.id });
@@ -232,10 +238,11 @@ export class PullRequestReviewRunner {
         id: pr.id,
         overallScore,
         summary,
-        securityIssues: layers.security as ReviewIssue[],
-        performanceIssues: layers.performance as ReviewIssue[],
-        codeQualityIssues: layers.code_quality as ReviewIssue[],
+        securityIssues: layers.security,
+        performanceIssues: layers.performance,
+        codeQualityIssues: layers.code_quality,
         aiModelUsed: model,
+        risk,
       }),
       signal,
     );
@@ -253,26 +260,7 @@ export class PullRequestReviewRunner {
       { pull_request_id: pr.id, score: overallScore },
     );
 
-    // 6. Out-of-band notifications, individually guarded.
-    if (user?.email && user.emailNotifications) {
-      try {
-        await this.email.sendPullRequestReview({
-          to: user.email,
-          recipientName: user.name || (user.githubUsername ?? ''),
-          pullRequestId: pr.id,
-          title: pr.title,
-          author: pr.author,
-          repositoryFullName: repository.fullName,
-          headBranch: pr.headBranch,
-          baseBranch: pr.baseBranch,
-          summary,
-          score: overallScore,
-        });
-      } catch (error) {
-        this.logger.warn(`Email notification failed: ${this.messageOf(error)}`);
-      }
-    }
-
+    // 6. Out-of-band notification (Slack), guarded so it cannot fail the review.
     if (user?.slackWebhookUrl) {
       try {
         const [criticalCount, warningCount] = await Promise.all([
@@ -302,6 +290,24 @@ export class PullRequestReviewRunner {
     await this.pullRequests.update(pullRequestId, { status: 'failed' });
   }
 
+  /**
+   * Called immediately after each review-row write, on every path. A missing
+   * assessment (the scan threw) clears the saved one rather than leaving the
+   * previous push's risk labelled as this review's.
+   */
+  private async recordReviewedRisk(
+    pullRequestId: number,
+    ownerId: number,
+    risk: RiskAssessment | null,
+  ): Promise<void> {
+    if (risk) {
+      // Refused, harmlessly, if the owner's account is being erased.
+      await this.reviewedRisk.save(pullRequestId, ownerId, risk);
+    } else {
+      await this.reviewedRisk.forget(pullRequestId);
+    }
+  }
+
   /** The original ORM's an update-or-create keyed on pull_request_id. */
   private async upsertReview(
     pullRequestId: number,
@@ -313,7 +319,7 @@ export class PullRequestReviewRunner {
     if (existing) {
       await this.reviews.update(existing.id, { ...values, updatedAt: now });
 
-      return { ...existing, ...values } as Review;
+      return { ...existing, ...values };
     }
 
     const created = this.reviews.create({
@@ -350,7 +356,7 @@ export class PullRequestReviewRunner {
             lineNumber: toLine(issue.line),
             layer,
             severity: VALID_SEVERITIES.includes(issue.severity as ReviewSeverity)
-              ? (issue.severity as ReviewSeverity)
+              ? (issue.severity)
               : 'suggestion',
             comment: String(issue.comment),
             createdAt: now,

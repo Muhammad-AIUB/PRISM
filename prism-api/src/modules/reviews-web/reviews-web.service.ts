@@ -7,8 +7,10 @@ import { CryptService } from '../../common/utils/crypt.service';
 import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Review, ReviewComment, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
-import { orderFindings, verdictFor } from '../../ai/verdict';
+import { orderFindings, verdictForReview } from '../../ai/verdict';
 import { ReviewQueueService } from '../review/review-queue.service';
+import { ChangeRiskService, type ChangeRisk } from '../risk/change-risk.service';
+import { ReviewRiskStore } from '../risk/review-risk.store';
 
 /**
  * Port of ReviewController and CommitReviewController (the web ones).
@@ -33,6 +35,8 @@ export class ReviewsWebService {
     private readonly crypt: CryptService,
     private readonly diffCache: DiffCacheService,
     private readonly auditLog: AuditLogService,
+    private readonly changeRisk: ChangeRiskService,
+    private readonly reviewedRisk: ReviewRiskStore,
   ) {}
 
   // ── Pull requests ──────────────────────────────────────────────────
@@ -65,6 +69,10 @@ export class ReviewsWebService {
       await this.reviewComments.delete({ reviewId: pr.review.id });
       await this.reviews.delete(pr.review.id);
     }
+
+    // The review it described is gone. Until the new one lands, the panel
+    // falls back to a live assessment labelled as the current head.
+    await this.reviewedRisk.forget(pr.id);
 
     await this.queue.enqueuePullRequestReview(pr.id);
 
@@ -107,6 +115,19 @@ export class ReviewsWebService {
     }
   }
 
+  /** Risk Radar for the review page. Ownership is checked before any diff is read. */
+  async pullRequestRisk(user: User, id: number): Promise<ChangeRisk> {
+    const pr = await this.findOwnedPullRequest(user, id, false);
+
+    return this.changeRisk.forPullRequest(user, pr);
+  }
+
+  async commitRisk(user: User, id: number): Promise<ChangeRisk> {
+    const cr = await this.findOwnedCommitReview(user, id);
+
+    return this.changeRisk.forCommit(user, cr);
+  }
+
   async exportData(user: User, id: number): Promise<{ pr: PullRequest; review: Review | null }> {
     const pr = await this.findOwnedPullRequest(user, id, true);
 
@@ -140,7 +161,7 @@ export class ReviewsWebService {
         branch: cr.branch,
         status: cr.status,
         overall_score: cr.overallScore,
-        verdict: verdictFor(commitFindings),
+        verdict: verdictForReview(commitFindings, cr.summary),
         findings: commitFindings,
         summary: cr.summary,
         security_issues: cr.securityIssues ?? [],
@@ -230,7 +251,7 @@ export class ReviewsWebService {
     return {
       id: review.id,
       overall_score: review.overallScore,
-      verdict: verdictFor(findings),
+      verdict: verdictForReview(findings, review.summary),
       findings,
       summary: review.summary,
       ai_model_used: review.aiModelUsed,

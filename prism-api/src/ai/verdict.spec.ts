@@ -1,5 +1,14 @@
 import type { ReviewIssue } from '../database/entities/review.entity';
-import { verdictFor, orderFindings, reconcileScore } from './verdict';
+import {
+  EMPTY_REVIEW,
+  incompleteReviewSummary,
+  isIncompleteReview,
+  orderFindings,
+  reconcileScore,
+  UNPARSEABLE_REVIEW,
+  verdictFor,
+  verdictForReview,
+} from './verdict';
 
 /**
  * The answer to the question a reviewer actually has.
@@ -136,5 +145,29 @@ describe('reconcileScore', () => {
   it('leaves a null score null, because that means the models never answered', () => {
     expect(reconcileScore(null, 'blocking')).toBeNull();
     expect(reconcileScore(null, 'nothing_found')).toBeNull();
+  });
+});
+
+describe('verdictForReview: a review no model produced is not an all-clear', () => {
+  it('calls both fallback summaries "not_reviewed", never "nothing_found"', () => {
+    expect(verdictForReview([], incompleteReviewSummary(null))).toBe('not_reviewed');
+    expect(verdictForReview([], incompleteReviewSummary('{"half": '))).toBe('not_reviewed');
+  });
+
+  it('leaves real reviews alone, including genuinely clean ones', () => {
+    expect(verdictForReview([], 'Looks good.')).toBe('nothing_found');
+    expect(verdictForReview([], null)).toBe('nothing_found');
+    expect(verdictForReview([{ category: 'auth_weakened' }], 'x')).toBe('blocking');
+  });
+
+  it('does not mistake a summary that merely mentions the phrase later on', () => {
+    expect(isIncompleteReview(`Fine. ${EMPTY_REVIEW}`)).toBe(false);
+  });
+
+  it('keeps the raw model output, capped, after the unparseable notice', () => {
+    const summary = incompleteReviewSummary('x'.repeat(5000));
+
+    expect(summary.startsWith(UNPARSEABLE_REVIEW)).toBe(true);
+    expect(summary.length).toBeLessThan(UNPARSEABLE_REVIEW.length + 1600);
   });
 });

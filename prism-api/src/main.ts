@@ -23,6 +23,8 @@ import cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
 import { validationException } from './common/validation/validation-errors';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { AppLogger } from './common/observability/app-logger';
+import { requestIdMiddleware } from './common/observability/request-id.middleware';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -34,13 +36,31 @@ async function bootstrap(): Promise<void> {
   });
 
   const configService = app.get(ConfigService);
+
+  // JSON lines in production, for the log drain; readable text in development.
+  // Every line carries the request or job id it was logged under.
+  app.useLogger(new AppLogger({ json: configService.get<string>('app.env') === 'production' }));
   const logger = new Logger('Bootstrap');
 
   // Render terminates TLS at its edge; without this, req.ip is the proxy and
   // the guest rate limiter would bucket every user together.
   app.set('trust proxy', true);
 
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // First, so everything after it - guards, filters, the access line - logs
+  // under this request's id.
+  app.use(requestIdMiddleware);
+
+  // The API answers JSON, redirects and one markdown download; it never serves
+  // a page. So the policy allows nothing: a response that somehow renders in a
+  // browser cannot run script, load anything or be framed.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      },
+    }),
+  );
 
   // The browser session JWT and the OAuth state both travel as httpOnly
   // cookies, so they have to be parsed before any guard runs.

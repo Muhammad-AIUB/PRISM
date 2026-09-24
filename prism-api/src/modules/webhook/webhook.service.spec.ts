@@ -37,7 +37,7 @@ describe('WebhookService', () => {
   let service: WebhookService;
 
   beforeEach(() => {
-    repositories = { findOne: jest.fn().mockResolvedValue(repository) } as never;
+    repositories = { findOne: jest.fn().mockResolvedValue(repository) };
     pullRequests = {
       findOne: jest.fn().mockResolvedValue(null),
       update: jest.fn().mockResolvedValue(undefined),
@@ -207,7 +207,7 @@ describe('WebhookService', () => {
       repositories.findOne.mockResolvedValue({
         ...repository,
         reviewBranches: ['develop'],
-      } as never);
+      });
 
       await expect(deliver(pushBody({ ref: 'refs/heads/main' }), 'push')).resolves.toEqual({
         status: 200,

@@ -105,7 +105,7 @@ function ScoreGauge({ score }: { score: number | null }) {
             {value}
           </div>
           <div
-            className="text-[10px] uppercase tracking-wider"
+            className="text-xs uppercase tracking-wider"
             style={{ color: 'var(--text-muted)' }}
           >
             / 100
@@ -119,7 +119,7 @@ function ScoreGauge({ score }: { score: number | null }) {
 function FileLineBadge({ file, line }: { file: string; line?: number }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded font-mono text-[11px]"
+      className="inline-flex items-center gap-1 rounded font-mono text-xs"
       style={{
         backgroundColor: 'var(--bg-hover)',
         color: 'var(--text-secondary)',
@@ -149,7 +149,7 @@ function CodeBlock({
   return (
     <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${border}` }}>
       <div
-        className="flex items-center px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+        className="flex items-center px-3 py-1.5 text-xs font-semibold uppercase tracking-wider"
         style={{ backgroundColor: tint, color: accent, borderBottom: `1px solid ${border}` }}
       >
         <span className="flex items-center gap-1.5">
@@ -164,7 +164,7 @@ function CodeBlock({
         className="overflow-x-auto whitespace-pre p-3 font-mono text-xs leading-relaxed"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
-        {code || <em style={{ color: 'var(--text-muted)' }}>// (empty)</em>}
+        {code || <em style={{ color: 'var(--text-muted)' }}>{'// (empty)'}</em>}
       </pre>
     </div>
   );
@@ -175,7 +175,7 @@ function IssueHeader({ issue }: { issue: DemoIssue }) {
     <div className="flex flex-wrap items-center gap-2">
       <SeverityBadge severity={issue.severity} />
       <span
-        className="text-[11px] font-medium uppercase tracking-wider"
+        className="text-xs font-medium uppercase tracking-wider"
         style={{ color: 'var(--text-muted)' }}
       >
         {issue.type}
@@ -254,7 +254,7 @@ export default function DemoReviewDetailView({ review }: { review: DemoReview })
                 >
                   {label}
                   <span
-                    className="rounded-full px-1.5 text-[10px]"
+                    className="rounded-full px-1.5 text-xs"
                     style={{
                       backgroundColor: 'var(--bg-hover)',
                       color: 'var(--text-secondary)',

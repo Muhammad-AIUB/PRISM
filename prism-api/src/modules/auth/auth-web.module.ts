@@ -6,6 +6,7 @@ import { AuditModule } from '../../audit/audit.module';
 import { User } from '../../database/entities';
 import { AuthController } from './auth.controller';
 import { GithubOAuthService } from './github-oauth.service';
+import { SessionRevocationStore } from './session-revocation.store';
 import { WebAuthGuard } from './web-auth.guard';
 import { WebAuthService } from './web-auth.service';
 
@@ -29,7 +30,7 @@ import { WebAuthService } from './web-auth.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [GithubOAuthService, WebAuthService, WebAuthGuard],
-  exports: [WebAuthGuard, WebAuthService, JwtModule, TypeOrmModule],
+  providers: [GithubOAuthService, WebAuthService, WebAuthGuard, SessionRevocationStore],
+  exports: [WebAuthGuard, WebAuthService, SessionRevocationStore, JwtModule, TypeOrmModule],
 })
 export class AuthWebModule {}

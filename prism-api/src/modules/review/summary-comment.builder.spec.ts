@@ -117,4 +117,49 @@ describe('SummaryCommentBuilder', () => {
       '**Summary:** _No summary provided._',
     );
   });
+
+  describe('Risk Radar section', () => {
+    const risk = {
+      level: 'high' as const,
+      score: 60,
+      stats: { files: 3, additions: 40, deletions: 2, sourceFiles: 3, testFiles: 0 },
+      signals: [
+        { id: 'auth' as const, label: 'Touches authentication or authorization', weight: 20, detail: '', files: [] },
+        { id: 'migration' as const, label: 'Schema or data migration', weight: 20, detail: '', files: [] },
+        { id: 'untested' as const, label: 'No tests changed', weight: 20, detail: '', files: [] },
+        { id: 'config' as const, label: 'Runtime configuration', weight: 10, detail: '', files: [] },
+      ],
+      checklist: [
+        { id: 'auth' as const, question: 'Is any access check loosened?', why: '', files: ['src/auth.ts'] },
+        { id: 'split' as const, question: 'Can this ship in smaller pieces?', why: '', files: [] },
+      ],
+    };
+
+    it('adds nothing when no assessment was supplied, so old callers are byte-identical', () => {
+      expect(builder.buildForPullRequest({ ...review, risk: null })).toBe(
+        builder.buildForPullRequest(review),
+      );
+    });
+
+    it('names the level and at most three reasons, then the checklist as task items', () => {
+      expect(builder.buildForPullRequest({ ...review, risk })).toContain(
+        '**Summary:** Looks good.\n\n' +
+          '**Change risk: HIGH** (60/100) — Touches authentication or authorization · ' +
+          'Schema or data migration · No tests changed\n\n' +
+          '<details><summary>Before merging (2)</summary>\n\n' +
+          '- [ ] Is any access check loosened? `src/auth.ts`\n' +
+          '- [ ] Can this ship in smaller pieces?\n' +
+          '\n</details>\n\n' +
+          '[View full review]',
+      );
+    });
+
+    it('is a single line for a quiet change', () => {
+      const quiet = { ...risk, level: 'low' as const, score: 0, signals: [], checklist: [] };
+
+      expect(builder.buildForCommit({ ...review, risk: quiet })).toContain(
+        '**Change risk: LOW** (0/100)\n\n[View full review]',
+      );
+    });
+  });
 });

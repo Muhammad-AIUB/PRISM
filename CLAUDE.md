@@ -31,21 +31,32 @@ npm run build           # nest build → dist/
 npm run start:dev       # watch mode
 npm run start:prod      # node dist/main.js
 npm run typecheck       # tsc --noEmit   ← must pass before any commit
+npm run lint            # eslint, typed rules, --max-warnings 0   ← must pass
 npm test                # jest           ← must pass before any commit
 npm test -- json-extractor              # one file, by path fragment
 npm test -- -t "clamps the score"       # one test, by name
 
-# prism-web
+# prism-web  (Node >= 22.12: the vitest toolchain requires it)
 npm run dev             # next dev on :3001
 npm run build
 npm run typecheck       # tsc --noEmit   ← must pass before any commit
+npm run lint            # eslint (next/core-web-vitals + next/typescript)   ← must pass
+npm test                # vitest + jsdom + Testing Library   ← must pass
 ```
 
-`npm run lint` **fails in both packages** — no `eslint.config.js` exists in
-`prism-api` and `prism-web` has no ESLint config or dependency. `npm run test:e2e`
-also fails; `test/jest-e2e.json` was never created (`prism-api/test/` holds only
-fixtures). Do not report these as regressions, and do not chase them unless asked.
-The real gates are `typecheck` in both packages and `npm test` in `prism-api`.
+`.github/workflows/ci.yml` runs all of the above, plus both builds, `node --check`
+on the MCP server and `npm audit --omit=dev --audit-level=high`, on every pull
+request. None of it needs Postgres, Redis or a secret: unit tests fake their
+stores. Keep it that way; a test that needs a live service belongs elsewhere.
+
+`npm run test:e2e` fails; `test/jest-e2e.json` was never created (`prism-api/test/`
+holds only fixtures). Do not report it as a regression, and do not chase it unless
+asked.
+
+Lint is a gate, not advice. In `prism-api`, `no-floating-promises` and
+`no-misused-promises` are errors because an unawaited promise there is a lost
+write or an unhandled rejection in the worker. Fix what a rule finds rather than
+disabling it; if a disable is truly right, put the reason on the same line.
 
 ## Running locally
 
@@ -82,8 +93,32 @@ in production, the rewrites in `next.config.mjs` locally (`/auth/*`, `/api/v1/*`
 `/webhook/*` → the API). Break that and sign-in appears to work while every
 subsequent request is anonymous.
 
-`apiGetAuthed()` folds 403 into 404 on purpose: a distinct "forbidden" screen would
-confirm a review id exists. Keep it that way.
+`apiGetAuthed()` folds 400 and 403 into 404 on purpose: a distinct "forbidden" screen
+would confirm a review id exists. Keep it that way.
+
+### Security headers
+
+- **prism-web** — `src/middleware.ts` sets a per-request nonce CSP
+  (`script-src 'self' 'nonce-…' 'strict-dynamic'`). Next applies the nonce to its
+  own scripts. Any inline `<script>` you add must take the nonce from the
+  `x-nonce` request header, the way `layout.tsx` does for the theme script, or it
+  will not run. New third-party origins (images, fonts, APIs) must be added to the
+  policy deliberately; the browser blocks them otherwise. `'unsafe-eval'` and
+  `ws:` are allowed in development only. `style-src` keeps `'unsafe-inline'`
+  because components use inline `style` throughout.
+- **prism-api** — helmet with `default-src 'none'; frame-ancestors 'none'`. The API
+  never serves a page.
+
+### Observability
+
+Every API request gets an `X-Request-Id` (a safe incoming one is kept), which is
+returned in the response and held in AsyncLocalStorage
+(`common/observability/request-context.ts`). `AppLogger` stamps it on every line,
+and does the same with the job id inside `ReviewProcessor`. Production writes one
+JSON object per line; development writes coloured text. `prism-web`'s middleware
+assigns an id per render and `api.ts` forwards it. Use Nest's `Logger`, never
+`console.*`, or the line loses its id. The access log records the path only: the
+OAuth callback carries a code in its query string.
 
 ### Two auth mechanisms, both live
 
@@ -92,7 +127,18 @@ confirm a review id exists. Keep it that way.
   tokens issued before this codebase existed. **This format cannot drift.**
 - `modules/auth/web-auth.guard.ts` — the browser's JWT session cookie, signed with
   `JWT_SECRET`. It loads the user row rather than trusting the claims, so a deleted
-  account stops working immediately.
+  account stops working immediately. Logout revokes the token
+  (`session-revocation.store.ts`: `sha256(token)` in Redis until the token would
+  have expired), and both `WebAuthGuard` and `OptionalWebAuthGuard` refuse a
+  revoked one. The check fails open on a Redis error, because an outage must not
+  sign everyone out, and the JWT is still verified. Any new guard that reads the
+  session must check revocation too.
+
+The global `RateLimitGuard` runs before either guard, so it verifies the
+session cookie itself to key signed-in browser traffic per user. Every browser
+request reaches the API from prism-web's one address, so keying those by IP
+put the whole site in a single 100/minute bucket. Never key a bucket on an
+unverified claim.
 
 `JWT_SECRET` and `APP_KEY` are not interchangeable: rotating `JWT_SECRET` signs
 everyone out; rotating `APP_KEY` makes every stored `github_token` permanently
@@ -110,7 +156,9 @@ type, and `concurrency: 1` is what keeps peak memory inside 512MB.
 two original jobs; a change to one usually belongs in the other. Each: fetch diff
 (Redis-cached 1h) → `detectLanguages()` → **first AI pass** (analysis) → persist →
 **second AI pass** (`FixesService`, reusing the model that succeeded) → post a
-GitHub comment → audit log → email/Slack.
+GitHub comment → audit log → Slack (if configured).
+There are no email notifications; that feature was removed. `users.email_notifications`
+still exists in the database but is unmapped and unread.
 
 Deliberate behaviours to preserve:
 
@@ -139,6 +187,74 @@ Deliberate behaviours to preserve:
   call `signal.throwIfAborted()` before each side effect. An earlier `Promise.race`
   version left the timed-out runner alive, which double-posted GitHub comments and
   raced `markFailed` against its own `status: 'completed'`.
+
+### Risk Radar and Design Studio
+
+See `docs/designs/risk-radar-and-design-studio.md`. Things that are easy to break:
+
+- `diff/risk-radar.ts` is **pure and deterministic**: no model, network or DB. The
+  runners call `tryAssessRisk()`, which never throws; a risk bug must cost the
+  comment its risk section, never the review. The PR runner saves the assessment
+  of the diff it reviewed (`ReviewRiskStore`), and the pages serve that, so risk
+  always matches the verdict beside it. A live assessment of the current head is
+  only a fallback and must stay labelled `basis: "current"`.
+- `SummaryCommentBuilder` appends the risk section only when `risk` is supplied,
+  so the existing byte-for-byte comment tests stay valid.
+- Design Studio runs **inline** (not on the concurrency-1 queue), bounded by
+  `DESIGN_BUDGET_MS` (an `AbortSignal`) and a per-user Redis limit checked
+  *before* the model call. The limit **fails closed** (503) when Redis is
+  unreadable, and every `MULTI/EXEC` result is checked per command. It is a
+  service-level limit, not `@Throttle`, because it has to be per user on both
+  the web and the API-token routes (the global guard keys token callers by
+  IP) and it lives in Redis, so it holds across restarts.
+- Every AI failure degrades to `baselineBlueprint()` with a `notice`. It never
+  fails the request.
+- **User data in Redis must be erasable.** Account deletion clears Redis first
+  (`AccountDataService`), after setting the account's erasure marker
+  (`account/erasure-marker.ts`). Any store that holds a user's data must write
+  through an atomic script that refuses while that marker exists, as
+  `DesignStore` and `ReviewRiskStore` do, and must be purged there. Otherwise
+  work in flight during deletion re-creates data nothing can find again.
+- Blueprints live in **Redis** (`design:{uuid}`, 30-day TTL, owner stored beside
+  the payload), deliberately not Postgres: no DDL. Missing, expired, malformed
+  and foreign ids must stay one indistinguishable 404.
+- `design/design-prompt.ts` is separate from `prompt-builder.service.ts`, so the
+  frozen fixtures are unaffected by design-prompt changes.
+
+## UI standards (prism-web)
+
+The bar is what Apple, Google or GitHub would ship. These are rules, not
+preferences, and they apply to every page and component:
+
+- **Type:** Inter (optical-size variable cut) for UI, JetBrains Mono for code,
+  both **self-hosted** via `@fontsource-variable/*` imported in `layout.tsx`.
+  Never add a Google Fonts `<link>` or any third-party font CDN.
+- **Minimum text size is 12px** (`text-xs`). No `text-[10px]`, `text-[11px]` or
+  smaller, anywhere — including badges and counters.
+- **Contrast is WCAG AA (4.5:1) for all text**, in both themes, on every surface
+  it can sit on (`--bg-card`, `--bg-hover` included). Check the ratio before
+  changing a colour token.
+- **Two accents:** `--accent` is for text, icons, borders and focus rings;
+  `--accent-solid` is for fills that carry white text (`.btn-primary`, avatars).
+  Never put white text on `--accent`.
+- **Keyboard:** the global `:focus-visible` ring in `globals.css` must never be
+  removed or overridden with `outline: none` without a visible replacement.
+- **Touch targets:** at least 44×44px for icon-only buttons, 32px for inline
+  chips.
+- **Motion** respects `prefers-reduced-motion` (handled globally).
+- **Labels hidden on mobile** use `sr-only sm:not-sr-only`, never `hidden`:
+  `hidden` removes the text from screen readers too, leaving an unnamed button.
+- **Server actions can reject** (network drop, a deploy mid-page). One called
+  from a `useEffect` must `.catch` into a visible state, or the component spins
+  forever. One whose result says `ok: false` must show that result: a failure
+  must never look like a success.
+- **Layout** works at 390px with no horizontal scroll. Grids that collapse on
+  mobile use an explicit `grid-cols-1`, because an implicit `auto` column grows
+  to fit `truncate`d text.
+- Colours come from the CSS tokens, never hard-coded hex in components.
+
+`prism-web` has no test runner, so verify UI changes in a real browser in both
+themes before committing: no console errors, no overflow at 390px.
 
 ## Stored-data invariants
 

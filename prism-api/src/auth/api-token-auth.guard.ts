@@ -76,7 +76,10 @@ export class ApiTokenAuthGuard implements CanActivate {
     const id = Number(bearer.slice(0, separator));
     const plaintext = bearer.slice(separator + 1);
 
-    if (!Number.isInteger(id) || id <= 0) {
+    // isSafeInteger, not isInteger: "99999999999999999999|x" parses to 1e20,
+    // which is an integer, overflows Postgres bigint, and turned a request with
+    // no valid credentials into a 500 instead of a 401.
+    if (!Number.isSafeInteger(id) || id <= 0) {
       return null;
     }
 
