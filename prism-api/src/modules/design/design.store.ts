@@ -64,6 +64,10 @@ export class DesignStore {
           .lpush(this.historyKey(ownerId), blueprint.id)
           .ltrim(this.historyKey(ownerId), 0, DESIGN_HISTORY - 1)
           .expire(this.historyKey(ownerId), DESIGN_TTL_SECONDS)
+          // Every id the owner has, untrimmed. The history list above is
+          // capped for display, so it cannot be what erasure relies on.
+          .sadd(this.ownedKey(ownerId), blueprint.id)
+          .expire(this.ownedKey(ownerId), DESIGN_TTL_SECONDS)
           .exec(),
       );
     } catch (error) {
@@ -114,10 +118,43 @@ export class DesignStore {
         .multi()
         .del(this.designKey(id))
         .lrem(this.historyKey(ownerId), 0, id)
+        .srem(this.ownedKey(ownerId), id)
         .exec(),
     );
 
     return true;
+  }
+
+  /** How many designs the owner has stored, including ones past the history cap. */
+  async count(ownerId: number): Promise<number> {
+    return this.redis.scard(this.ownedKey(ownerId));
+  }
+
+  /**
+   * Erases everything this store holds for an owner: every design (not only
+   * the 20 the history shows), the history, the index, and the current rate
+   * counter. Throws on any failure, because the caller is about to tell a
+   * person their data is gone and must not do so if it is not.
+   */
+  async purgeOwner(ownerId: number): Promise<void> {
+    const [owned, listed] = await Promise.all([
+      this.redis.smembers(this.ownedKey(ownerId)),
+      this.redis.lrange(this.historyKey(ownerId), 0, -1),
+    ]);
+    const ids = [...new Set([...owned, ...listed])];
+    const bucket = Math.floor(Date.now() / 1000 / 3600);
+
+    assertExec(
+      await this.redis
+        .multi()
+        .del(
+          ...ids.map((id) => this.designKey(id)),
+          this.historyKey(ownerId),
+          this.ownedKey(ownerId),
+          `design:rate:${ownerId}:${bucket}`,
+        )
+        .exec(),
+    );
   }
 
   /**
@@ -155,6 +192,10 @@ export class DesignStore {
 
   private historyKey(ownerId: number): string {
     return `design:user:${ownerId}`;
+  }
+
+  private ownedKey(ownerId: number): string {
+    return `design:owned:${ownerId}`;
   }
 
   private messageOf(error: unknown): string {

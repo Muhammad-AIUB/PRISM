@@ -238,6 +238,37 @@ describe('assessRisk', () => {
     expect(risk.checklist.map((c) => c.id)).toContain('timeouts');
   });
 
+  it('reads JVM test names by convention, without mistaking words that merely end in "test"', () => {
+    const tested = (path: string) =>
+      assessRisk([file('src/app/Service.ts', lines(25)), file(path, lines(2))].join('\n')).stats.testFiles;
+
+    for (const real of ['src/FooTest.java', 'src/FooTests.cs', 'src/TestUtils.kt']) {
+      expect(tested(real)).toBe(1);
+    }
+
+    for (const notATest of ['src/Latest.java', 'src/Contest.cs', 'src/Manifest.kt']) {
+      expect(tested(notATest)).toBe(0);
+    }
+  });
+
+  it('still says "no tests changed" when the only near-miss is Latest.java', () => {
+    const risk = assessRisk(file('src/app/Latest.java', lines(30)));
+
+    expect(risk.signals.map((s) => s.id)).toContain('untested');
+  });
+
+  it('does not read RegExp#exec as a subprocess call', () => {
+    const risk = assessRisk(file('src/parse.ts', ['const m = HEADER.exec(line);', 'const q = Model.find().exec();']));
+
+    expect(risk.checklist.map((c) => c.id)).not.toContain('timeouts');
+  });
+
+  it('still reads real subprocess calls, bare or through the module', () => {
+    for (const line of ['await exec("git status");', 'execSync("ls");', 'cp.execFile("x");', 'child_process.exec("x");']) {
+      expect(assessRisk(file('src/run.ts', [line])).checklist.map((c) => c.id)).toContain('timeouts');
+    }
+  });
+
   it('does not treat a fetch() inside a test as a production dependency', () => {
     const risk = assessRisk(file('src/weather.spec.ts', ['await fetch(url);']));
 

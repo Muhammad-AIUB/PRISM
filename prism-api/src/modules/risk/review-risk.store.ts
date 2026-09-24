@@ -56,6 +56,23 @@ export class ReviewRiskStore {
     }
   }
 
+  /**
+   * For account erasure. Unlike forget(), this throws: the caller is about to
+   * tell someone their data is gone and must not if it is not.
+   */
+  async purge(pullRequestIds: number[]): Promise<void> {
+    if (pullRequestIds.length > 0) {
+      await this.redis.del(...pullRequestIds.map((id) => this.key(id)));
+    }
+  }
+
+  /** How many saved assessments exist for these pull requests. */
+  async count(pullRequestIds: number[]): Promise<number> {
+    return pullRequestIds.length === 0
+      ? 0
+      : this.redis.exists(...pullRequestIds.map((id) => this.key(id)));
+  }
+
   private key(pullRequestId: number): string {
     return `review-risk:pr:${pullRequestId}`;
   }

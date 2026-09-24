@@ -198,7 +198,15 @@ export function parseChangedFiles(diff: string): ChangedFile[] {
 // ── Path classification ─────────────────────────────────────────────
 
 const TEST_PATH =
-  /(^|\/)(__tests__|__mocks__|tests?|spec|specs|e2e|fixtures)\/|\.(test|spec)\.[a-z]+$|_test\.(go|py|rb)$|(^|\/)test_[^/]+\.py$|_spec\.rb$|Tests?\.(java|cs|kt)$/i;
+  /(^|\/)(__tests__|__mocks__|tests?|spec|specs|e2e|fixtures)\/|\.(test|spec)\.[a-z]+$|_test\.(go|py|rb)$|(^|\/)test_[^/]+\.py$|_spec\.rb$/i;
+
+/**
+ * JVM and .NET test classes, by their naming convention: FooTest, FooTests,
+ * TestFoo. Case-sensitive on purpose, and kept out of TEST_PATH's /i: that
+ * flag made `Latest.java` and `Contest.cs` read as tests, which dropped them
+ * from every size and sensitivity signal and silenced "no tests changed".
+ */
+const JVM_TEST_PATH = /(^|\/)(\w*Tests?|Tests?[A-Z]\w*)\.(java|cs|kt)$/;
 
 const DOC_PATH = /\.(md|mdx|rst|txt|adoc)$|(^|\/)docs?\//i;
 
@@ -226,7 +234,7 @@ const CONFIG_PATH =
 // ── Added-line patterns ─────────────────────────────────────────────
 
 const NETWORK_CALL =
-  /\bfetch\(|\baxios(\.\w+)?\(|\bhttps?\.(get|request)\(|\brequests\.(get|post|put|patch|delete|request)\(|\bhttpx\.|\burllib|\bHttpClient\b|\bgot\(|\bhttp\.(Get|Post|NewRequest)|\bnew\s+Pool\(|\bcreateConnection\(|\bsubprocess\.|\bexec(File|Sync)?\(|\bspawn\(/;
+  /\bfetch\(|\baxios(\.\w+)?\(|\bhttps?\.(get|request)\(|\brequests\.(get|post|put|patch|delete|request)\(|\bhttpx\.|\burllib|\bHttpClient\b|\bgot\(|\bhttp\.(Get|Post|NewRequest)|\bnew\s+Pool\(|\bcreateConnection\(|\bsubprocess\.|\bexec(File|Sync|FileSync)\(|(?<![.\w$])exec\(|\bchild_process\.exec\(|\bspawn\(/;
 
 /** How far from a call, in added lines, timeout evidence still counts for it. */
 const TIMEOUT_WINDOW_BEFORE = 2;
@@ -294,7 +302,7 @@ function sizeWeight(changedLines: number): number {
 export function assessRisk(diff: string): RiskAssessment {
   const files = parseChangedFiles(diff);
 
-  const isTest = (f: ChangedFile) => TEST_PATH.test(f.path);
+  const isTest = (f: ChangedFile) => TEST_PATH.test(f.path) || JVM_TEST_PATH.test(f.path);
   const isDoc = (f: ChangedFile) => DOC_PATH.test(f.path);
   const isLock = (f: ChangedFile) => LOCKFILE.test(f.path);
 

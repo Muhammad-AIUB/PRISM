@@ -11,5 +11,7 @@ import { DesignStore } from './design.store';
   imports: [AiModule, AuditModule, AuthModule, AuthWebModule],
   controllers: [DesignController, DesignApiController],
   providers: [DesignService, DesignStore],
+  // Exported for account erasure and the data export.
+  exports: [DesignStore],
 })
 export class DesignModule {}

@@ -237,7 +237,15 @@ export interface MyData {
     created_at: string | null;
   };
   token_preview: { first_4: string; last_4: string; length: number };
-  stats: { connected_repos: number; total_reviews: number; audit_events: number };
+  stats: {
+    connected_repos: number;
+    total_reviews: number;
+    audit_events: number;
+    /** Held in Redis, not Postgres, and erased with the account. */
+    saved_designs: number;
+    saved_risk_assessments: number;
+  };
+  designs: BlueprintSummary[];
   repositories: {
     full_name: string;
     created_at: string | null;

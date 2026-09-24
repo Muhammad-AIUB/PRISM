@@ -182,7 +182,7 @@ export default function CommitShowView({
             in step, the way their runners do. */}
         <VerdictPanel verdict={commitReview.verdict} findings={commitReview.findings} />
 
-        <RiskPanel kind="commit" id={commitReview.id} />
+        <RiskPanel kind="commit" id={commitReview.id} revision={commitReview.status} />
 
         {commitReview.summary && (
           <div className="card">

@@ -40,9 +40,17 @@ const LEVELS: Record<RiskLevel, { label: string; color: string; note: string }> 
 export default function RiskPanel({
   kind,
   id,
+  revision,
 }: {
   kind: 'pull-request' | 'commit';
   id: number;
+  /**
+   * Changes whenever the review this panel sits beside changes (its status,
+   * or the review row coming and going). The page polls while a review runs;
+   * without this the verdict would update and the panel would keep describing
+   * the previous revision, which is the mismatch ReviewRiskStore exists to stop.
+   */
+  revision: string;
 }) {
   const [state, setState] = useState<{
     risk: RiskAssessment | null;
@@ -56,6 +64,8 @@ export default function RiskPanel({
 
   useEffect(() => {
     let cancelled = false;
+
+    setState(null);
 
     // A server action can reject outright (network drop, a deploy while the
     // page is open). Without the catch the panel would sit on its loading
@@ -71,7 +81,7 @@ export default function RiskPanel({
     return () => {
       cancelled = true;
     };
-  }, [kind, id]);
+  }, [kind, id, revision]);
 
   if (state === null) {
     return (

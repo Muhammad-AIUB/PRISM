@@ -247,7 +247,11 @@ export default function ReviewShowView({
             already decided to investigate. */}
         <VerdictPanel verdict={review?.verdict} findings={review?.findings} />
 
-        <RiskPanel kind="pull-request" id={pullRequest.id} />
+        <RiskPanel
+          kind="pull-request"
+          id={pullRequest.id}
+          revision={`${pullRequest.status}:${review?.id ?? 'none'}`}
+        />
 
         {review?.summary && (
           <div className="card">

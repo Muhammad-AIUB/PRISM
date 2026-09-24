@@ -1,6 +1,16 @@
 'use client';
 
-import { AlertTriangle, ArrowLeft, FileText, GitBranch, Lock, Shield, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  FileText,
+  GitBranch,
+  Lock,
+  Network,
+  Radar,
+  Shield,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ComponentType } from 'react';
@@ -58,7 +68,7 @@ function StatCard({
 
 export default function MyDataView({ user, data }: { user: SessionUser; data: MyData }) {
   const router = useRouter();
-  const { profile, token_preview, stats, repositories } = data;
+  const { profile, token_preview, stats, repositories, designs } = data;
 
   const [confirm, setConfirm] = useState('');
   const [armed, setArmed] = useState(false);
@@ -218,8 +228,36 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
             <StatCard icon={GitBranch} label="Connected repos" value={stats.connected_repos} />
             <StatCard icon={FileText} label="Total reviews" value={stats.total_reviews} />
             <StatCard icon={Shield} label="Audit events" value={stats.audit_events} />
+            <StatCard icon={Network} label="Saved designs" value={stats.saved_designs} />
+            <StatCard icon={Radar} label="Saved risk assessments" value={stats.saved_risk_assessments} />
           </div>
+          <p className="mt-2 px-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            Designs are kept for 30 days and risk assessments for 90. Both are erased immediately
+            when you delete your data below.
+          </p>
         </section>
+
+        {designs.length > 0 && (
+          <section className="card-flat overflow-hidden">
+            <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Saved designs
+              </h2>
+            </div>
+            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              {designs.map((design) => (
+                <li key={design.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                  <Link href={`/design/${design.id}`} className="min-w-0 truncate hover:opacity-80">
+                    {design.title}
+                  </Link>
+                  <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {design.scale}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="card-flat overflow-hidden">
           <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
