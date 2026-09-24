@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { SessionRevocationStore } from './session-revocation.store';
+import { OptionalWebAuthGuard } from './optional-web-auth.guard';
 import { WebAuthGuard } from './web-auth.guard';
 
 // @nestjs/jwt ships ESM that jest cannot load; each test supplies verifyAsync.
@@ -107,5 +108,59 @@ describe('SessionRevocationStore', () => {
     redis.exists.mockRejectedValue(new Error('ECONNREFUSED'));
 
     await expect(s.isRevoked('t')).resolves.toBe(false);
+  });
+});
+
+/**
+ * /security is public, so this guard never refuses; it only decides whether
+ * the page sees a signed-in user. A signed-out session must not count.
+ */
+describe('OptionalWebAuthGuard', () => {
+  function optional(revoked: string[] = []) {
+    const request: Record<string, unknown> = {};
+    const guard = new OptionalWebAuthGuard(
+      { verifyAsync: verify } as never,
+      { findOne: jest.fn(async ({ where }: { where: { id: number } }) => (where.id === 1 ? { id: 1 } : null)) } as never,
+      { get: () => 'prism_session' } as never,
+      { isRevoked: jest.fn(async (t: string) => revoked.includes(t)) } as never,
+    );
+    const context = (cookie?: string, authorization?: string) =>
+      ({
+        switchToHttp: () => ({
+          getRequest: () =>
+            Object.assign(request, {
+              cookies: cookie ? { prism_session: cookie } : {},
+              header: (n: string) => (n === 'authorization' ? authorization : undefined),
+            }),
+        }),
+      }) as never;
+
+    return { guard, request, context };
+  }
+
+  it('attaches the user for a valid session', async () => {
+    const { guard, request, context } = optional();
+
+    await expect(guard.canActivate(context('alice'))).resolves.toBe(true);
+    expect(request.user).toEqual({ id: 1 });
+  });
+
+  it.each([
+    ['no session', undefined, []],
+    ['a forged token', 'forged', []],
+    ['a deleted user', 'ghost', []],
+    ['a signed-out session', 'alice', ['alice']],
+  ])('lets %s through anonymously', async (_why, cookie, revoked) => {
+    const { guard, request, context } = optional(revoked);
+
+    await expect(guard.canActivate(context(cookie))).resolves.toBe(true);
+    expect(request.user).toBeUndefined();
+  });
+
+  it('reads a bearer session too', async () => {
+    const { guard, request, context } = optional();
+
+    await guard.canActivate(context(undefined, 'Bearer alice'));
+    expect(request.user).toEqual({ id: 1 });
   });
 });

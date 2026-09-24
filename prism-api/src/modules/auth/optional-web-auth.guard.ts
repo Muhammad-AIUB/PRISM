@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
 import type { AuthenticatedRequest } from '../../auth/current-user.decorator';
 import { User } from '../../database/entities';
+import { SessionRevocationStore } from './session-revocation.store';
 import type { JwtPayload } from './web-auth.service';
 
 /**
@@ -21,6 +22,7 @@ export class OptionalWebAuthGuard implements CanActivate {
     @InjectRepository(User)
     private readonly users: OrmRepository<User>,
     private readonly configService: ConfigService,
+    private readonly revocations: SessionRevocationStore,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -33,6 +35,12 @@ export class OptionalWebAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwt.verifyAsync<JwtPayload>(token);
+
+      // A signed-out session is not signed in here either.
+      if (await this.revocations.isRevoked(token)) {
+        return true;
+      }
+
       const user = await this.users.findOne({ where: { id: payload.sub } });
 
       if (user) {
