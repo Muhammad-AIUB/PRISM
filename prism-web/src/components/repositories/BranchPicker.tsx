@@ -144,7 +144,7 @@ export default function BranchPicker({
       )}
 
       <div
-        className="flex items-center justify-between border-b px-3 py-1.5 text-[11px]"
+        className="flex items-center justify-between border-b px-3 py-1.5 text-xs"
         style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
       >
         <span>

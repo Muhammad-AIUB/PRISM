@@ -266,7 +266,7 @@ export default function CommitShowView({
                     >
                       {tab.label}
                       <span
-                        className="rounded-full px-1.5 text-[10px]"
+                        className="rounded-full px-1.5 text-xs"
                         style={{
                           backgroundColor: 'var(--bg-hover)',
                           color: 'var(--text-secondary)',

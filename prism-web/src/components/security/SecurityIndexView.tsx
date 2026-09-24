@@ -44,7 +44,7 @@ function SectionHeading({
     return (
         <div className={align === 'center' ? 'text-center' : ''}>
             {eyebrow && (
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] sm:text-xs" style={{ color: 'var(--accent)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] sm:text-xs" style={{ color: 'var(--accent)' }}>
                     {eyebrow}
                 </p>
             )}
@@ -150,7 +150,7 @@ function GuestSecurityLayout({ children }: { children: ReactNode }) {
                         <span className="brand-text text-lg">PRism</span>
                     </Link>
                     <div className="min-w-0 flex-1 px-2">
-                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Trust</p>
+                        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Trust</p>
                         <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">Security &amp; Privacy</h1>
                     </div>
                     <Link href="/login" className="btn btn-primary min-h-[44px] transition active:scale-95">
@@ -274,7 +274,7 @@ export default function SecurityIndexView({
                             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                                 How we store your token
                             </p>
-                            <pre className="mt-3 overflow-x-auto rounded-md p-3 text-[11px] leading-relaxed"
+                            <pre className="mt-3 overflow-x-auto rounded-md p-3 text-xs leading-relaxed"
                                 style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
 {`// User Model
 protected $casts = [
@@ -314,7 +314,7 @@ protected $casts = [
                             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                                 The only key we write
                             </p>
-                            <pre className="mt-2 overflow-x-auto rounded-md p-3 text-[11px] leading-relaxed"
+                            <pre className="mt-2 overflow-x-auto rounded-md p-3 text-xs leading-relaxed"
                                 style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
 {`// resources/js/Components/ThemeToggle.jsx
 // Safe: UI preference only, no PII or auth data.
@@ -580,7 +580,7 @@ localStorage.setItem('prism-theme', theme);   // 'light' | 'dark'`}
                 header={
                     <div className="min-w-0">
                         <p
-                            className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+                            className="text-xs font-medium uppercase tracking-wider sm:text-xs"
                             style={{ color: 'var(--text-muted)' }}
                         >
                             Trust

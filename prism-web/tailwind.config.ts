@@ -14,8 +14,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'Inter var', ...defaultTheme.fontFamily.sans],
-        mono: ['JetBrains Mono', ...defaultTheme.fontFamily.mono],
+        sans: ['Inter Variable', 'Inter', ...defaultTheme.fontFamily.sans],
+        mono: ['JetBrains Mono Variable', 'JetBrains Mono', ...defaultTheme.fontFamily.mono],
       },
       colors: {
         // Mapped to the CSS variables in globals.css so `bg-primary`,
@@ -32,6 +32,7 @@ export default {
         accent: {
           DEFAULT: 'var(--accent)',
           hover: 'var(--accent-hover)',
+          solid: 'var(--accent-solid)',
         },
         success: 'var(--success)',
         warning: 'var(--warning)',

@@ -27,7 +27,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Overview

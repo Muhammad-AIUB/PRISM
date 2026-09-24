@@ -186,7 +186,7 @@ export default function DesignStudioView({
                 <button
                   key={example.label}
                   type="button"
-                  className="badge transition hover:opacity-80"
+                  className="badge min-h-[32px] px-3 transition hover:opacity-80"
                   style={{
                     backgroundColor: 'var(--accent-bg)',
                     color: 'var(--accent)',
@@ -357,8 +357,8 @@ export default function DesignStudioView({
                   </Link>
                   <button
                     type="button"
-                    className="btn btn-ghost"
-                    style={{ padding: '0.375rem' }}
+                    className="btn btn-ghost min-h-[44px] min-w-[44px]"
+                    style={{ padding: '0.5rem' }}
                     aria-label={`Delete ${design.title}`}
                     disabled={deleting}
                     onClick={() => remove(design.id)}

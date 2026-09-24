@@ -1,4 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+// Self-hosted, not the Google Fonts CDN: no render-blocking third-party
+// request, no visitor IPs sent to Google, and the font ships with the build,
+// so it cannot fail independently of the app. Inter's optical-size cut adjusts
+// letterforms to the rendered size, the way SF Pro does.
+import '@fontsource-variable/inter/opsz.css';
+import '@fontsource-variable/jetbrains-mono';
 import './globals.css';
 
 const TITLE = 'PRism · AI Code Review';
@@ -34,7 +40,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: '#6366f1' };
+export const viewport: Viewport = { themeColor: '#4f46e5' };
 
 /**
  * Applies the saved theme before first paint. Anything later — an effect, a
@@ -48,14 +54,11 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('prism-theme');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    // THEME_SCRIPT swaps this class before React hydrates, so the server's
+    // "dark" and the client's "light" legitimately differ. This suppresses the
+    // mismatch warning for <html>'s own attributes only, not its children.
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="antialiased">{children}</body>

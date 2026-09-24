@@ -128,7 +128,7 @@ export default function DemoLayout({
     >
       <div
         className="sticky top-0 z-40 px-4 py-2.5 text-center text-sm text-white"
-        style={{ backgroundColor: 'var(--accent)' }}
+        style={{ backgroundColor: 'var(--accent-solid)' }}
       >
         <span className="font-semibold">🎭 Demo Mode</span>
         <span className="mx-1 opacity-90">—</span>
@@ -194,7 +194,7 @@ export default function DemoLayout({
                 <span className="flex-1">{item.label}</span>
                 {!item.href && (
                   <span
-                    className="rounded-full px-1.5 py-0.5 text-[10px] uppercase tracking-wide"
+                    className="rounded-full px-1.5 py-0.5 text-xs uppercase tracking-wide"
                     style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
                   >
                     demo

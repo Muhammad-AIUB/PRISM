@@ -71,7 +71,7 @@ function NavItem({
         active && (
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: 'var(--accent)' }}
+            style={{ backgroundColor: 'var(--accent-solid)' }}
           />
         )
       )}
@@ -99,7 +99,7 @@ function Avatar({ user, size = 'sm' }: { user: SessionUser | null; size?: 'sm' |
   return (
     <div
       className={`${px} grid place-items-center rounded-full text-xs font-semibold text-white`}
-      style={{ backgroundColor: 'var(--accent)' }}
+      style={{ backgroundColor: 'var(--accent-solid)' }}
     >
       {(user?.name || '?').charAt(0).toUpperCase()}
     </div>

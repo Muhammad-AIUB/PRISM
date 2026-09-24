@@ -67,7 +67,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
   return (
     <div>
-      <dt className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+      <dt className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
         {label}
       </dt>
       <dd className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
@@ -255,7 +255,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">{component.name}</span>
                   {component.technology && (
-                    <code className="font-mono text-[11px]" style={{ color: 'var(--accent)' }}>
+                    <code className="font-mono text-xs" style={{ color: 'var(--accent)' }}>
                       {component.technology}
                     </code>
                   )}
@@ -369,7 +369,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
                 className="rounded-md border px-3 py-2"
                 style={{ borderColor: 'var(--border)' }}
               >
-                <span className="block text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                <span className="block text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {slo.name}
                 </span>
                 <span className="text-sm font-medium">{slo.target}</span>
@@ -388,7 +388,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
               <li key={`${index}-${stage.stage}`} className="relative">
                 <span
                   className="absolute -left-[1.6rem] top-1 h-3 w-3 rounded-full"
-                  style={{ backgroundColor: 'var(--accent)' }}
+                  style={{ backgroundColor: 'var(--accent-solid)' }}
                 />
                 <p className="text-sm font-medium">{stage.stage}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>

@@ -163,6 +163,35 @@ See `docs/designs/risk-radar-and-design-studio.md`. Things that are easy to brea
 - `design/design-prompt.ts` is separate from `prompt-builder.service.ts`, so the
   frozen fixtures are unaffected by design-prompt changes.
 
+## UI standards (prism-web)
+
+The bar is what Apple, Google or GitHub would ship. These are rules, not
+preferences, and they apply to every page and component:
+
+- **Type:** Inter (optical-size variable cut) for UI, JetBrains Mono for code,
+  both **self-hosted** via `@fontsource-variable/*` imported in `layout.tsx`.
+  Never add a Google Fonts `<link>` or any third-party font CDN.
+- **Minimum text size is 12px** (`text-xs`). No `text-[10px]`, `text-[11px]` or
+  smaller, anywhere — including badges and counters.
+- **Contrast is WCAG AA (4.5:1) for all text**, in both themes, on every surface
+  it can sit on (`--bg-card`, `--bg-hover` included). Check the ratio before
+  changing a colour token.
+- **Two accents:** `--accent` is for text, icons, borders and focus rings;
+  `--accent-solid` is for fills that carry white text (`.btn-primary`, avatars).
+  Never put white text on `--accent`.
+- **Keyboard:** the global `:focus-visible` ring in `globals.css` must never be
+  removed or overridden with `outline: none` without a visible replacement.
+- **Touch targets:** at least 44×44px for icon-only buttons, 32px for inline
+  chips.
+- **Motion** respects `prefers-reduced-motion` (handled globally).
+- **Layout** works at 390px with no horizontal scroll. Grids that collapse on
+  mobile use an explicit `grid-cols-1`, because an implicit `auto` column grows
+  to fit `truncate`d text.
+- Colours come from the CSS tokens, never hard-coded hex in components.
+
+`prism-web` has no test runner, so verify UI changes in a real browser in both
+themes before committing: no console errors, no overflow at 390px.
+
 ## Stored-data invariants
 
 These are not legacy cruft; they are load-bearing against live production data.

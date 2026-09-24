@@ -135,7 +135,7 @@ export default function RiskPanel({
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
-            className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wider"
+            className="flex min-h-[44px] w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wider"
             style={{ color: 'var(--text-muted)' }}
             aria-expanded={open}
           >
@@ -165,7 +165,7 @@ export default function RiskPanel({
                 <li key={signal.id} className="text-sm">
                   <div className="flex items-baseline justify-between gap-2">
                     <span style={{ color: 'var(--text-primary)' }}>{signal.label}</span>
-                    <span className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                    <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                       +{signal.weight}
                     </span>
                   </div>
@@ -173,7 +173,7 @@ export default function RiskPanel({
                     {signal.detail}
                   </p>
                   {signal.files.length > 0 && (
-                    <p className="mt-0.5 truncate font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    <p className="mt-0.5 truncate font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
                       {signal.files.join(', ')}
                     </p>
                   )}
@@ -225,7 +225,7 @@ export default function RiskPanel({
                     </span>
                     {check.files.length > 0 && (
                       <span
-                        className="mt-0.5 block truncate font-mono text-[11px]"
+                        className="mt-0.5 block truncate font-mono text-xs"
                         style={{ color: 'var(--text-muted)' }}
                       >
                         {check.files.join(', ')}

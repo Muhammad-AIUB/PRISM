@@ -68,7 +68,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
             {meta.label}
           </span>
           <span
-            className="text-[11px]"
+            className="text-xs"
             style={{ color: 'var(--text-muted)' }}
             title={absoluteTime(log.created_at)}
           >
@@ -81,7 +81,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
           </p>
         )}
         <div
-          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]"
+          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
           style={{ color: 'var(--text-muted)' }}
         >
           <span className="font-mono">{log.action}</span>
@@ -90,7 +90,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
             <details className="cursor-pointer">
               <summary className="select-none">metadata</summary>
               <pre
-                className="mt-1 max-w-full overflow-x-auto rounded p-2 text-[11px]"
+                className="mt-1 max-w-full overflow-x-auto rounded p-2 text-xs"
                 style={{
                   backgroundColor: 'var(--bg-primary)',
                   border: '1px solid var(--border)',
@@ -120,7 +120,7 @@ export default async function AuditLogPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Security

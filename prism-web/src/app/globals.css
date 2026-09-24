@@ -14,11 +14,23 @@
 
     --text-primary:   #f1f5f9;
     --text-secondary: #94a3b8;
-    --text-muted:     #64748b;
+    /* >= 4.5:1 (WCAG AA) on every dark surface, including --bg-hover. */
+    --text-muted:     #808b9e;
 
-    --accent:       #6366f1;
-    --accent-hover: #7c7ff5;
-    --accent-bg:    rgba(99, 102, 241, 0.15);
+    /*
+     * Two accents, as GitHub's Primer and Apple's HIG both separate them:
+     *   --accent        text, icons, borders, focus rings — must read on the
+     *                   page background (>= 4.5:1 on --bg-card).
+     *   --accent-solid  a fill with white text on it — must hold white text
+     *                   (>= 4.5:1).
+     * No single indigo satisfies both in dark mode, which is why the old
+     * #6366f1 failed as text (3.9:1) and only just passed as a fill.
+     */
+    --accent:       #818cf8;
+    --accent-hover: #a5b4fc;
+    --accent-bg:    rgba(129, 140, 248, 0.14);
+    --accent-solid:       #4f46e5;
+    --accent-solid-hover: #4338ca;
 
     --success: #22c55e;
     --warning: #f59e0b;
@@ -47,11 +59,14 @@ html.light {
 
     --text-primary:   #0f172a;
     --text-secondary: #475569;
-    --text-muted:     #94a3b8;
+    /* Was #94a3b8 at 2.5:1 on white — unreadable in daylight. */
+    --text-muted:     #5f6b7f;
 
-    --accent:       #6366f1;
-    --accent-hover: #4f46e5;
-    --accent-bg:    rgba(99, 102, 241, 0.10);
+    --accent:       #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-bg:    rgba(79, 70, 229, 0.08);
+    --accent-solid:       #4f46e5;
+    --accent-solid-hover: #4338ca;
 
     --success: #16a34a;
     --warning: #d97706;
@@ -68,14 +83,41 @@ html.light {
     html.light { color-scheme: light; }
 
     body {
-        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        font-family: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
         font-feature-settings: 'cv02','cv03','cv04','cv11';
+        font-optical-sizing: auto;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
         background-color: var(--bg-primary);
         color: var(--text-primary);
     }
 
     code, pre, .font-mono {
-        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    /*
+     * One visible keyboard focus ring for everything interactive. Mouse
+     * clicks do not show it (:focus-visible), keyboard users always see it.
+     * Removing focus outlines without a replacement is the most common
+     * accessibility regression in web apps; this makes it impossible to
+     * forget on a new component.
+     */
+    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
+    }
+
+    /* Honour the OS setting. Spinners and pulses stop; nothing depends on them. */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
     }
 
     /* Scrollbar */
@@ -101,14 +143,14 @@ html.light {
         white-space: nowrap;
         outline: none;
     }
-    .btn:focus-visible { box-shadow: 0 0 0 3px rgba(99,102,241,0.35); }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
     .btn-primary {
-        background-color: var(--accent);
+        background-color: var(--accent-solid);
         color: #ffffff;
     }
-    .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
+    .btn-primary:hover:not(:disabled) { background-color: var(--accent-solid-hover); }
 
     .btn-secondary {
         background-color: transparent;
@@ -165,7 +207,7 @@ html.light {
         gap: 0.25rem;
         padding: 0.125rem 0.5rem;
         border-radius: 9999px;
-        font-size: 0.6875rem;
+        font-size: 0.75rem;
         font-weight: 500;
         line-height: 1rem;
         border: 1px solid transparent;

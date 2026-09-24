@@ -2,7 +2,7 @@
   "name": "prism-web",
   "version": "0.1.0",
   "private": true,
-  "description": "PRism frontend \u2014 Next.js port of the Inertia/React app (strangler migration).",
+  "description": "PRism frontend — Next.js port of the Inertia/React app (strangler migration).",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "chart.js": "^4.5.1",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",

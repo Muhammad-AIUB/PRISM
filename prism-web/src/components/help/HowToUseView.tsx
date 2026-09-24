@@ -38,7 +38,7 @@ function SectionHeading({
     return (
         <div className="text-center">
             {eyebrow && (
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] sm:text-xs" style={{ color: 'var(--accent)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] sm:text-xs" style={{ color: 'var(--accent)' }}>
                     {eyebrow}
                 </p>
             )}
@@ -80,7 +80,7 @@ function StepCard({
                 >
                     <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
                     Step {step}
                 </span>
             </div>
@@ -206,7 +206,7 @@ export default function HowToUseView({ user }: { user: SessionUser }) {
             user={user}
             header={
                 <div className="min-w-0">
-                    <p className="text-[10px] font-medium uppercase tracking-wider sm:text-xs" style={{ color: 'var(--text-muted)' }}>Help</p>
+                    <p className="text-xs font-medium uppercase tracking-wider sm:text-xs" style={{ color: 'var(--text-muted)' }}>Help</p>
                     <h1 className="mt-0.5 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">How to Use</h1>
                 </div>
             }

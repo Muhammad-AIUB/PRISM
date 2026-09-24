@@ -98,7 +98,7 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Security
@@ -140,7 +140,7 @@ export default function MyDataView({ user, data }: { user: SessionUser; data: My
             ) : (
               <div
                 className="grid h-14 w-14 place-items-center rounded-full text-lg font-semibold text-white"
-                style={{ backgroundColor: 'var(--accent)' }}
+                style={{ backgroundColor: 'var(--accent-solid)' }}
               >
                 {(profile.name || '?').charAt(0).toUpperCase()}
               </div>

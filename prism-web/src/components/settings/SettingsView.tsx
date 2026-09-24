@@ -149,7 +149,7 @@ function ApiTokensSection({
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
             <code
-              className="flex-1 overflow-x-auto rounded p-2 font-mono text-[11px]"
+              className="flex-1 overflow-x-auto rounded p-2 font-mono text-xs"
               style={{
                 backgroundColor: 'var(--bg-primary)',
                 color: 'var(--text-primary)',
@@ -290,7 +290,7 @@ export default function SettingsView({
       header={
         <div className="min-w-0">
           <p
-            className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+            className="text-xs font-medium uppercase tracking-wider sm:text-xs"
             style={{ color: 'var(--text-muted)' }}
           >
             Account
@@ -327,7 +327,7 @@ export default function SettingsView({
             ) : (
               <div
                 className="grid h-14 w-14 place-items-center rounded-full text-lg font-semibold text-white"
-                style={{ backgroundColor: 'var(--accent)' }}
+                style={{ backgroundColor: 'var(--accent-solid)' }}
               >
                 {(user.name || '?').charAt(0).toUpperCase()}
               </div>

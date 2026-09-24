@@ -60,7 +60,7 @@ export default function RepositorySettingsView({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
-              className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+              className="text-xs font-medium uppercase tracking-wider sm:text-xs"
               style={{ color: 'var(--text-muted)' }}
             >
               Repository
@@ -104,7 +104,7 @@ export default function RepositorySettingsView({
                 <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Branches to watch
                 </label>
-                <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                   Pick the branches PRism should review on every push. We auto-loaded the live
                   list from GitHub.
                 </p>

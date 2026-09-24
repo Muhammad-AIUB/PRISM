@@ -112,7 +112,7 @@ export default async function DemoPage() {
       <div className="mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p
-            className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
+            className="text-xs font-medium uppercase tracking-wider sm:text-xs"
             style={{ color: 'var(--text-muted)' }}
           >
             Overview
@@ -189,7 +189,7 @@ export default async function DemoPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p
-                        className="truncate font-mono text-[11px]"
+                        className="truncate font-mono text-xs"
                         style={{ color: 'var(--text-muted)' }}
                       >
                         {review.repo}
@@ -202,7 +202,7 @@ export default async function DemoPage() {
                       </p>
                       <div className="mt-2 flex items-center gap-3">
                         <StatusPill status={review.status} />
-                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                           {review.created_at}
                         </span>
                       </div>
