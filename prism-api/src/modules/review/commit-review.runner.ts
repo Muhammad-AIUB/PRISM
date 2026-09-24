@@ -14,7 +14,7 @@ import { prepareDiff } from '../../diff/prepare';
 import { tryAssessRisk } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
-import { reconcileScore, verdictFor } from '../../ai/verdict';
+import { incompleteReviewSummary, reconcileScore, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
 import { SlackService } from '../../notifications/slack.service';
@@ -106,14 +106,12 @@ export class CommitReviewRunner {
       await this.commitReviews.update(review.id, {
         status: 'completed',
         overallScore: null,
-        summary: attemptResult.raw
-          ? `AI review couldn't be parsed cleanly. Click Re-analyze to retry.\n\n— Raw output —\n${attemptResult.raw.slice(0, 1500)}`
-          : "AI review didn't return any usable content. Click Re-analyze to retry.",
+        summary: incompleteReviewSummary(attemptResult.raw),
         aiModelUsed: model ?? 'multi-fallback',
       });
 
       this.logger.warn(
-        `Commit review: all AI models failed to return parseable JSON (review_id=${review.id})`,
+        `Commit review: no AI model returned a usable review (review_id=${review.id})`,
       );
 
       return;

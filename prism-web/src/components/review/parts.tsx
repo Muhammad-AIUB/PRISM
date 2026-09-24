@@ -31,6 +31,11 @@ const VERDICTS: Record<Verdict, { label: string; color: string; note: string }> 
     color: 'var(--success)',
     note: 'No issue survived checking against the lines this change actually touched.',
   },
+  not_reviewed: {
+    label: 'Not reviewed',
+    color: 'var(--warning)',
+    note: 'The AI did not return a review for this change, so nothing was checked. Re-analyze to try again.',
+  },
 };
 
 /**
@@ -70,9 +75,12 @@ export function VerdictPanel({
         <span className="text-lg font-semibold tracking-tight" style={{ color: style.color }}>
           {style.label}
         </span>
-        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-          {findings.length === 1 ? '1 finding' : `${findings.length} findings`}
-        </span>
+        {/* "0 findings" beside "Not reviewed" would read as a result. */}
+        {verdict !== 'not_reviewed' && (
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {findings.length === 1 ? '1 finding' : `${findings.length} findings`}
+          </span>
+        )}
       </div>
       <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
         {style.note}

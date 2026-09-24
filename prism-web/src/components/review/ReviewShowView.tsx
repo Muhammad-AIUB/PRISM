@@ -321,7 +321,9 @@ export default function ReviewShowView({
           </div>
         )}
 
-        {review && (
+        {/* No tabs for a review no model produced: every category would say
+            "No issues found", which is a result nothing actually checked. */}
+        {review && review.verdict !== 'not_reviewed' && (
           <div className="card-flat overflow-hidden">
             <div className="border-b" style={{ borderColor: 'var(--border)' }}>
               <nav

@@ -263,8 +263,9 @@ export default function CommitShowView({
         )}
 
         {/* Tabs appear only once the review is done — a half-written review
-            would show empty categories as though nothing was found. */}
-        {commitReview.status === 'completed' && (
+            would show empty categories as though nothing was found. The same
+            goes for one no model produced. */}
+        {commitReview.status === 'completed' && commitReview.verdict !== 'not_reviewed' && (
           <div className="card-flat overflow-hidden">
             <div className="border-b" style={{ borderColor: 'var(--border)' }}>
               <nav className="-mx-px flex gap-1 overflow-x-auto px-3" aria-label="Review tabs">

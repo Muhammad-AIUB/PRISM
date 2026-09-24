@@ -7,7 +7,7 @@ import { CryptService } from '../../common/utils/crypt.service';
 import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Review, ReviewComment, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
-import { orderFindings, verdictFor } from '../../ai/verdict';
+import { orderFindings, verdictForReview } from '../../ai/verdict';
 import { ReviewQueueService } from '../review/review-queue.service';
 import { ChangeRiskService, type ChangeRisk } from '../risk/change-risk.service';
 import { ReviewRiskStore } from '../risk/review-risk.store';
@@ -161,7 +161,7 @@ export class ReviewsWebService {
         branch: cr.branch,
         status: cr.status,
         overall_score: cr.overallScore,
-        verdict: verdictFor(commitFindings),
+        verdict: verdictForReview(commitFindings, cr.summary),
         findings: commitFindings,
         summary: cr.summary,
         security_issues: cr.securityIssues ?? [],
@@ -251,7 +251,7 @@ export class ReviewsWebService {
     return {
       id: review.id,
       overall_score: review.overallScore,
-      verdict: verdictFor(findings),
+      verdict: verdictForReview(findings, review.summary),
       findings,
       summary: review.summary,
       ai_model_used: review.aiModelUsed,

@@ -23,6 +23,9 @@ const VERDICT_LABELS: Record<Verdict, string> = {
   blocking: '**BLOCKING**',
   worth_a_look: '**WORTH A LOOK**',
   nothing_found: '**NOTHING FOUND**',
+  // Never posted today (the runners skip the comment when no model answered);
+  // present so the label table stays exhaustive over Verdict.
+  not_reviewed: '**NOT REVIEWED**',
 };
 
 interface CommentReview {
