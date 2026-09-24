@@ -269,6 +269,54 @@ describe('assessRisk', () => {
     }
   });
 
+  describe('questions come from code, not from words in comments or strings', () => {
+    const checks = (added: string[]) =>
+      assessRisk(file('src/thing.ts', added)).checklist.map((c) => c.id);
+
+    // Each of these fired on this repository's own history before the fix.
+    it('ignores "retry" in an error message and in a comment', () => {
+      expect(
+        checks([
+          'export const EMPTY = "AI review failed. Click Re-analyze to retry.";',
+          '// A Redis outage costs a retry rather than a false success.',
+        ]),
+      ).not.toContain('retries');
+    });
+
+    it('ignores "Kafka" in a string and in a doc comment', () => {
+      expect(
+        checks([" * it lists Kubernetes, Kafka and a service mesh", "technology: 'Managed Kafka or pub/sub',"]),
+      ).not.toContain('messaging');
+    });
+
+    it('ignores fetch() mentioned in a comment', () => {
+      expect(checks(['// we used to call fetch(url) here'])).not.toContain('timeouts');
+    });
+
+    it('does not accept a timeout that exists only in a comment as evidence', () => {
+      expect(checks(['const r = await fetch(url); // timeout handled upstream'])).toContain('timeouts');
+    });
+
+    it('still asks about real code on the same lines as comments and strings', () => {
+      const ids = checks([
+        'await retry(send, { attempts: 3 }); // with backoff',
+        'await queue.add("email", payload);',
+        'const u = "http://api.example.com/x"; await fetch(u);',
+      ]);
+
+      expect(ids).toEqual(expect.arrayContaining(['retries', 'messaging', 'timeouts']));
+    });
+
+    it('still finds SQL and secrets, which live inside strings', () => {
+      const ids = checks([
+        'db.query("SELECT * FROM users WHERE id = " + id);',
+        'const apiKey = "abcdefghijklmnop1234567";',
+      ]);
+
+      expect(ids).toEqual(expect.arrayContaining(['raw_sql', 'secret']));
+    });
+  });
+
   it('does not treat a fetch() inside a test as a production dependency', () => {
     const risk = assessRisk(file('src/weather.spec.ts', ['await fetch(url);']));
 

@@ -123,7 +123,37 @@ interface ChangedFile {
   status: 'added' | 'deleted' | 'modified' | 'renamed';
   additions: number;
   deletions: number;
+  /** Exactly as added: what secrets, SQL and rollback notes are found in. */
   addedLines: string[];
+  /** The same lines with comments and string contents removed; see codeOf. */
+  addedCode: string[];
+}
+
+/**
+ * A line with its comments and the contents of its string literals removed.
+ *
+ * The behavioural checks ask about what code does: a call with no timeout, a
+ * retry loop, a queue publish. Matched against raw text they fired on words -
+ * "retry" in an error message, "Kafka" in a comment - and put a question about
+ * code that does not exist on someone's pull request. Checks that genuinely
+ * live in strings (hardcoded secrets, SQL built from strings) and rollback
+ * notes (often an SQL comment) still read the raw line.
+ *
+ * Line-at-a-time and heuristic: a block comment's interior lines are caught by
+ * their conventional leading `*`, which is what almost all code uses.
+ */
+export function codeOf(line: string): string {
+  const trimmed = line.trimStart();
+
+  if (/^(\/\/|\/\*|\*|#(?!!|include|define|if|endif|pragma)|--\s)/.test(trimmed)) {
+    return '';
+  }
+
+  return line
+    .replace(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, '$1$1')
+    .replace(/\/\*.*?\*\//g, '')
+    .replace(/\/\/.*$/, '')
+    .replace(/(^|\s)#\s.*$/, '$1');
 }
 
 /**
@@ -147,6 +177,7 @@ export function parseChangedFiles(diff: string): ChangedFile[] {
         additions: 0,
         deletions: 0,
         addedLines: [],
+        addedCode: [],
       };
       files.push(current);
       inHunk = false;
@@ -187,6 +218,7 @@ export function parseChangedFiles(diff: string): ChangedFile[] {
     if (line.startsWith('+')) {
       current.additions += 1;
       current.addedLines.push(line.slice(1));
+      current.addedCode.push(codeOf(line.slice(1)));
     } else if (line.startsWith('-')) {
       current.deletions += 1;
     }
@@ -327,8 +359,10 @@ export function assessRisk(diff: string): RiskAssessment {
   };
 
   /** Files among `pool` with at least one added line matching `pattern`. */
-  const addedMatching = (pool: ChangedFile[], pattern: RegExp) =>
-    pool.filter((f) => f.addedLines.some((line) => pattern.test(line))).map((f) => f.path);
+  const addedMatching = (pool: ChangedFile[], pattern: RegExp, in_: 'code' | 'raw' = 'code') =>
+    pool
+      .filter((f) => (in_ === 'code' ? f.addedCode : f.addedLines).some((line) => pattern.test(line)))
+      .map((f) => f.path);
 
   // Lockfiles and docs are excluded: a 4,000-line package-lock.json is not a
   // 4,000-line change anyone reads.
@@ -548,12 +582,12 @@ export function assessRisk(diff: string): RiskAssessment {
   // few added lines of the call (an options object usually spans several).
   const noTimeout = productionFiles
     .filter((f) =>
-      f.addedLines.some((line, index) => {
+      f.addedCode.some((line, index) => {
         if (!NETWORK_CALL.test(line)) {
           return false;
         }
 
-        const window = f.addedLines.slice(
+        const window = f.addedCode.slice(
           Math.max(0, index - TIMEOUT_WINDOW_BEFORE),
           index + TIMEOUT_WINDOW_AFTER + 1,
         );
@@ -572,7 +606,8 @@ export function assessRisk(diff: string): RiskAssessment {
     );
   }
 
-  const rawSql = addedMatching(productionFiles, RAW_SQL);
+  // SQL is built inside strings, so this one reads the raw line.
+  const rawSql = addedMatching(productionFiles, RAW_SQL, 'raw');
 
   if (rawSql.length > 0) {
     addCheck(
