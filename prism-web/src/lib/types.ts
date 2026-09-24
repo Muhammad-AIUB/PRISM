@@ -112,6 +112,8 @@ export interface RepositoriesIndexData {
   connectedIds: number[];
   connectedRepos: Record<string, ConnectedRepo>;
   reviewModes: string[];
+  /** Set when GitHub refused the listing; `repos` is then empty for that reason. */
+  githubError?: { status: number } | null;
 }
 
 export interface RepositorySettingsData {

@@ -308,6 +308,20 @@ function RepoCard({
   );
 }
 
+/** What the visitor can do about each way GitHub refuses the listing. */
+function githubErrorHint(status: number): string {
+  if (status === 401) {
+    return "GitHub no longer accepts PRism's access to your account. Sign out and sign in with GitHub again.";
+  }
+  if (status === 403 || status === 429) {
+    return `GitHub is rate limiting requests right now (${status}). Try again in a few minutes.`;
+  }
+  if (status === 0) {
+    return 'GitHub did not respond. Reload the page to try again.';
+  }
+  return `GitHub returned an error (${status}). Reload the page to try again.`;
+}
+
 export default function RepositoriesView({
   user,
   data,
@@ -315,7 +329,7 @@ export default function RepositoriesView({
   user: SessionUser;
   data: RepositoriesIndexData;
 }) {
-  const { repos, connectedIds, connectedRepos } = data;
+  const { repos, connectedIds, connectedRepos, githubError } = data;
   const [query, setQuery] = useState('');
   const [modalRepo, setModalRepo] = useState<GithubRepo | null>(null);
   const [connectingId, setConnectingId] = useState<number | null>(null);
@@ -397,11 +411,15 @@ export default function RepositoriesView({
 
         {filtered.length === 0 ? (
           <div className="card p-16 text-center">
-            <p className="text-sm font-medium">No repositories found</p>
+            <p className="text-sm font-medium">
+              {githubError ? 'Could not load your repositories' : 'No repositories found'}
+            </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              {query
-                ? 'Try a different search.'
-                : 'Make sure your GitHub account has at least one repo.'}
+              {githubError
+                ? githubErrorHint(githubError.status)
+                : query
+                  ? 'Try a different search.'
+                  : 'Make sure your GitHub account has at least one repo.'}
             </p>
           </div>
         ) : (

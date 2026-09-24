@@ -164,13 +164,40 @@ export class GithubClientService {
    * error, so a revoked token shows an empty repository picker instead of a
    * 500. Same here.
    */
-  async listUserRepos(token: string): Promise<unknown[]> {
-    const response = await this.requestJson<unknown[]>(
-      `${API_ROOT}/user/repos?per_page=100&sort=updated`,
-      token,
-    );
+  /**
+   * Keeps GitHub's status on failure. Returning [] for every error made a
+   * revoked token look exactly like an account with no repositories.
+   * status 0 means the request never got an HTTP answer.
+   */
+  async listUserRepos(
+    token: string,
+  ): Promise<{ ok: true; repos: unknown[] } | { ok: false; status: number }> {
+    const url = `${API_ROOT}/user/repos?per_page=100&sort=updated`;
 
-    return Array.isArray(response) ? response : [];
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'PRism',
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`GitHub GET ${url} returned ${response.status}`);
+
+        return { ok: false, status: response.status };
+      }
+
+      const body: unknown = await response.json();
+
+      return { ok: true, repos: Array.isArray(body) ? body : [] };
+    } catch (error) {
+      this.logger.warn(`GitHub GET ${url} failed: ${this.messageOf(error)}`);
+
+      return { ok: false, status: 0 };
+    }
   }
 
   /** GET /repos/{full_name} — used for `default_branch`. */

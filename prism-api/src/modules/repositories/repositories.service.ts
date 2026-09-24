@@ -32,6 +32,13 @@ const CACHE_GITHUB_REPOS_TTL = 300;
 const CACHE_CONNECTED_REPOS_TTL = 600;
 const CACHE_BRANCHES_TTL = 600;
 
+/** Thrown inside cache.remember() so a failed listing is never stored. */
+class GithubListingFailed extends Error {
+  constructor(readonly status: number) {
+    super(`GitHub repository listing failed (${status})`);
+  }
+}
+
 export interface BranchDto {
   name: string;
   is_default: boolean;
@@ -57,12 +64,31 @@ export class RepositoriesService {
     connectedIds: number[];
     connectedRepos: Record<string, unknown>;
     reviewModes: readonly string[];
+    githubError: { status: number } | null;
   }> {
     const token = this.tokenFor(user);
 
-    const repos = await this.cache.remember(`user_repos_${user.id}`, CACHE_GITHUB_REPOS_TTL, () =>
-      this.github.listUserRepos(token),
-    );
+    // Only a successful listing is cached. A cached failure kept the page
+    // empty for five minutes after the cause (say, a re-login) was fixed.
+    let githubError: { status: number } | null = null;
+    let repos: unknown[] = [];
+    try {
+      repos = await this.cache.remember(`user_repos_${user.id}`, CACHE_GITHUB_REPOS_TTL, async () => {
+        const result = await this.github.listUserRepos(token);
+
+        if (!result.ok) {
+          throw new GithubListingFailed(result.status);
+        }
+
+        return result.repos;
+      });
+    } catch (error) {
+      if (!(error instanceof GithubListingFailed)) {
+        throw error;
+      }
+
+      githubError = { status: error.status };
+    }
 
     const connectedIds = await this.cache.remember(
       `user_connected_repos_${user.id}`,
@@ -102,7 +128,7 @@ export class RepositoriesService {
       ]),
     );
 
-    return { repos, connectedIds, connectedRepos, reviewModes: REVIEW_MODES };
+    return { repos, connectedIds, connectedRepos, reviewModes: REVIEW_MODES, githubError };
   }
 
   /**
