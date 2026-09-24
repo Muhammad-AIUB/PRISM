@@ -75,12 +75,13 @@ jobs:
         working-directory: mcp-server
     steps:
       - uses: actions/checkout@v4
+      # No lockfile to cache or `npm ci` from: it is gitignored on purpose,
+      # since this is a published package and users resolve its ranges fresh.
+      # Installing the same way here audits what they would actually get.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: mcp-server/package-lock.json
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - name: Syntax check
         run: node --check index.js
       - name: Audit production dependencies
