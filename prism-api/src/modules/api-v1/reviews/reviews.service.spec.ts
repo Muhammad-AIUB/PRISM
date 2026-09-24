@@ -76,6 +76,7 @@ describe('ReviewsService re-analyze', () => {
       reviewQueue,
       diffCache as never,
       auditLog as never,
+      {} as never,
     );
   });
 
@@ -145,5 +146,52 @@ describe('ReviewsService re-analyze', () => {
         suggestedFixes: null,
       });
     });
+  });
+});
+
+describe('ReviewsService risk', () => {
+  const risk = { level: 'low', score: 0, stats: {}, signals: [], checklist: [] };
+
+  function build(pr: unknown, commit: unknown) {
+    const changeRisk = {
+      forPullRequest: jest.fn().mockResolvedValue(risk),
+      forCommit: jest.fn().mockResolvedValue(risk),
+    };
+    const service = new ReviewsService(
+      {} as never,
+      { findOne: jest.fn().mockResolvedValue(commit) } as never,
+      { findOne: jest.fn().mockResolvedValue(pr) } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      changeRisk as never,
+    );
+
+    return { service, changeRisk };
+  }
+
+  it('returns the assessment for a pull request the caller owns', async () => {
+    const { service, changeRisk } = build(pullRequest, null);
+
+    await expect(service.pullRequestRisk(user, 42)).resolves.toEqual({ risk });
+    expect(changeRisk.forPullRequest).toHaveBeenCalledWith(user, pullRequest);
+  });
+
+  it('refuses someone else\'s repository before any diff is read', async () => {
+    const foreign = { ...pullRequest, repository: { userId: 2 } };
+    const { service, changeRisk } = build(foreign, { ...commitReview, repository: { userId: 2 } });
+
+    await expect(service.pullRequestRisk(user, 42)).rejects.toThrow('Not your repository');
+    await expect(service.commitRisk(user, 66)).rejects.toThrow('Not your repository');
+    expect(changeRisk.forPullRequest).not.toHaveBeenCalled();
+    expect(changeRisk.forCommit).not.toHaveBeenCalled();
+  });
+
+  it('answers a missing row with the same 404 body the show routes use', async () => {
+    const { service } = build(null, null);
+
+    await expect(service.commitRisk(user, 9)).rejects.toThrow(
+      'No query results for model [App\\Models\\CommitReview] 9',
+    );
   });
 });

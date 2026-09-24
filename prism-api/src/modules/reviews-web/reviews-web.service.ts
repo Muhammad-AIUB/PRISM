@@ -8,7 +8,9 @@ import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Review, ReviewComment, User } from '../../database/entities';
 import { GithubClientService } from '../../github/github-client.service';
 import { orderFindings, verdictFor } from '../../ai/verdict';
+import type { RiskAssessment } from '../../diff/risk-radar';
 import { ReviewQueueService } from '../review/review-queue.service';
+import { ChangeRiskService } from '../risk/change-risk.service';
 
 /**
  * Port of ReviewController and CommitReviewController (the web ones).
@@ -33,6 +35,7 @@ export class ReviewsWebService {
     private readonly crypt: CryptService,
     private readonly diffCache: DiffCacheService,
     private readonly auditLog: AuditLogService,
+    private readonly changeRisk: ChangeRiskService,
   ) {}
 
   // ── Pull requests ──────────────────────────────────────────────────
@@ -105,6 +108,19 @@ export class ReviewsWebService {
 
       return { status: match ? Number(match[1]) : 502, body: '' };
     }
+  }
+
+  /** Risk Radar for the review page. Ownership is checked before any diff is read. */
+  async pullRequestRisk(user: User, id: number): Promise<{ risk: RiskAssessment }> {
+    const pr = await this.findOwnedPullRequest(user, id, false);
+
+    return { risk: await this.changeRisk.forPullRequest(user, pr) };
+  }
+
+  async commitRisk(user: User, id: number): Promise<{ risk: RiskAssessment }> {
+    const cr = await this.findOwnedCommitReview(user, id);
+
+    return { risk: await this.changeRisk.forCommit(user, cr) };
   }
 
   async exportData(user: User, id: number): Promise<{ pr: PullRequest; review: Review | null }> {

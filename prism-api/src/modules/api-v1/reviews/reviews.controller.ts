@@ -71,6 +71,16 @@ export class ReviewsController {
     return this.reviewsService.showPullRequest(user, id);
   }
 
+  @Get('commits/:id/risk')
+  commitRisk(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    return this.reviewsService.commitRisk(user, id);
+  }
+
+  @Get('pull-requests/:id/risk')
+  pullRequestRisk(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    return this.reviewsService.pullRequestRisk(user, id);
+  }
+
   /**
    * The previous handler defaulted to 200; Nest defaults POST to 201.
    * The MCP server does not check the code, but the contract is 200 — pin it.

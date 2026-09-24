@@ -11,6 +11,7 @@ import { CryptService } from '../../common/utils/crypt.service';
 import { CommitReview } from '../../database/entities';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 import { prepareDiff } from '../../diff/prepare';
+import { tryAssessRisk } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
 import { reconcileScore, verdictFor } from '../../ai/verdict';
@@ -209,6 +210,9 @@ export class CommitReviewRunner {
         performanceIssues: layers.performance as ReviewIssue[],
         codeQualityIssues: layers.code_quality as ReviewIssue[],
         aiModelUsed: model,
+        // Computed from the whole diff, not the budgeted selection the model
+        // saw: blast radius is a property of the change, not of what fit.
+        risk: tryAssessRisk(diffBody),
       }),
       signal,
     );

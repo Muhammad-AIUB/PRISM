@@ -37,6 +37,11 @@ export class ReviewsWebController {
     return this.reviews.reAnalyzePullRequest(user, id);
   }
 
+  @Get(':pullRequest/risk')
+  risk(@CurrentUser() user: User, @Param('pullRequest', ParseIntPipe) id: number) {
+    return this.reviews.pullRequestRisk(user, id);
+  }
+
   /**
    * Returns GitHub's raw diff as text/plain, passing its status through. The
    * point of proxying is that the browser never handles the GitHub token.

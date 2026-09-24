@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { reAnalyzePullRequest } from '@/app/reviews/actions';
 import AuthenticatedLayout from '@/components/layouts/AuthenticatedLayout';
 import DiffViewer from '@/components/review/DiffViewer';
+import RiskPanel from '@/components/review/RiskPanel';
 import {
   FixesTab,
   IssueCard,
@@ -227,6 +228,8 @@ export default function ReviewShowView({
         {/* The verdict leads. Everything below it is detail for someone who has
             already decided to investigate. */}
         <VerdictPanel verdict={review?.verdict} findings={review?.findings} />
+
+        <RiskPanel kind="pull-request" id={pullRequest.id} />
 
         {review?.summary && (
           <div className="card">

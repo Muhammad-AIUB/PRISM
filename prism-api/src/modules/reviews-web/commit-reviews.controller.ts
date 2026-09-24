@@ -24,6 +24,11 @@ export class CommitReviewsController {
     return this.reviews.showCommit(user, id);
   }
 
+  @Get(':commitReview/risk')
+  risk(@CurrentUser() user: User, @Param('commitReview', ParseIntPipe) id: number) {
+    return this.reviews.commitRisk(user, id);
+  }
+
   @Post(':commitReview/re-analyze')
   @HttpCode(HttpStatus.OK)
   reAnalyze(@CurrentUser() user: User, @Param('commitReview', ParseIntPipe) id: number) {
