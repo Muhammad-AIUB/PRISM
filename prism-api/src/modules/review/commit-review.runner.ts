@@ -9,7 +9,6 @@ import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { CommitReview } from '../../database/entities';
-import type { ReviewIssue } from '../../database/entities/review.entity';
 import { prepareDiff } from '../../diff/prepare';
 import { tryAssessRisk } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
@@ -202,9 +201,9 @@ export class CommitReviewRunner {
         id: review.id,
         overallScore,
         summary,
-        securityIssues: layers.security as ReviewIssue[],
-        performanceIssues: layers.performance as ReviewIssue[],
-        codeQualityIssues: layers.code_quality as ReviewIssue[],
+        securityIssues: layers.security,
+        performanceIssues: layers.performance,
+        codeQualityIssues: layers.code_quality,
         aiModelUsed: model,
         // Computed from the whole diff, not the budgeted selection the model
         // saw: blast radius is a property of the change, not of what fit.

@@ -34,7 +34,7 @@ function fakeRedis() {
     /** SAVE_SCRIPT's semantics, step for step; any other script is a test bug. */
     eval: jest.fn(async (script: string, _n: number, ...args: (string | number)[]) => {
       if (script !== SAVE_SCRIPT) throw new Error('unexpected script');
-      const [design, history, owned, erased, json, id, , cap] = args.map(String) as string[];
+      const [design, history, owned, erased, json, id, , cap] = args.map(String);
       if (strings.has(erased as string)) return 0;
       strings.set(design as string, json as string);
       lists.set(history as string, [id as string, ...(lists.get(history as string) ?? [])].slice(0, Number(cap)));
@@ -114,7 +114,7 @@ describe('DesignStore', () => {
 
     await store.save(1, design('a'));
     redis.multi = () => {
-      const chain = multi() as Record<string, unknown>;
+      const chain = multi();
 
       chain.exec = async () => [[null, 1], [new Error('WRONGTYPE'), null], [null, 1]];
 

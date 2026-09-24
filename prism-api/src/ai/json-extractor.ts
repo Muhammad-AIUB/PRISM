@@ -72,13 +72,15 @@ export function extractJson(content: string): ExtractedJson | null {
  * still return 8.5 out of 10 often enough that this matters.
  */
 export function clampScore(value: unknown): number | null {
-  if (typeof value === 'boolean' || value === null || value === undefined) {
+  // Only a number or a numeric string can be a score. Objects and arrays used
+  // to reach String() below and fail as "[object Object]"; say so directly.
+  if (typeof value !== 'number' && typeof value !== 'string') {
     return null;
   }
 
   // Number('') and Number('   ') are 0, but PHP's is_numeric() rejects both,
   // so an empty score must stay null rather than becoming a hard zero.
-  const asString = typeof value === 'number' ? null : String(value).trim();
+  const asString = typeof value === 'number' ? null : value.trim();
 
   if (asString === '') {
     return null;

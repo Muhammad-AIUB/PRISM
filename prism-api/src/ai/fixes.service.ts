@@ -23,13 +23,29 @@ import {
  */
 const VALID_LAYERS = ['security', 'performance', 'code_quality'] as const;
 
-/** PHP's `(string) ($x ?? '')`. */
+/**
+ * PHP's `(string) ($x ?? '')` for scalars. A model that answers with a
+ * structured value where a string belongs gets it rendered as JSON, which is
+ * readable in a code block, rather than as "[object Object]", which is not.
+ */
 function toStringValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
   }
 
-  return typeof value === 'string' ? value : String(value);
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value) ?? '';
+  } catch {
+    return '';
+  }
 }
 
 /** PHP's is_numeric() gate followed by an (int) truncating cast. */

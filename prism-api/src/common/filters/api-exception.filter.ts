@@ -37,7 +37,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     const body = this.toErrorBody(exception, status);
 
-    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status >= Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
       this.logger.error(
         `${request.method} ${request.url} → ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
@@ -64,7 +64,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     // class-validator's ValidationPipe returns message as string[] — fold it
     // into the original's 422 shape.
-    if (status === HttpStatus.UNPROCESSABLE_ENTITY && Array.isArray(rawMessage)) {
+    if (status === Number(HttpStatus.UNPROCESSABLE_ENTITY) && Array.isArray(rawMessage)) {
       return {
         message: String(rawMessage[0] ?? 'The given data was invalid.'),
         errors: this.groupValidationMessages(rawMessage as string[]),

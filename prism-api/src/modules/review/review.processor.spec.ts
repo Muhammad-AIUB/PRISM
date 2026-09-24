@@ -23,8 +23,8 @@ describe('ReviewProcessor deadline', () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
-    commitRunner = { run: jest.fn(), markFailed: jest.fn() } as never;
-    prRunner = { run: jest.fn(), markFailed: jest.fn() } as never;
+    commitRunner = { run: jest.fn(), markFailed: jest.fn() };
+    prRunner = { run: jest.fn(), markFailed: jest.fn() };
     processor = new ReviewProcessor(commitRunner as never, prRunner as never);
   });
 

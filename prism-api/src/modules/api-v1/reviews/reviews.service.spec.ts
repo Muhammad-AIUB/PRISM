@@ -52,11 +52,11 @@ describe('ReviewsService re-analyze', () => {
     pullRequests = {
       findOne: jest.fn().mockResolvedValue(pullRequest),
       update: jest.fn().mockResolvedValue(undefined),
-    } as never;
+    };
     commitReviews = {
       findOne: jest.fn().mockResolvedValue(commitReview),
       update: jest.fn().mockResolvedValue(undefined),
-    } as never;
+    };
     reviewQueue = {
       enqueueCommitReview: jest.fn().mockResolvedValue(undefined),
       enqueuePullRequestReview: jest.fn().mockResolvedValue(undefined),
@@ -66,8 +66,8 @@ describe('ReviewsService re-analyze', () => {
       // Delegated, not stubbed: the assertion below compares against the real
       // key, so a change to the key format must show up here.
       commitKey: jest.fn((repoId: number, sha: string) => keys.commitKey(repoId, sha)),
-    } as never;
-    auditLog = { record: jest.fn().mockResolvedValue(undefined) } as never;
+    };
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
 
     service = new ReviewsService(
       {} as never,

@@ -10,7 +10,6 @@ import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { PullRequest, Review, ReviewComment } from '../../database/entities';
-import type { ReviewIssue } from '../../database/entities/review.entity';
 import type { ReviewLayer, ReviewSeverity } from '../../database/entities/review-comment.entity';
 import { prepareDiff } from '../../diff/prepare';
 import { tryAssessRisk, type RiskAssessment } from '../../diff/risk-radar';
@@ -239,9 +238,9 @@ export class PullRequestReviewRunner {
         id: pr.id,
         overallScore,
         summary,
-        securityIssues: layers.security as ReviewIssue[],
-        performanceIssues: layers.performance as ReviewIssue[],
-        codeQualityIssues: layers.code_quality as ReviewIssue[],
+        securityIssues: layers.security,
+        performanceIssues: layers.performance,
+        codeQualityIssues: layers.code_quality,
         aiModelUsed: model,
         risk,
       }),
@@ -320,7 +319,7 @@ export class PullRequestReviewRunner {
     if (existing) {
       await this.reviews.update(existing.id, { ...values, updatedAt: now });
 
-      return { ...existing, ...values } as Review;
+      return { ...existing, ...values };
     }
 
     const created = this.reviews.create({
@@ -357,7 +356,7 @@ export class PullRequestReviewRunner {
             lineNumber: toLine(issue.line),
             layer,
             severity: VALID_SEVERITIES.includes(issue.severity as ReviewSeverity)
-              ? (issue.severity as ReviewSeverity)
+              ? (issue.severity)
               : 'suggestion',
             comment: String(issue.comment),
             createdAt: now,

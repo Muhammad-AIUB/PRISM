@@ -31,7 +31,7 @@ export class ConnectRepositoryDto {
   full_name!: string;
 
   @IsOptional()
-  @IsIn(REVIEW_MODES as unknown as string[])
+  @IsIn(REVIEW_MODES)
   review_mode?: string;
 
   @IsOptional()
@@ -45,7 +45,7 @@ export class ConnectRepositoryDto {
 }
 
 export class UpdateRepositorySettingsDto {
-  @IsIn(REVIEW_MODES as unknown as string[])
+  @IsIn(REVIEW_MODES)
   review_mode!: string;
 
   @IsOptional()

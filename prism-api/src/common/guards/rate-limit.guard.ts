@@ -62,11 +62,11 @@ export class RateLimitGuard extends ThrottlerGuard {
     return `ip:${request.ip ?? 'unknown'}`;
   }
 
-  protected override async throwThrottlingException(
+  protected override throwThrottlingException(
     _context: ExecutionContext,
     _throttlerLimitDetail: ThrottlerLimitDetail,
   ): Promise<void> {
-    throw new HttpException('Too Many Attempts.', HttpStatus.TOO_MANY_REQUESTS);
+    return Promise.reject(new HttpException('Too Many Attempts.', HttpStatus.TOO_MANY_REQUESTS));
   }
 
   /** The verified subject of the session cookie, or null for anything less. */

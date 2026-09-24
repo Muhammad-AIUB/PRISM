@@ -10,7 +10,7 @@ jest.mock('@nestjs/jwt', () => ({ JwtService: class {} }));
  * -in user gets their own, and that nothing short of a valid signature does.
  */
 function guard(verify?: (token: string) => Promise<unknown>) {
-  const instance = new RateLimitGuard({ throttlers: [] } as never, {} as never, {} as never);
+  const instance = new RateLimitGuard({ throttlers: [] }, {} as never, {} as never);
 
   Object.assign(instance, {
     jwt: verify ? { verifyAsync: verify } : undefined,
