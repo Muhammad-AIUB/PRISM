@@ -3,9 +3,6 @@
 import {
   Check,
   ExternalLink,
-  GitCommit,
-  GitPullRequest,
-  Layers,
   Lock,
   Search,
   Settings,
@@ -13,9 +10,10 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState, useTransition, type ComponentType } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { connectRepository } from '@/app/repositories/actions';
 import BranchPicker from '@/components/repositories/BranchPicker';
+import ModeBadge from '@/components/repositories/ModeBadge';
 import ModeSelector, { CONNECT_MODE_OPTIONS } from '@/components/repositories/ModeSelector';
 import FlashBanner from '@/components/ui/FlashBanner';
 import { relativeTime } from '@/lib/time';
@@ -48,41 +46,6 @@ const LANG_COLORS: Record<string, string> = {
   Shell: '#89e051',
   Dockerfile: '#384d54',
 };
-
-const MODE_BADGE: Record<
-  string,
-  { icon: ComponentType<{ className?: string }>; label: string; tone: string; color: string }
-> = {
-  pr_only: {
-    icon: GitPullRequest,
-    label: 'Pull Requests',
-    tone: 'rgba(99,102,241,0.10)',
-    color: 'var(--accent)',
-  },
-  commit_only: {
-    icon: GitCommit,
-    label: 'Commits',
-    tone: 'rgba(59,130,246,0.10)',
-    color: 'var(--info)',
-  },
-  both: { icon: Layers, label: 'Both', tone: 'rgba(34,197,94,0.10)', color: 'var(--success)' },
-};
-
-function ModeBadge({ mode }: { mode: string }) {
-  const badge = MODE_BADGE[mode] ?? MODE_BADGE.pr_only!;
-  const Icon = badge.icon;
-
-  return (
-    <span
-      className="badge"
-      style={{ backgroundColor: badge.tone, color: badge.color, borderColor: badge.color }}
-      title={`Review mode: ${badge.label}`}
-    >
-      <Icon className="h-3 w-3" />
-      {badge.label}
-    </span>
-  );
-}
 
 function ModeModal({
   repo,

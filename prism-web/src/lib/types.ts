@@ -126,6 +126,22 @@ export interface RepositorySettingsData {
   reviewModes: string[];
 }
 
+export interface RepositoryReviewsData {
+  repository: {
+    id: number;
+    name: string;
+    full_name: string;
+    review_mode: string;
+  };
+  /** Which list `items` holds. The API picks one when the URL names none. */
+  kind: 'prs' | 'commits';
+  total_prs: number;
+  total_commits: number;
+  page: number;
+  per_page: number;
+  items: FeedItem[];
+}
+
 export interface Branch {
   name: string;
   is_default: boolean;
