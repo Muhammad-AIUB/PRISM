@@ -1,5 +1,6 @@
 import { cookies, headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
+import { isHibernating, wakeUrl } from './wake';
 
 /**
  * Server-side calls into prism-api.
@@ -9,8 +10,9 @@ import { notFound, redirect } from 'next/navigation';
  * cookie here too; this forwards it onward. Locally the rewrites in
  * next.config.mjs stand in for the proxy.
  *
- * Everything is fetched server-side, which means the API origin, the session
- * cookie and the user's GitHub token never reach the browser.
+ * Everything is fetched server-side, which means the session cookie and the
+ * user's GitHub token never reach the browser. Nor does the API origin, with
+ * one exception: the wake page (src/lib/wake.ts).
  */
 const API_ORIGIN = process.env.PRISM_API_ORIGIN ?? 'http://127.0.0.1:3999';
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME ?? 'prism_session';
@@ -48,6 +50,10 @@ const MAX_RETRY_WAIT_MS = 5_000;
 async function request(path: string, init: ApiRequest = {}): Promise<Response> {
   const response = await send(path, init);
 
+  if (isHibernating(response)) {
+    return asleep(init.method ?? 'GET');
+  }
+
   if (response.status !== 429 || (init.method ?? 'GET') !== 'GET') {
     return response;
   }
@@ -65,6 +71,29 @@ async function request(path: string, init: ApiRequest = {}): Promise<Response> {
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 
   return send(path, init);
+}
+
+/**
+ * prism-api is asleep, and nothing sent from here will wake it: see
+ * src/lib/wake.ts. A page load goes to the wake page and comes back.
+ *
+ * A server action cannot be handled that way. Actions catch what the API call
+ * throws and show its message, so a redirect would be swallowed and reported
+ * as a generic failure; and a write must not be replayed behind the visitor's
+ * back. They get an error that says what to do: reloading is a page load.
+ */
+async function asleep(method: string): Promise<never> {
+  const incoming = await headers();
+
+  if (method !== 'GET' || incoming.has('next-action')) {
+    throw new ApiError(
+      503,
+      'The server was asleep. Reload this page to wake it, then try again.',
+    );
+  }
+
+  // Set by src/middleware.ts: the page being rendered, to return to.
+  redirect(wakeUrl(incoming.get('x-prism-path')));
 }
 
 async function send(path: string, init: ApiRequest): Promise<Response> {

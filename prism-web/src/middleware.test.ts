@@ -89,3 +89,52 @@ describe('middleware: request id', () => {
     expect(forwarded(response, 'x-request-id')).toBe(response.headers.get('X-Request-Id'));
   });
 });
+
+/**
+ * src/lib/api.ts sends a page load to /waking when prism-api is asleep, and
+ * needs to know which page to come back to. A server component cannot see its
+ * own URL, so the middleware passes it along.
+ */
+describe('middleware: the page being rendered', () => {
+  it('forwards the path and query for the wake page to return to', () => {
+    const response = middleware(
+      new NextRequest('http://localhost:3001/repositories/3?kind=commits&page=2'),
+    );
+
+    expect(forwarded(response, 'x-prism-path')).toBe('/repositories/3?kind=commits&page=2');
+  });
+
+  it('overwrites a value the client sent', () => {
+    expect(forwarded(run({ 'x-prism-path': 'https://evil.example' }), 'x-prism-path')).toBe(
+      '/dashboard',
+    );
+  });
+});
+
+/**
+ * The wake page has the browser call prism-api directly, which is the one
+ * thing connect-src 'self' forbids. It is allowed there and nowhere else.
+ */
+describe('middleware: the wake page', () => {
+  const connectSrc = (url: string) =>
+    (middleware(new NextRequest(url)).headers.get('Content-Security-Policy') ?? '')
+      .split('; ')
+      .find((directive) => directive.startsWith('connect-src')) ?? '';
+
+  it('may connect to the API origin', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('PRISM_API_ORIGIN', 'https://api.example.test');
+
+    expect(connectSrc('http://localhost:3001/waking?next=/dashboard')).toBe(
+      "connect-src 'self' https://api.example.test",
+    );
+  });
+
+  it('is the only page that may', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('PRISM_API_ORIGIN', 'https://api.example.test');
+
+    expect(connectSrc('http://localhost:3001/dashboard')).toBe("connect-src 'self'");
+    expect(connectSrc('http://localhost:3001/waking/else')).toBe("connect-src 'self'");
+  });
+});

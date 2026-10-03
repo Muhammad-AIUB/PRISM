@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { apiOrigin, WAKE_PATH } from '@/lib/wake';
 
 /** Upstream ids are kept only in a shape that is safe to log (matches prism-api). */
 const SAFE_ID = /^[A-Za-z0-9._:-]{1,128}$/;
@@ -22,10 +23,14 @@ const SAFE_ID = /^[A-Za-z0-9._:-]{1,128}$/;
  * Styles allow 'unsafe-inline' because the components set inline `style`
  * attributes throughout. That is the accepted trade: CSS cannot execute code,
  * and the script policy is what stops XSS.
+ *
+ * Connections go only to this site, except from the wake page, whose whole
+ * job is to have the browser call prism-api directly (src/lib/wake.ts).
  */
 export function middleware(request: NextRequest): NextResponse {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const dev = process.env.NODE_ENV !== 'production';
+  const waking = request.nextUrl.pathname === WAKE_PATH;
 
   const policy = [
     "default-src 'self'",
@@ -35,7 +40,7 @@ export function middleware(request: NextRequest): NextResponse {
     // GitHub avatars: github.com/{login}.png redirects to avatars.githubusercontent.com.
     "img-src 'self' data: blob: https://github.com https://avatars.githubusercontent.com",
     "font-src 'self'",
-    `connect-src 'self'${dev ? ' ws:' : ''}`,
+    `connect-src 'self'${waking ? ` ${apiOrigin()}` : ''}${dev ? ' ws:' : ''}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -47,6 +52,8 @@ export function middleware(request: NextRequest): NextResponse {
   const requestHeaders = new Headers(request.headers);
 
   requestHeaders.set('x-request-id', requestId);
+  // The page being rendered, for src/lib/api.ts to return to after a wake.
+  requestHeaders.set('x-prism-path', `${request.nextUrl.pathname}${request.nextUrl.search}`);
 
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', policy);

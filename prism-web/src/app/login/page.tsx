@@ -118,10 +118,11 @@ export default async function LoginPage({
           <span className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
         </div>
 
-        {/* A plain anchor, not next/link: this leaves the app for GitHub via
-            the rewrite to prism-api, and must be a full navigation. */}
+        {/* A plain anchor, not next/link: this leaves the app for GitHub and
+            must be a full navigation. It goes by way of /login/github, which
+            wakes a sleeping prism-api before handing over to /auth/github. */}
         <a
-          href="/auth/github"
+          href="/login/github"
           className="btn min-h-[44px] w-full text-sm font-semibold transition active:scale-95"
           style={{
             backgroundColor: '#0f0f13',

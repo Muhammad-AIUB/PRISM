@@ -87,6 +87,18 @@ a React Server Component or a Server Action via `prism-web/src/lib/api.ts`, so t
 API origin, the session cookie and the user's GitHub token never reach the client —
 which is why `PRISM_API_ORIGIN` deliberately has no `NEXT_PUBLIC_` prefix.
 
+**One exception: the wake page.** On Render's free tier `prism-api` sleeps after 15
+idle minutes, and while it sleeps Render's edge answers every request `prism-web`
+makes with a 429 (`x-render-routing: hibernate-rate-limited`) *without starting the
+service*. Only a request made directly to the API from outside Render wakes it. So
+`src/lib/api.ts` sends a page load that finds the API asleep to `/waking`, where the
+visitor's browser pings the API itself and then returns (`src/lib/wake.ts`). That
+page is the only place the API origin reaches the browser, and the only one whose
+CSP `connect-src` allows it. Sign-in starts at `/login/github` rather than
+`/auth/github` for the same reason: the rewrite proxies straight through, so nothing
+on this side could see the 429. Server actions do not redirect; they get a 503
+`ApiError` telling the visitor to reload.
+
 `prism-api` sets the session cookie, and a browser returns a cookie only to the
 origin that set it. **Both services must answer on one hostname** — a reverse proxy
 in production, the rewrites in `next.config.mjs` locally (`/auth/*`, `/api/v1/*`,
