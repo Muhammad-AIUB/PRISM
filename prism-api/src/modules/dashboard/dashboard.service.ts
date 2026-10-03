@@ -4,6 +4,11 @@ import { In, IsNull, Not, Repository as OrmRepository } from 'typeorm';
 import { toIso8601String } from '../../common/utils/iso8601';
 import { CommitReview, PullRequest, Repository, Review } from '../../database/entities';
 import type { User } from '../../database/entities';
+import {
+  commitReviewFeedItem,
+  pullRequestFeedItem,
+  type ReviewFeedItem,
+} from '../../database/review-feed.mapper';
 
 /**
  * Port of App\Http\Controllers\DashboardController.
@@ -84,7 +89,7 @@ export class DashboardService {
     return Math.round(Number(row.avg) * 10) / 10;
   }
 
-  private async recentPullRequests(repoIds: number[]): Promise<Record<string, unknown>[]> {
+  private async recentPullRequests(repoIds: number[]): Promise<ReviewFeedItem[]> {
     const rows = await this.pullRequests.find({
       where: { repositoryId: In(repoIds) },
       relations: { repository: true, review: true },
@@ -94,24 +99,10 @@ export class DashboardService {
       take: 10,
     });
 
-    return rows.map((pr) => ({
-      kind: 'pr',
-      id: pr.id,
-      title: pr.title,
-      author: pr.author,
-      status: pr.status,
-      pr_number: pr.prNumber,
-      created_at: toIso8601String(pr.createdAt),
-      repository: {
-        name: pr.repository?.name ?? null,
-        full_name: pr.repository?.fullName ?? null,
-      },
-      score: pr.review?.overallScore ?? null,
-      url: `/reviews/${pr.id}`,
-    }));
+    return rows.map((pr) => pullRequestFeedItem(pr));
   }
 
-  private async recentCommitReviews(repoIds: number[]): Promise<Record<string, unknown>[]> {
+  private async recentCommitReviews(repoIds: number[]): Promise<ReviewFeedItem[]> {
     const rows = await this.commitReviews.find({
       where: { repositoryId: In(repoIds) },
       relations: { repository: true },
@@ -119,23 +110,7 @@ export class DashboardService {
       take: 10,
     });
 
-    return rows.map((cr) => ({
-      kind: 'commit',
-      id: cr.id,
-      // Only the first line of the commit message, as the table is one row tall.
-      title: cr.commitMessage ? (cr.commitMessage.split('\n')[0] ?? '') : '(no commit message)',
-      author: cr.author,
-      status: cr.status,
-      short_sha: cr.commitSha.slice(0, 7),
-      branch: cr.branch,
-      created_at: toIso8601String(cr.createdAt),
-      repository: {
-        name: cr.repository?.name ?? null,
-        full_name: cr.repository?.fullName ?? null,
-      },
-      score: cr.overallScore,
-      url: `/commits/${cr.id}`,
-    }));
+    return rows.map((cr) => commitReviewFeedItem(cr));
   }
 
   /** Scored PR reviews only, oldest first — it feeds a trend chart. */
