@@ -6,16 +6,23 @@ import { Repository as OrmRepository } from 'typeorm';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { JsonCacheService } from '../../cache/json-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
-import { Repository, User } from '../../database/entities';
+import { CommitReview, PullRequest, Repository, User } from '../../database/entities';
 import {
   REVIEW_MODES,
   randomString,
   watchedBranchesFor,
   webhookEventsFor,
 } from '../../database/repository.helpers';
+import {
+  commitReviewFeedItem,
+  pullRequestFeedItem,
+  type ReviewFeedItem,
+} from '../../database/review-feed.mapper';
 import { GithubClientService } from '../../github/github-client.service';
 import type {
   ConnectRepositoryDto,
+  RepositoryReviewsQueryDto,
+  ReviewKind,
   UpdateRepositorySettingsDto,
 } from './dto/repository.dto';
 
@@ -31,6 +38,8 @@ import type {
 const CACHE_GITHUB_REPOS_TTL = 300;
 const CACHE_CONNECTED_REPOS_TTL = 600;
 const CACHE_BRANCHES_TTL = 600;
+
+export const REVIEWS_PER_PAGE = 25;
 
 /** Thrown inside cache.remember() so a failed listing is never stored. */
 class GithubListingFailed extends Error {
@@ -56,6 +65,10 @@ export class RepositoriesService {
     private readonly crypt: CryptService,
     private readonly auditLog: AuditLogService,
     private readonly configService: ConfigService,
+    @InjectRepository(PullRequest)
+    private readonly pullRequests: OrmRepository<PullRequest>,
+    @InjectRepository(CommitReview)
+    private readonly commitReviews: OrmRepository<CommitReview>,
   ) {}
 
   /** GET /repositories — the props the Repositories/Index page renders from. */
@@ -263,6 +276,74 @@ export class RepositoriesService {
     );
 
     return { message: 'Repository settings updated.' };
+  }
+
+  /**
+   * GET /repositories/:id/reviews — every review for one repository.
+   *
+   * The dashboard shows the last ten across all repositories; this is the
+   * whole list for one. Both totals come back whichever kind is listed, so
+   * the page can label both tabs from a single request.
+   */
+  async reviews(
+    user: User,
+    id: number,
+    query: RepositoryReviewsQueryDto,
+  ): Promise<{
+    repository: { id: number; name: string; full_name: string; review_mode: string };
+    kind: ReviewKind;
+    total_prs: number;
+    total_commits: number;
+    page: number;
+    per_page: number;
+    items: ReviewFeedItem[];
+  }> {
+    const repository = await this.findOwned(user, id);
+    const where = { repositoryId: repository.id };
+
+    const [totalPrs, totalCommits] = await Promise.all([
+      this.pullRequests.count({ where }),
+      this.commitReviews.count({ where }),
+    ]);
+
+    // A commit-only repository opens on its commits rather than on an empty
+    // pull request tab — the same rule the dashboard applies.
+    const kind = query.kind ?? (totalPrs === 0 && totalCommits > 0 ? 'commits' : 'prs');
+    const page = query.page ?? 1;
+    const paging = {
+      // id breaks ties so rows created in the same second do not shuffle.
+      order: { createdAt: 'DESC', id: 'DESC' },
+      skip: (page - 1) * REVIEWS_PER_PAGE,
+      take: REVIEWS_PER_PAGE,
+    } as const;
+
+    const items =
+      kind === 'prs'
+        ? (
+            await this.pullRequests.find({
+              where,
+              relations: { repository: true, review: true },
+              ...paging,
+            })
+          ).map((pr) => pullRequestFeedItem(pr))
+        : (
+            await this.commitReviews.find({ where, relations: { repository: true }, ...paging })
+          ).map((cr) => commitReviewFeedItem(cr));
+
+    return {
+      repository: {
+        id: repository.id,
+        name: repository.name,
+        full_name: repository.fullName,
+        review_mode: repository.reviewMode,
+      },
+      kind,
+      total_prs: totalPrs,
+      total_commits: totalCommits,
+      page,
+      per_page: REVIEWS_PER_PAGE,
+      items,
+    };
   }
 
   /**

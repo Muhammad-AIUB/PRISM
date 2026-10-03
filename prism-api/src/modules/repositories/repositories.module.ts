@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../../audit/audit.module';
 import { DiffCacheModule } from '../../cache/diff-cache.module';
-import { Repository } from '../../database/entities';
+import { CommitReview, PullRequest, Repository } from '../../database/entities';
 import { GithubModule } from '../../github/github.module';
 import { AuthWebModule } from '../auth/auth-web.module';
 import { RepositoriesController } from './repositories.controller';
@@ -10,7 +10,7 @@ import { RepositoriesService } from './repositories.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Repository]),
+    TypeOrmModule.forFeature([Repository, PullRequest, CommitReview]),
     // AuthWebModule supplies WebAuthGuard, its JwtModule and the User repository.
     AuthWebModule,
     GithubModule,

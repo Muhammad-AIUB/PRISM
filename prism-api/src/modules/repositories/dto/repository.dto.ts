@@ -8,7 +8,9 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { REVIEW_MODES } from '../../../database/repository.helpers';
 
@@ -61,4 +63,22 @@ export class BranchesQueryDto {
   @IsString()
   @Matches(/^[\w.-]+\/[\w.-]+$/)
   full_name!: string;
+}
+
+export const REVIEW_KINDS = ['prs', 'commits'] as const;
+export type ReviewKind = (typeof REVIEW_KINDS)[number];
+
+export class RepositoryReviewsQueryDto {
+  @IsOptional()
+  @IsIn(REVIEW_KINDS)
+  kind?: ReviewKind;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  // A page number that cannot exist. Without a ceiling, a huge one overflows
+  // the OFFSET and Postgres answers with an error instead of an empty page.
+  @Max(1_000_000)
+  page?: number;
 }

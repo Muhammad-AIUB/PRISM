@@ -17,6 +17,7 @@ import { WebAuthGuard } from '../auth/web-auth.guard';
 import {
   BranchesQueryDto,
   ConnectRepositoryDto,
+  RepositoryReviewsQueryDto,
   UpdateRepositorySettingsDto,
 } from './dto/repository.dto';
 import { RepositoriesService } from './repositories.service';
@@ -77,5 +78,14 @@ export class RepositoriesController {
     @Body() dto: UpdateRepositorySettingsDto,
   ) {
     return this.repositories.updateSettings(user, id, dto);
+  }
+
+  @Get(':repository/reviews')
+  reviews(
+    @CurrentUser() user: User,
+    @Param('repository', ParseIdPipe) id: number,
+    @Query() query: RepositoryReviewsQueryDto,
+  ) {
+    return this.repositories.reviews(user, id, query);
   }
 }
