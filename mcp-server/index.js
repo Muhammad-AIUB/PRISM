@@ -12,7 +12,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const PRISM_URL = (process.env.PRISM_URL || 'https://prism-2o7j.onrender.com').replace(/\/$/, '');
+// The API itself, not prism-web: a direct request wakes a sleeping API on
+// Render's free tier, while one proxied through prism-web just gets a 429.
+const PRISM_URL = (process.env.PRISM_URL || 'https://prism-api-wmam.onrender.com').replace(/\/$/, '');
 const TOKEN = process.env.PRISM_API_TOKEN;
 
 if (!TOKEN) {
@@ -107,7 +109,7 @@ const indent = (s, n) => String(s).split('\n').map((l) => ' '.repeat(n) + l).joi
 
 const text = (s) => ({ content: [{ type: 'text', text: s }] });
 
-const server = new McpServer({ name: 'prism-code-review', version: '1.1.0' });
+const server = new McpServer({ name: 'prism-code-review', version: '1.1.1' });
 
 server.tool(
   'get_latest_review',

@@ -1,10 +1,10 @@
 {
   "name": "prism-code-review-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "MCP server for PRism — AI code review results inside Claude Code, Claude Desktop, Cursor, and any MCP client",
   "type": "module",
   "bin": {
-    "prism-mcp": "./index.js"
+    "prism-mcp": "index.js"
   },
   "files": [
     "index.js",
@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Muhammad-AIUB/PRISM.git",
+    "url": "git+https://github.com/Muhammad-AIUB/PRISM.git",
     "directory": "mcp-server"
   },
   "dependencies": {
