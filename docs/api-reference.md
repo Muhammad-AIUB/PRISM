@@ -15,7 +15,7 @@ The source of truth for every route is the controller named beside it. Response 
 
 ## Conventions
 
-**Base URL.** The API itself, for example `https://prism-api-wmam.onrender.com`. Use the
+**Base URL.** The API itself, for example `https://<your-api-host>`. Use the
 API origin, not `prism-web`, for programmatic access: a request to the API wakes it from
 sleep, while one proxied through `prism-web` gets Render's 429 ([why](adr/0005-wake-the-api-from-the-browser.md)).
 
@@ -236,7 +236,7 @@ return 401 `Unauthenticated.` without it, except where marked public.
 ## Examples
 
 ```bash
-export PRISM_URL=https://prism-api-wmam.onrender.com
+export PRISM_URL=https://<your-api-host>
 export PRISM_API_TOKEN='<id>|<token>'      # from Settings -> API tokens
 
 # Who am I, and which repositories are connected?

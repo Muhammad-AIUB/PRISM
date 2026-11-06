@@ -69,13 +69,13 @@ at run time. Changing it requires a rebuild.
 | Variable | Required | Default | Effect |
 |---|---|---|---|
 | `PRISM_API_TOKEN` | **yes** | | A token created under *Settings -> API tokens*. The process exits with a hint if it is missing |
-| `PRISM_URL` | no | `https://prism-api-wmam.onrender.com` | The API's base URL. Point it at the **API**, not the web app, so a request wakes a sleeping service |
+| `PRISM_URL` | in practice yes | `https://prism-api-wmam.onrender.com` | The API's base URL. Point it at the **API**, not the web app, so a request wakes a sleeping service. The default host was **offline when last checked (2026-11-06)**, so set this to your own API ([known issue](known-issues.md#hosted-offline)) |
 
 ## GitHub Actions
 
 | Variable | Where | Effect |
 |---|---|---|
-| `PRISM_API_URL`, `PRISM_WEB_URL` | Repository *Settings -> Secrets and variables -> Actions -> Variables* | Targets of the keep-alive workflow. Defaults are the production hosts |
+| `PRISM_API_URL`, `PRISM_WEB_URL` | Repository *Settings -> Secrets and variables -> Actions -> Variables* | Targets of the keep-alive workflow. The defaults are the former production hosts, which are offline (2026-11-06), so the workflow fails until you set both to hosts that exist |
 
 ## Generating values
 

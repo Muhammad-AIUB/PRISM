@@ -64,11 +64,12 @@ Once the package is published, the equivalent block will be:
 | Variable | Required | Description |
 |---|---|---|
 | `PRISM_API_TOKEN` | yes | A token from *Settings -> API tokens*. The process exits with a hint if it is missing |
-| `PRISM_URL` | no | The base URL of the PRism **API**. Defaults to the hosted instance, `https://prism-api-wmam.onrender.com` |
+| `PRISM_URL` | yes, in practice | The base URL of the PRism **API**. It defaults to `https://prism-api-wmam.onrender.com`, the former hosted instance, which was **offline when last checked (2026-11-06)**, so every tool call fails with a 404 until you set this to a running API |
 
 Point `PRISM_URL` at the **API** and not the web app. On Render's free tier a request made straight
 to a sleeping API wakes it (about 40 seconds), while one proxied through the web app only receives a
-429 and wakes nothing. If you self-host, set it to your own API URL.
+429 and wakes nothing. There is currently no hosted PRism to point at: run your own
+([docs/deployment.md](../docs/deployment.md), or locally with [docs/development.md](../docs/development.md)).
 
 ## Tools
 
@@ -107,6 +108,7 @@ claude:  applies PRism's suggested fixes to your files
 | `PRism API 401: {"message":"Unauthenticated."}` | The token is wrong, revoked or expired. Create a new one |
 | `PRism API 429: {"message":"Too Many Attempts."}` | More than 100 requests per minute from your address. Wait a minute |
 | The first call hangs for about 40 seconds, then works | The free-tier API was asleep and is waking |
+| `PRism API 404: ...` on **every** tool, including `list_recent_reviews` | `PRISM_URL` is unset or points at a host with no service (the default hosted instance is offline). Set it to your running API |
 | `PRism API 404: No query results for model ...` | That id does not exist. Take it from `list_recent_reviews` |
 | `PRism API 403: ... Not your repository` | That id belongs to another user |
 | `design_system` returns a design labelled as a baseline | The model was unavailable or rate-limited; the notice says which. Try again later |

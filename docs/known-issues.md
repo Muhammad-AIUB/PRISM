@@ -194,6 +194,19 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
 
 ## Free tier and operations
 
+<a id="hosted-offline"></a>
+- **The hosted instance is offline.** On 2026-11-06 both `https://prism-api-wmam.onrender.com/health`
+  and `https://prism-web-fgts.onrender.com/login` returned Render's 404 with
+  `x-render-routing: no-server`, which means no service answers at those hostnames. Whether the
+  services were deleted, suspended or renamed has not been determined; it needs the Render dashboard.
+  The keep-alive run at 04:57 UTC that day succeeded and the next, at 12:45 UTC, failed with the API's
+  404. Consequences: there is no live demo; the MCP server's default `PRISM_URL` points at the dead
+  host, so its tools fail with a 404 until `PRISM_URL` is set; and the keep-alive workflow's default
+  hosts are the same, so every scheduled run fails. **Fix:** restore or redeploy the services from
+  `render.yaml`, and if Render assigns new hostnames update `PRISM_API_URL`/`PRISM_WEB_URL`, the
+  GitHub OAuth app's callback URL and the docs. **Proposed code changes, not made:** make `PRISM_URL` required in
+  `mcp-server/index.js` instead of defaulting to a dead host, and stop defaulting the keep-alive hosts.
+
 <a id="f3"></a>
 - **Node is not pinned on Render.** `render.yaml` sets no `NODE_VERSION`, so Render resolves the
   `engines.node` ranges (`>=20.11` API, `>=22.12` web) and the major version can change under the

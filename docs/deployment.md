@@ -4,6 +4,10 @@ How PRism is deployed on Render's free tier with Neon (Postgres) and Upstash (Re
 stand up your own copy, and what you give up by running on free infrastructure. For running
 and debugging a live system use the [operations runbook](operations.md).
 
+> **Status (2026-11-06):** the project's own hosted instance is not running; both of its hostnames
+> return Render's 404 `no-server`. The steps below stand up a new one. See
+> [known-issues.md](known-issues.md#hosted-offline).
+
 ## Topology
 
 ```text

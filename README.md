@@ -7,13 +7,14 @@
 Every finding points at a line that really changed. Every review opens with a verdict you
 can check, not a score you have to trust.
 
-[**Try it live**](https://prism-web-fgts.onrender.com/login) · [Documentation](docs/README.md) · [MCP server](mcp-server/README.md)
+**Hosted demo: offline** ([details](docs/known-issues.md#hosted-offline)) · [Run it yourself](#run-it-locally) · [Documentation](docs/README.md) · [MCP server](mcp-server/README.md)
 
 [![CI](https://github.com/Muhammad-AIUB/PRISM/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhammad-AIUB/PRISM/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-<sub>The live demo runs on Render's free tier. After an idle spell the API takes about 40 seconds to wake,
-and the app shows a waiting page while it does.</sub>
+<sub>PRism was hosted on Render's free tier at `prism-web-fgts.onrender.com`. When last checked
+(2026-11-06) that address returned Render's 404 `no-server`, meaning no service is running there.
+You can [run your own copy](docs/deployment.md).</sub>
 
 </div>
 
@@ -127,6 +128,9 @@ afternoon.
 PRism works end to end and has no outside users yet. Be aware of these before you rely on
 it:
 
+- **No hosted instance is running.** The address it used (`prism-web-fgts.onrender.com`) returned
+  a 404 when last checked on 2026-11-06. You need your own deployment or a local stack, and the
+  MCP server needs `PRISM_URL` set to it ([known issue](docs/known-issues.md#hosted-offline)).
 - **One AI provider.** Groq's free tier, two models. When both are rate-limited the attempt
   is retried (60 s, then 180 s); after the third failure the review is marked failed.
 - **Language rules** exist for PHP, JavaScript and TypeScript, Python and Go. Ruby and Java
