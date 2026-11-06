@@ -1,406 +1,142 @@
 <div align="center">
 
-# 🔍 PRism
+# PRism
 
-### AI-Powered Code Review Platform
+**An AI code reviewer for GitHub that shows its work.**
 
-*An intelligent, self-hostable alternative to CodeRabbit and Greptile — built with engineering depth, not just features.*
+Every finding points at a line that really changed. Every review opens with a verdict you
+can check, not a score you have to trust.
 
-**[▶ Try it live — prism-web-fgts.onrender.com](https://prism-web-fgts.onrender.com/login)**
+[**Try it live**](https://prism-web-fgts.onrender.com/login) · [Documentation](docs/README.md) · [MCP server](mcp-server/README.md)
 
-<sub>Hosted on Render's free tier, so the first request after an idle spell takes ~30s to wake the service.</sub>
+[![CI](https://github.com/Muhammad-AIUB/PRISM/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhammad-AIUB/PRISM/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![Live](https://img.shields.io/badge/Live-prism--web--fgts.onrender.com-2ea44f)](https://prism-web-fgts.onrender.com/login)
-[![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs)](https://nestjs.com)
-[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs)](https://nextjs.org)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://postgresql.org)
-[![Redis](https://img.shields.io/badge/Redis-Upstash-DC382D?logo=redis)](https://upstash.com)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<sub>The live demo runs on Render's free tier. After an idle spell the API takes about 40 seconds to wake,
+and the app shows a waiting page while it does.</sub>
 
 </div>
 
 ---
 
-## 🎯 The Problem
+## What it does
 
-Modern software teams face three painful realities in code review:
+Connect a repository and PRism reviews every pull request and every push to the branches
+you choose. For each one it:
 
-1. **Senior bandwidth is scarce.** Junior PRs sit in queues for hours, sometimes days. Velocity dies.
-2. **Existing AI tools are expensive.** CodeRabbit charges **$24/dev/month**, Greptile is even higher. Small teams and developers in emerging markets can't afford it.
-3. **Generic reviewers miss framework-specific issues.** N+1 ORM queries, missing input validation, React key-prop bugs — most AI tools don't catch them.
+1. Receives the GitHub webhook and verifies its HMAC signature.
+2. Fetches the diff with the repository owner's own token, and picks the files and hunks
+   that fit the model's budget.
+3. Asks Groq (Llama 3.3 70B, falling back to Llama 3.1 8B) to review the change for
+   security, performance and code-quality problems.
+4. **Checks every finding against the diff.** The model sees an anchor per changed line;
+   a finding whose anchor does not resolve is dropped instead of shown at a guessed
+   line.
+5. Reduces what survived to a **verdict**: *blocking*, *worth a look*, *nothing found*, or
+   *not reviewed* when no model produced an answer.
+6. Asks the model for concrete `before -> after` fixes, and drops any whose quoted code is
+   not where it claims to be.
+7. Scores the change's blast radius with **Risk Radar**, which is deterministic and needs
+   no model.
+8. Posts one summary comment on the pull request or commit, and optionally a Slack message.
 
-**PRism solves all three.** It's a self-hostable, production-grade AI code reviewer that runs on free infrastructure, understands language-specific anti-patterns, and posts actionable feedback directly on every pull request — automatically, within seconds.
+The same reviews are available in a dashboard, as a PDF export, and inside your editor
+through an [MCP server](mcp-server/README.md).
 
----
+### Risk Radar
 
-## ✨ What PRism Does
+A 0-100 change-risk score built from where a change lands: auth code, migrations,
+hardcoded secrets, missing or removed tests, CI and deploy config, dependencies, public
+API. It comes with a short "before merging" checklist triggered by what the added lines
+do: a network call with no timeout, string-built SQL, a swallowed error, a migration with
+no way back. It is a pure function of the diff, so it works when the AI is down.
+[More](docs/risk-radar.md).
 
-When a developer opens a pull request on a connected repository, PRism:
+### Design Studio
 
-1. **Receives** the GitHub webhook (HMAC-verified against the raw request body)
-2. **Fetches** the unified diff via GitHub API
-3. **Detects** the languages involved (PHP, JS/TS, Python, Go, Ruby, Java)
-4. **Analyzes** the code through three engineering lenses:
-   - 🔒 **Security** — SQL injection, hardcoded secrets, missing auth checks
-   - ⚡ **Performance** — N+1 queries, missing indexes, memory leaks
-   - 🧹 **Code Quality** — SOLID violations, dead code, naming issues
-5. **Generates** an overall quality score (0–100)
-6. **Produces** concrete code fixes — not just complaints, but `before → after` snippets
-7. **Posts** a summary comment back to the PR on GitHub
-8. **Notifies** the developer in Slack (optional)
-9. **Displays** everything in a beautiful dashboard with score trends over time
+Describe what you are building, pick a scale and up to four priorities, and get a system
+design sized to that load: components, request flow, failure modes with mitigations, SLOs,
+a scaling plan with numeric triggers, trade-offs and a production-readiness checklist.
+Export it as Markdown, or ask for it from your editor. [More](docs/design-studio.md).
 
-All of this — with zero recurring cost on free tiers.
+## How it fits together
 
-### 🛰️ Risk Radar: how carefully to look
-
-Every review now carries a deterministic **change-risk score** (0–100) built from
-where the change lands: auth code, migrations, hardcoded secrets, missing or
-removed tests, CI/deploy config, dependencies, public API. It comes with a
-**"Before merging" checklist** triggered by what the added lines actually do: a
-network call with no timeout, string-built SQL, a swallowed error, at-least-once
-delivery, a migration with no way back. It shows up in the GitHub comment, on
-the review page and through MCP (`get_change_risk`), and it still works when the
-AI is down.
-
-### 🧭 Design Studio: a reliable design before the first commit
-
-Describe what you're building, pick a scale and what matters most, and get a
-blueprint sized to your real load. It covers components, request flow, **failure
-modes with concrete mitigations**, reliability patterns, SLOs, a scaling plan
-with numeric triggers, trade-offs, and a production-readiness checklist.
-Export it as Markdown and commit it next to the code, or ask for it from your
-editor through MCP (`design_system`).
-
----
-
-## 📸 Screenshots
-
-### Sign in — public, with full permissions transparency
-<p align="center">
-  <img src="docs/screenshots/01-login.png" alt="PRism login page with expandable 'Wondering about permissions?' card" width="420">
-</p>
-
-### GitHub OAuth authorization
-<p align="center">
-  <img src="docs/screenshots/02-github-oauth.png" alt="Authorizing PRism on GitHub" width="700">
-</p>
-
-### Dashboard — light & dark themes
-PR / Commit tabs, stat cards, empty-state with cross-mode discoverability, fixed sidebar.
-
-<p align="center">
-  <img src="docs/screenshots/03-dashboard-light.png" alt="PRism dashboard in light mode" width="800">
-</p>
-<p align="center">
-  <img src="docs/screenshots/04-dashboard-dark.png" alt="PRism dashboard in dark mode" width="800">
-</p>
-
-### Repository connect
-Searchable grid of your GitHub repos with language dots, stars, "last updated" — click Connect to pick PR / Commit / Both mode.
-
-<p align="center">
-  <img src="docs/screenshots/05-repositories.png" alt="Connect a repository — searchable grid with language dots and connect buttons" width="800">
-</p>
-
----
-
-## 🏗️ Architecture
-
-```
-                    ┌─────────────────┐
-                    │   GitHub PR     │
-                    │   (opened)      │
-                    └────────┬────────┘
-                             │ webhook (HMAC verified)      
-                             ▼
-        ┌────────────────────────────────────────┐
-        │  prism-api (NestJS)                    │
-        │  ├─ Webhook Controller                 │
-        │  ├─ Rate Limiter (60/min, webhook)     │
-        │  └─ Security Headers (helmet)          │
-        └────────────────┬───────────────────────┘
-                         │ enqueue job
-                         ▼
-        ┌────────────────────────────────────────┐
-        │  BullMQ Worker (same process, Redis)   │
-        │  ├─ Fetch diff (cached 1hr)            │
-        │  ├─ Detect languages                   │
-        │  ├─ Build language-specific prompt     │
-        │  ├─ Call Groq (2-model chain)          │
-        │  ├─ Parse & score                      │
-        │  └─ Generate auto-fixes (2nd AI call)  │
-        └────────┬──────────────┬────────────────┘
-                 │              │
-        ┌────────▼─────┐  ┌────▼──────────────┐
-        │  PostgreSQL  │  │  Notifications    │
-        │  (Neon.tech) │  │  ├─ Slack Webhook │
-        │              │  │  └─ GitHub Comment│
-        │  Encrypted   │  │                   │
-        │  tokens      │  └───────────────────┘
-        └──────────────┘
-                 │
-                 ▼
-        ┌──────────────────┐
-        │  prism-web       │
-        │  (Next.js)       │
-        └──────────────────┘
+```mermaid
+flowchart LR
+    B[Browser] -->|pages, server actions| WEB[prism-web<br/>Next.js 15]
+    WEB -->|server-side fetch| API[prism-api<br/>NestJS 11]
+    GH[GitHub] -->|webhook| API
+    MCP[MCP server<br/>on your machine] -->|bearer token| API
+    subgraph proc [one Node process]
+        API --- Q[BullMQ worker<br/>concurrency 1]
+    end
+    API --> PG[(PostgreSQL)]
+    API --> RD[(Redis)]
+    Q --> GROQ[Groq]
+    Q --> GHAPI[GitHub REST API]
 ```
 
----
+The browser only ever talks to `prism-web`. The API origin, the session cookie and the
+user's GitHub token never reach client JavaScript. The review worker runs inside the API
+process because Render's free tier has no background-worker service type. Read
+[docs/architecture.md](docs/architecture.md) for the reasoning.
 
-## 🛡️ Privacy & Trust
+## Repository layout
 
-PRism takes user trust seriously. Every aspect of data handling is transparent and user-controlled:
-
-- **AES-256 encryption** — GitHub tokens encrypted at rest (AES-256-CBC, MAC-verified)
-- **No source code stored** — only diffs are analyzed, never your full codebase
-- **Diffs auto-deleted** after 1 hour cache expiry
-- **Open source** — every line of data-handling code is publicly auditable
-- **Minimal OAuth scopes** — only `repo` and `read:user`, nothing dangerous
-- **One-click data deletion** — GDPR-compliant full data removal from settings
-- **Audit log** — see every action taken on your account
-- **Revoke anytime** from GitHub settings, data deleted immediately
-
-Visit `/security` in the app for full transparency.
-
----
-
-## 🚀 Features
-
-### Core Review Pipeline
-- 🤖 **AI-powered code analysis** through three lenses (Security / Performance / Code Quality)
-- 📊 **Overall quality score** (0–100) with color-coded visual indicator
-- 🛠️ **Auto-fix suggestions** — side-by-side `current code` vs `suggested fix` with one-click copy
-- 🔄 **Re-analyze button** — re-run the full pipeline on the latest commit
-- 🌐 **Language-aware rules** — different checks for PHP, JS/TS, Python, Go, Ruby, Java
-- 💬 **Automatic PR comments** — summary posted to GitHub on completion
-
-### User Experience
-- 🎨 **Modern dark UI** built with Tailwind + Inter font + lucide-react icons
-- 📱 **Fully responsive** — mobile, tablet, laptop, desktop, ultra-wide
-- 📈 **Score trend chart** — track code quality across last 30 PRs (Chart.js)
-- 🏷️ **Severity filter** — focus on Critical / Warning / Suggestion separately
-- 📄 **PDF export** — download a polished review report for offline sharing
-- 🔍 **Diff viewer** — color-coded diff (green/red/accent) with monospace formatting
-- 🌓 **Dark/light mode toggle with localStorage persistence (FOUC-free)**
-- 📖 **Comprehensive "How to Use" in-app guide** with FAQs and tips
-- 🦶 **Developer credit footer** (links to [mjubayer.dev](https://www.mjubayer.dev/))
-
-### MCP Server — AI Assistant Integration 🆕
-- 🔌 **[MCP server](mcp-server/)** — query your reviews from Claude Code, Claude Desktop, Cursor, or any MCP client
-- 🗣️ Ask *"what did PRism say about my last push?"* and get score, issues, and fixes inline
-- ✨ **Auto-apply fixes** — your AI assistant fetches PRism's suggested fixes and applies them to your files
-- 🔑 **Token-authenticated REST API** (`/api/v1`) — generate tokens in Settings
-- 🔁 Trigger re-analysis without leaving your editor
-
-### Notifications
-- 💬 **Slack notifications** with rich attachments, color-coded by score — opt in by adding a webhook URL in Settings
-
-### Security
-- 🔐 **AES-256 encrypted GitHub tokens** at rest (AES-256-CBC, MAC-verified)
-- ✅ **HMAC-SHA256 webhook signature verification**
-- 🚦 **Multi-tier rate limiting** — webhook 60/min, API 100/min per signed-in user (per IP for guests and API tokens), OAuth 10/min
-- 🔒 **Content-Security-Policy** — a per-request nonce on the web app, so injected scripts do not run; `default-src 'none'` on the API, which never serves a page
-- 🪖 **Security headers** — HSTS, X-Frame-Options, nosniff and friends via helmet on the API; `frame-ancestors 'none'` on both
-- 🚪 **Real sign-out** — logout revokes the session server-side, so a copied cookie stops working too
-- 🚪 **GitHub OAuth-only login** — no password attack surface
-- 🛡️ **Dedicated Security & Privacy page** with full transparency
-- 👁️ **"View My Data" page** showing exactly what PRism stores
-- 📜 **Audit log** tracking all user actions (login, connect, review, etc.)
-- 🗑️ **One-click data deletion** (GDPR-style)
-- 🔍 **Open-source codebase** — fully auditable
-
-### Flexible Workflows
-- 🔀 **PR Review Mode** — analyze pull requests (default for teams)
-- 📝 **Commit Review Mode** — analyze direct pushes to main (solo developers)
-- 🎯 **Mixed Mode** — review both PRs and commits
-- 🌳 **Branch filtering** — choose which branches to monitor
-- 💬 **Auto-posts review comments** on PR or commit
-
-### Performance
-- ⚡ **Redis caching** (Upstash) — GitHub API responses cached 5min, diffs 1hr
-- 📑 **Composite database indexes** on every hot foreign-key path
-- 🔗 **Eager loading enforced** — zero N+1 queries on dashboard
-- 🎯 **Selective column projection** via explicit TypeORM `select`
-
-### Reliability & Observability
-- 🔁 **Job retry with exponential backoff** — `[60s, 180s, 600s]`, 3 attempts
-- 📝 **Structured JSON logging** — one JSON object per line in production, each carrying the `X-Request-Id` (or queue job id) it was logged under; prism-web forwards its id, so a page render and every API call it made share one
-- ✅ **CI on every pull request** — typecheck, lint, tests, build and a dependency audit for all three packages
-- 🏥 **Health check endpoint** (`/health`) — DB, Redis, Queue status
-- 📊 **AI call metrics** — model, duration, token usage logged per call
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
+| Path | What it is |
 |---|---|
-| **Backend** | NestJS 11, TypeScript (strict) |
-| **Frontend** | Next.js 15 (App Router), React 19 |
-| **Database** | PostgreSQL 16 (Neon.tech) |
-| **Cache & Queue** | Redis (Upstash) — BullMQ for the review queue |
-| **AI** | Groq (Llama 3.3 70B, then 3.1 8B — native JSON mode) |
-| **Auth** | GitHub OAuth; JWT session cookie for the browser, bearer tokens for the API |
-| **Styling** | Tailwind CSS + lucide-react |
-| **Charts** | Chart.js + react-chartjs-2 |
-| **PDF** | pdfmake |
+| [`prism-api/`](prism-api/README.md) | NestJS 11: REST API, GitHub webhook, session and token auth, the BullMQ review worker |
+| [`prism-web/`](prism-web/README.md) | Next.js 15 App Router frontend. All data is fetched on the server |
+| [`mcp-server/`](mcp-server/README.md) | MCP server exposing reviews, Risk Radar and Design Studio to AI editors |
+| [`docs/`](docs/README.md) | Architecture, reference, how-to guides, runbook, decision records |
+| `render.yaml` | Render deployment for both services |
+| `.github/workflows/` | CI, and a keep-alive ping for the free tier |
 
----
+## Run it locally
 
-## 📊 What Got Solved (Engineering Highlights)
+You need Node 22.12 or newer, Docker, and a GitHub OAuth app. The short version:
 
-### Solved Problems
+```bash
+# Postgres 16 and Redis (noeviction is required), then the schema
+docker run -d --name prism-pg -e POSTGRES_USER=prism -e POSTGRES_PASSWORD=prism \
+  -e POSTGRES_DB=prism -p 55432:5432 postgres:16-alpine
+docker run -d --name prism-redis -p 56379:6379 redis:7-alpine \
+  redis-server --maxmemory-policy noeviction
+docker exec -i prism-pg psql -U prism -d prism -v ON_ERROR_STOP=1 < prism-api/schema.sql
+```
 
-| Problem | Solution | Impact |
-|---|---|---|
-| GitHub tokens stored in plaintext | AES-256-CBC with a verified MAC | Tokens unreadable even with a DB dump |
-| Webhook endpoint open to abuse | HMAC over the exact bytes GitHub sent + rate limit | Spoofed deliveries rejected, floods capped |
-| Repeated GitHub API calls | Redis caching with TTL | ~80% reduction in upstream calls |
-| Job failure cascades | `tries=3`, exponential backoff, `failed()` handler | Auto-recovery without data loss |
-| N+1 query risk on dashboard | Eager loading + composite indexes | Sub-50ms dashboard load |
-| Untraceable production errors | Structured JSON logs + `X-Request-Id` | Debug single request across services |
-| Generic AI review missing framework issues | Language-specific rule injection | Catches N+1 query patterns, React key-prop, etc. |
-| Slack failures crashing reviews | Try-catch with a logged warning, no rethrow | Notifications fail-safe |
-| Solo developers don't use PR workflow | Commit-based review mode with branch filtering | PRism now serves both teams and solo devs |
-| Users unsure what data we collect | Dedicated Security page + "View My Data" + Audit log | Full transparency = user trust |
-| No way to delete account/data | One-click data deletion with webhook cleanup | GDPR-compliant data control |
-| Cold onboarding experience | Comprehensive in-app "How to Use" guide with FAQs | New users get to value in <5 minutes |
+Then configure and start the two servers as described in
+[docs/development.md](docs/development.md). That guide also covers the GitHub OAuth app,
+sending a signed test webhook without a tunnel, and the pitfalls that cost people an
+afternoon.
 
-### Architectural Decisions
+## Documentation
 
-- **Service-based monolith over microservices** — appropriate for current scale; clear bounded contexts allow extraction later if needed
-- **Separate API and frontend behind one hostname** — the session cookie stays first-party and every API call is made server-side, so the API origin and the user's GitHub token never reach the browser
-- **BullMQ worker in the API process** — Render's free tier has no background-worker type; concurrency 1 keeps peak memory predictable inside 512MB
-- **Self-hostable from day one** — no vendor lock-in, runs on free tier infrastructure
+| If you want to... | Read |
+|---|---|
+| Understand the system | [Architecture](docs/architecture.md), [Review pipeline](docs/review-pipeline.md) |
+| Run or change it | [Development](docs/development.md), [Testing](docs/testing.md), [Contributing](CONTRIBUTING.md) |
+| Look something up | [API reference](docs/api-reference.md), [Configuration](docs/configuration.md), [Database](docs/database.md) |
+| Deploy and operate it | [Deployment](docs/deployment.md), [Operations runbook](docs/operations.md) |
+| Judge the security | [Security](docs/security.md), [SECURITY.md](SECURITY.md) |
+| Know why it is built this way | [Decision records](docs/adr/README.md) |
+| See what is broken today | [Known issues](docs/known-issues.md) |
 
----
+## Status and limits
 
-## 🔨 Active Development
+PRism works end to end and has no outside users yet. Be aware of these before you rely on
+it:
 
-### Dual Authentication Strategy (In Progress)
+- **One AI provider.** Groq's free tier, two models. When both are rate-limited the attempt
+  is retried (60 s, then 180 s); after the third failure the review is marked failed.
+- **Language rules** exist for PHP, JavaScript and TypeScript, Python and Go. Ruby and Java
+  are detected but get no language-specific rules.
+- **The model sees roughly 8,000 characters of a diff**, chosen whole file first, then
+  whole hunk. Every review states how much of the change it covered.
+- **Free-tier hosting** means cold starts, and a webhook that arrives while the API sleeps
+  may be lost. See [known issues](docs/known-issues.md).
 
-PRism currently uses GitHub OAuth App which requires broad `repo` scope. While this works well for solo developers, security-conscious teams and enterprises prefer granular per-repository permissions.
+## License
 
-**Planned approach:**
-Implement dual authentication letting users choose:
-
-| Method | Best For | Trade-off |
-|---|---|---|
-| **OAuth** (current) | Solo developers, quick setup | Broad repo access |
-| **GitHub App** (planned) | Teams, enterprises, sensitive code | Granular per-repo permissions |
-
-**Technical implementation:**
-- JWT-based installation token authentication (1-hour expiry)
-- Granular repository selection during install
-- Co-existence with OAuth flow (no breaking change for existing users)
-- Migration path: existing OAuth users can upgrade anytime
-
-**Estimated effort:** 6–8 hours of focused development.
-
-**Why this matters:** Industry leaders like Sentry, Vercel, and CodeRabbit all use the GitHub App pattern. This migration brings PRism to enterprise-grade authentication standards.
-
----
-
-## 🔮 Roadmap — Future Enhancements
-
-### Near-term (high-impact, low-effort)
-
-- [ ] **Dual Authentication Strategy** — Add GitHub App support alongside OAuth, letting users choose between broad access (OAuth) and granular per-repo permissions (GitHub App). Will reduce token security blast radius by 90% and provide enterprise-grade trust signals.
-- [ ] **Merge risk indicator** — automatically block merges below score 40 via GitHub Status API
-- [ ] **One-click "Post Fix to GitHub"** — turn `suggested_fix` into an inline PR comment
-- [ ] **Developer insight dashboard** — per-author trend: "your top 3 recurring mistakes"
-- [ ] **Team leaderboard** — weekly code quality ranking for organizations
-- [ ] **Repository settings page** — change review mode without disconnecting
-
-### Mid-term (medium-effort, differentiating)
-- [ ] **Configurable review profiles** — strict / balanced / relaxed per repo
-- [ ] **Custom rules YAML** — let teams define their own coding standards
-- [ ] **Multi-AI fallback** — DeepSeek → Llama → Mistral chain on failure
-- [ ] **Inline PR annotations** — line-level comments via GitHub Reviews API (not just summary)
-- [ ] **Webhook retry UI** — re-trigger from failed deliveries dashboard
-
-### Long-term (platform expansion)
-- [ ] **GitLab + Bitbucket support** — same pipeline, different SCM adapters
-- [ ] **CI/CD integration** — block deploys on PRism score thresholds
-- [ ] **Historical regression detection** — flag when score drops vs prior PRs on the file
-- [ ] **Team analytics API** — exportable JSON for engineering metrics dashboards
-- [ ] **Self-hosted LLM support** — Ollama / LocalAI for fully air-gapped deployments
-- [ ] **Public API** — let developers integrate PRism into their own tools
-
-### Performance & Scale (when traffic justifies)
-- [ ] **Horizontal queue scaling** — multiple BullMQ workers
-- [ ] **Read replicas** for analytics queries
-- [ ] **CDN for static assets** — Cloudflare integration
-- [ ] **Database partitioning** by `created_at` for review_comments table
-- [ ] **Cache warming** — pre-fetch repo lists on user login
-- [ ] **Diff chunking** — handle huge PRs (>10k lines) by splitting and merging analyses
-
-### Developer Experience
-- [ ] **Docker Compose setup** — one-command local development
-- [ ] **GitHub Action for self-deployment** — push-to-deploy template
-- [ ] **OpenAPI spec** for the internal API
-- [ ] **Storybook** for React component library
-
----
-
-## 📐 Engineering Decisions Documented
-
-These are the deliberate trade-offs made during development — not bugs, choices:
-
-| Decision | Trade-off | Why |
-|---|---|---|
-| Worker in the API process | No independent scaling | Render's free tier has no background-worker type; concurrency 1 keeps memory predictable |
-| OAuth-only login | No traditional signup | Eliminates password storage entirely |
-| Service-based monolith | Not microservices | Right size for stage; can extract later |
-| Groq free tier, no second provider | A bad response has no fallback to catch it | Zero cost; native JSON mode makes unparseable output rare, and a failed review degrades gracefully rather than erroring |
-| Bypass IP whitelist in non-prod | Tunnels keep working | Locks down only in real production |
-| In-house CIDR matching | Could use Symfony IpUtils | Reduces dependency footprint |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to set up the project locally, the code style we follow, and how to submit pull requests.
-
-## 📄 License
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Acknowledgements
-
-Built with engineering depth inspired by real production systems:
-- **Hexagonal Architecture** principles (separation of core logic from external drivers)
-- **OWASP Top 10** security checklist applied throughout
-- **Twelve-Factor App** methodology for config and process management
-
----
-
-## 👨‍💻 Developer
-
-<div align="center">
-
-Designed and built by **Muhammad Jubayer**
-
-Backend-focused full-stack developer specializing in Laravel, Node.js, and system design.
-
-🌐 [mjubayer.dev](https://www.mjubayer.dev/) — Portfolio
-💼 [linkedin.com/in/muhammadjubayer](https://linkedin.com/in/muhammadjubayer) — LinkedIn
-🐙 [github.com/Muhammad-AIUB](https://github.com/Muhammad-AIUB) — GitHub
-
-*Open to international remote opportunities.*
-
-</div>
-
----
-
-<div align="center">
-
-**Built to demonstrate that production-grade engineering doesn't require enterprise budgets.**
-
-If you found this project interesting, I'd love to connect.
-
-</div>
+[MIT](LICENSE). Built by [Muhammad Jubayer](https://www.mjubayer.dev/)
+([GitHub](https://github.com/Muhammad-AIUB)).

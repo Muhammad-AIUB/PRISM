@@ -1,65 +1,69 @@
 # prism-web
 
-The Next.js frontend, replacing the Inertia/React pages in `resources/js`.
+The PRism frontend: a Next.js 15 App Router application on React 19. **Every API call is made on the
+server**, so the API origin, the session cookie and the user's GitHub token never reach client
+JavaScript.
+
+For the reasoning see [docs/architecture.md](../docs/architecture.md) and
+[docs/frontend.md](../docs/frontend.md). This page is the map of the package.
 
 ## The one thing to understand first
 
-The session is an httpOnly cookie that **prism-api** sets. A browser only sends
-a cookie back to the origin that set it, so this app and the API have to look
-like one origin to the browser, or sign-in appears to work and then every
-request is anonymous.
+The session is an `httpOnly` cookie that **prism-api** sets, and a browser returns a cookie only to the
+origin that set it. So this app and the API must look like one origin to the browser, or sign-in appears
+to work and then every request is anonymous.
 
-In production a reverse proxy does that: one hostname, with `/auth/*`,
-`/api/v1/*` and `/webhook/github` routed to prism-api and everything else here.
+`next.config.mjs` rewrites `/auth/*`, `/api/v1/*` and `/webhook/*` to the API in every environment. Locally
+the browser talks only to `:3001`. In production the same job can be done by a reverse proxy.
 
-Locally there is no proxy, so `next.config.mjs` rewrites those same paths.
-The browser only ever talks to `:3001`.
+## Quick start
 
-Every API call is made **server-side** (`src/lib/api.ts`), which forwards the
-cookie onward. The API origin, the cookie's value and the user's GitHub token
-never reach the browser.
-
-## Running it
-
-Start Postgres, Redis and prism-api first — see
-`../prism-api/LOCAL-VERIFICATION.md`. Note the warning there: the repository's
-`.env` holds production credentials and nothing local should read it.
+Needs **Node 22.12 or newer** (the Vitest 5 and jsdom 30 toolchain requires it) and a running `prism-api`
+on port 3999. Start Postgres, Redis and the API first: [docs/development.md](../docs/development.md).
 
 ```bash
-npm install
-npm run build
-PRISM_API_ORIGIN=http://127.0.0.1:3999 APP_URL=http://localhost:3001 PORT=3001 npm start
+npm ci
+npm run dev        # http://localhost:3001
 ```
 
-`npm run dev` runs the watch server on 3001.
+No environment is needed locally: `PRISM_API_ORIGIN` defaults to `http://127.0.0.1:3999`. See
+[`.env.example`](.env.example) and [docs/configuration.md](../docs/configuration.md).
 
-`npm start` takes its port from `$PORT` rather than hardcoding one — a host
-that assigns the port needs the app to honour it, or it binds a port nobody is
-listening on.
+## Scripts
+
+| Script | Does |
+|---|---|
+| `npm run dev` | `next dev -p 3001` |
+| `npm run build` / `npm start` | Production build and server. `next start` honours `$PORT` |
+| `npm run typecheck` | `tsc --noEmit`. Must pass before a commit |
+| `npm run lint` | ESLint (`next/core-web-vitals`, `next/typescript`), `--max-warnings 0`. Must pass |
+| `npm test` | Vitest with jsdom and Testing Library. Must pass |
 
 ## Layout
 
-```
+```text
 src/
-  app/            routes; server components fetch and pass data down
-  components/     client components — anything with state or effects
+  app/             routes; Server Components fetch and pass data down; actions.ts hold Server Actions
+  components/      client components by feature (review/, repositories/, design/, security/, ...)
   lib/
-    api.ts        server-side fetch to prism-api, forwards the session cookie
-    session.ts    the replacement for Inertia's shared auth.user prop
-    types.ts      the API's response shapes
-    time.ts       the relative-time helper the tables use
+    api.ts         the only way to call prism-api; forwards the cookie and X-Request-Id
+    wake.ts        waking a sleeping API (shared by middleware, server and browser)
+    session.ts     getSessionUser / getOptionalSessionUser
+    types.ts       the API's response shapes
+  middleware.ts    per-request CSP nonce and request id
 ```
 
-Pages render `<AuthenticatedLayout>` themselves rather than sitting inside a
-route-group layout. That mirrors how the Inertia pages worked, and it is what
-lets each page supply its own sticky header.
+## Rules that live here
 
-## Styling
+- **Data comes from `lib/api.ts` only.** No `fetch` in a component, no `NEXT_PUBLIC_` variable.
+  `apiGetAuthed()` folds 400, 403 and 404 into the not-found page on purpose.
+- **CSP:** an inline `<script>` must use the nonce from the `x-nonce` request header; a new third-party
+  origin must be added to `middleware.ts` deliberately. Only `/waking` may connect to the API origin.
+- **Fonts are self-hosted** (`@fontsource-variable/*`). Never add a font CDN.
+- **UI standards:** 12 px minimum text, WCAG AA contrast in both themes, tokens not hex, visible focus,
+  44 px touch targets, 390 px with no horizontal scroll, and a visible failure state for every Server
+  Action. Full list in [docs/frontend.md](../docs/frontend.md#standards).
+- **Theme** is a `light`/`dark` class on `<html>`, applied by an inline script before first paint.
+  `prism-theme` is the only thing written to `localStorage` (plus per-design checklist ticks).
 
-`src/app/globals.css` is carried over from the Inertia app unchanged, and
-`tailwind.config.ts` keeps the same token names (`bg-card`, `fg-muted`,
-`border-base`, `accent`, …). Theme switching is a `light`/`dark` class on
-`<html>`, applied by an inline script in the root layout **before first paint**
-— doing it in an effect instead shows the wrong theme for a frame.
-
-`prism-theme` is the only thing written to localStorage. No tokens, no PII.
+Verify a visible change in a real browser: both themes, 390 px, console open, keyboard only.

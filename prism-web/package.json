@@ -2,7 +2,7 @@
   "name": "prism-web",
   "version": "0.1.0",
   "private": true,
-  "description": "PRism frontend \u2014 Next.js port of the Inertia/React app (strangler migration).",
+  "description": "PRism frontend: the Next.js App Router app. All data is fetched on the server.",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
