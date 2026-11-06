@@ -38,8 +38,8 @@ API, and the visitor's browser can.
 - It does **nothing for webhooks**. A delivery that GitHub sends through the web host to a sleeping API
   gets the same 429 and is lost; GitHub does not redeliver on its own
   ([T15](../known-issues.md#t15)).
-- The keep-alive workflow does not solve this either: GitHub runs a `*/10` cron far less often than
-  every ten minutes.
+- A scheduled keep-alive workflow did not solve this either: GitHub ran its `*/10` cron far less often
+  than every ten minutes. It has since been removed.
 
 ## Alternatives considered
 

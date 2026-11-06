@@ -191,11 +191,12 @@ request. Counters are in process memory and `trust proxy` is `true`, so a forged
 
 ## Supply chain
 
-- CI runs `npm audit --omit=dev --audit-level=high` for all three packages on every pull request.
+- The dependency audit is manual: run `npm audit --omit=dev --audit-level=high` in each package when
+  dependencies change. It used to run in CI; there is no CI now.
 - `.npmrc` sets `ignore-scripts=true` and `audit=true`, so installing dependencies does not run
   their lifecycle scripts.
 - `mcp-server` has no lockfile on purpose (it is a published package whose users resolve its
-  ranges fresh), and CI installs it the same way to audit what users would get.
+  ranges fresh), so run `npm install` before auditing it, to see what users would get.
 
 ## Logging
 

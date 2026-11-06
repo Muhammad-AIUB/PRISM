@@ -95,8 +95,7 @@ build fails.
 
 **Render names.** If a plain service name is taken Render appends a random suffix, and the
 unsuffixed `*.onrender.com` name then belongs to another account. Use the URLs Render shows
-you, in `PRISM_API_URL`/`PRISM_WEB_URL` for the keep-alive workflow and in the MCP server's
-`PRISM_URL`.
+you everywhere a host is needed, including the MCP server's `PRISM_URL`.
 
 ### 5. Verify
 
@@ -124,12 +123,11 @@ so the browser must see one origin. Today that is `prism-web`'s rewrites in
 | A sleeping API answers `prism-web`'s proxied requests with a 429 and does not wake | A webhook GitHub sends through the web host while the API sleeps **fails and is not retried by GitHub** | See below |
 | 512 MB per service | Worker concurrency is 1 and diffs are capped at 2 MB | Do not raise concurrency |
 | 750 instance-hours per workspace per month | One service awake 24/7 uses about 720 to 744 hours; two cannot both stay awake | Prefer keeping the API awake |
-| Node version is not pinned | Render resolves `engines.node` (`>=20.11` for the API, `>=22.12` for the web), so the major version can change under you while CI tests on 22 | Set `NODE_VERSION=22` on both services ([known issues](known-issues.md#f3)) |
+| Node version is not pinned | Render resolves `engines.node` (`>=20.11` for the API, `>=22.12` for the web), so the major version can change under you while development uses 22 | Set `NODE_VERSION=22` on both services ([known issues](known-issues.md#f3)) |
 
-**Webhooks and a sleeping API.** The keep-alive workflow (`.github/workflows/keep-alive.yml`)
-pings both services on a 10-minute cron, but GitHub runs scheduled workflows far less often in
-practice (every few hours has been observed), so it does not keep the API awake. If you need
-reliable delivery, use one of: a paid always-on plan; an external uptime monitor that requests
+**Webhooks and a sleeping API.** Nothing keeps the API awake. A scheduled GitHub workflow used to
+ping both services every 10 minutes, but GitHub ran it far less often in practice (every few hours
+was observed), so it never worked, and it was removed. If you need reliable delivery, use one of: a paid always-on plan; an external uptime monitor that requests
 `https://<api-host>/health` every 10 minutes; or redelivering failed deliveries from the
 repository's *Settings -> Webhooks -> Recent deliveries*. Automatic redelivery on boot is a
 proposed fix, not built ([T15](known-issues.md#t15)).
@@ -138,8 +136,9 @@ proposed fix, not built ([T15](known-issues.md#t15)).
 
 There is no release step beyond merging to `main`.
 
-1. Open a pull request. CI (typecheck, lint, tests, both builds, dependency audit) must pass.
-2. Merge. Render deploys the branch it tracks, `main` (check *Auto-Deploy* in each service's
+1. Run typecheck, lint and tests in each package you changed. **There is no CI**, so nothing
+   checks this for you, and Render will deploy whatever reaches `main`.
+2. Merge or push to `main`. Render deploys the branch it tracks, `main` (check *Auto-Deploy* in each service's
    settings, or trigger a deploy by hand).
 3. Verify the deploy: `/health` is `ok`, and exercise the change. After a change to sign-in
    or the wake page, request `https://<web-host>/login/github` and expect a redirect, not a 404.
@@ -158,13 +157,15 @@ which is not yet decided ([database.md](database.md#changing-the-schema)). Until
 Neon branch or snapshot, apply and verify on the branch first, keep the reverse script next to
 the forward one, and make additive changes only.
 
-## CI and the keep-alive workflow
+<a id="ci"></a>
+## CI
 
-| Workflow | Triggers | Does |
-|---|---|---|
-| `ci.yml` | pull requests, pushes to `main`, manual | Three jobs on Node 22. `api`: `npm ci`, typecheck, lint, tests, build, audit. `web`: the same, with the web build. `mcp`: `npm install`, `node --check index.js`, audit. No job needs Postgres, Redis or a secret |
-| `keep-alive.yml` | cron `*/10 * * * *`, manual | Requests `{PRISM_API_URL}/health` and `{PRISM_WEB_URL}/login` with retries and a 150 s timeout, and fails the run if one it pings is not 2xx or 3xx |
+There is none. The two GitHub Actions workflows (a CI workflow and a scheduled keep-alive ping) were
+removed on 2026-11-06 at the maintainer's request, so nothing runs automatically on a push or pull
+request. The gates are manual: typecheck, lint and test in each package you touch, and
+`npm audit --omit=dev --audit-level=high` when dependencies change.
 
-Set the repository variables `PRISM_API_URL` and `PRISM_WEB_URL` (*Settings -> Secrets and
-variables -> Actions -> Variables*) to your own hosts. **There are no defaults**: with neither set
-the job is skipped rather than failing, and with one set only that service is pinged.
+If you want CI back, the files are in history (`git log --diff-filter=D -- .github/workflows/ci.yml`
+finds the commit that removed it). It ran, per package on Node 22: `npm ci`, typecheck, lint, tests,
+build and the audit; for `mcp-server`: `npm install`, `node --check index.js` and the audit. None of
+it needed Postgres, Redis or a secret, and none of it should.

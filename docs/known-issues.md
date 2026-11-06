@@ -201,18 +201,20 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
   services were deleted, suspended or renamed has not been determined; it needs the Render dashboard.
   The keep-alive run at 04:57 UTC that day succeeded and the next, at 12:45 UTC, failed with the API's
   404. **Still open:** there is no live demo. Restore or redeploy the services from `render.yaml`; if
-  Render assigns new hostnames, set `PRISM_API_URL`/`PRISM_WEB_URL` (below), update the GitHub OAuth
-  app's callback URL, and update the docs. **Already handled in code:** the MCP server no longer
-  defaults `PRISM_URL` to the dead host (it exits asking for one), and the keep-alive workflow no
-  longer defaults its hosts (the job is skipped until `PRISM_API_URL` or `PRISM_WEB_URL` is set as a
-  repository variable), so it stops failing every ten minutes.
+  Render assigns new hostnames, update the GitHub OAuth app's callback URL, the MCP configs'
+  `PRISM_URL` and the docs. **Already handled in code:** the MCP server no longer defaults `PRISM_URL`
+  to the dead host (it exits asking for one), and the keep-alive workflow that kept failing against
+  it was removed.
 
 <a id="f3"></a>
 - **Node is not pinned on Render.** `render.yaml` sets no `NODE_VERSION`, so Render resolves the
   `engines.node` ranges (`>=20.11` API, `>=22.12` web) and the major version can change under the
-  app while CI tests on 22. Set `NODE_VERSION=22` or add a `.node-version`.
-- **The keep-alive workflow does not keep the API awake.** GitHub runs a `*/10` cron far less often
-  than every ten minutes (every few hours has been observed).
+  app while development uses 22. Set `NODE_VERSION=22` or add a `.node-version`.
+- **There is no CI and nothing keeps the API awake.** Both GitHub Actions workflows were removed on
+  2026-11-06 at the maintainer's request. Nothing runs typecheck, lint, tests or `npm audit` on a
+  push, so a broken change can reach `main`, and Render deploys `main`. The scheduled keep-alive never
+  worked in practice either, because GitHub ran its `*/10` cron every few hours. Restoring CI:
+  [deployment.md](deployment.md#ci).
 - **`/health` cannot see the worker.** `queue: running` means the queue is reachable, not that a
   job is being consumed. A heartbeat from the worker would close that.
 - **The MCP package is not published.** `npm view prism-code-review-mcp` returns 404 as of

@@ -1,330 +1,132 @@
 # CLAUDE.md
 
-Guidance for Claude Code (claude.ai/code) and other coding agents working in this
-repository. Humans should start at [README.md](README.md) and [docs/README.md](docs/README.md);
-this file is the short list of rules that are easy to break and expensive when broken.
+Rules for coding agents in this repo. Humans start at [README.md](README.md). This file is loaded
+every session, so it stays short: the reasons live in [docs/](docs/README.md).
 
-## What this repository is
+## Work efficiently (read this first)
 
-PRism is an AI code reviewer for GitHub. Three packages, no monorepo tooling. Each has
-its own `package.json`, lockfile and `node_modules`.
+1. **Don't explore.** Open [docs/code-map.md](docs/code-map.md), find the row for your change, and
+   read only those files. Big files: `grep` or read a line range. The map lists files never to read in
+   full (golden fixtures, static-copy views, lockfiles).
+2. **Don't read all the docs.** [docs/README.md](docs/README.md) says which one document owns which
+   fact. Open that one.
+3. **Don't boot the stack to check your work.** Unit tests fake every store. Start Docker + the API
+   **once, at the end**, and only if you touched modules or DI wiring, entities, config or env
+   validation, or the webhook/queue path. For a UI change, run the targeted test while editing and do
+   one browser check at the end, not one per edit. Start a server once, reuse it, stop it.
+4. **Cheapest check first.** Measured here: typecheck 5 s (api) / 17 s (web); an API test run on one
+   directory about 50 s (full suite about 110 s); a web test run costs about the same for one file as
+   for all (about 65 s, startup dominates); lint 50 to 70 s per package. So: typecheck while editing;
+   one narrow API test when logic changed ([map](docs/code-map.md#tests-run-the-one-that-matches));
+   web tests, lint and each full suite **once**, before committing. Never re-run a green check.
+5. **Trust this file and the code map.** Don't re-verify what they state. If one is wrong, fix it.
+6. After editing, use `git diff` to see your change; don't re-read files you just wrote.
 
-| Path | What it is |
-|---|---|
-| `prism-api/` | NestJS 11. REST API, GitHub webhook, browser-facing routes **and** the BullMQ review worker, all in one process |
-| `prism-web/` | Next.js 15 (App Router). The whole frontend; every API call is made server-side |
-| `mcp-server/` | Standalone MCP server (`index.js`, no build step) that calls `/api/v1` with a bearer token |
+## What this is
 
-The codebase is TypeScript throughout. It began as a port of a PHP application that no
-longer exists. The data that application wrote did not go away: the production
-database, its schema and the API tokens in it predate this code, so several formats
-below are fixed for reasons that have nothing to do with the current framework. See
-[docs/adr/0001-keep-the-stored-formats.md](docs/adr/0001-keep-the-stored-formats.md).
+AI code reviewer for GitHub. Three packages, no monorepo tooling, each with its own `package.json`
+and `node_modules`: **`prism-api/`** (NestJS 11: REST API, webhook, and the BullMQ review worker in
+the same process), **`prism-web/`** (Next.js 15 App Router; every API call is server-side) and
+**`mcp-server/`** (one-file MCP server calling `/api/v1`). It began as a PHP app that is gone, but the
+production database, schema and API tokens it wrote are not, which is why some formats below are fixed
+([ADR 0001](docs/adr/0001-keep-the-stored-formats.md)).
 
-## Commands
-
-Run each package's commands from inside that package. Nest's `ConfigModule` reads `.env`
-from the working directory, so never start the API from the repository root.
+## Commands and gates
 
 ```bash
-# prism-api  (Node >= 20.11)
-npm run typecheck       # tsc --noEmit            must pass before any commit
-npm run lint            # eslint, --max-warnings 0   must pass
-npm test                # jest                    must pass
-npm test -- json-extractor        # one file, by path fragment
-npm test -- -t "clamps the score" # one test, by name
-npm run build           # nest build -> dist/
-npm run start:dev       # watch mode
-npm run start:prod      # node dist/main.js
+# in prism-api/ (Node >= 20.11)
+npm run typecheck && npm run lint && npm test     # narrow: npm test -- <path fragment> | -- -t "<name>"
+npm run build | start:dev | start:prod
 
-# prism-web  (Node >= 22.12: the vitest/jsdom toolchain requires it)
-npm run typecheck && npm run lint && npm test
-npm run dev             # next dev on :3001
-npm run build
+# in prism-web/ (Node >= 22.12)
+npm run typecheck && npm run lint && npm test     # narrow: npm test -- <path fragment>
+npm run dev  # :3001                              npm run build
 
-# mcp-server
+# in mcp-server/
 node --check index.js
 ```
 
-`.github/workflows/ci.yml` runs all of the above, plus both builds and
-`npm audit --omit=dev --audit-level=high`, on every pull request and on pushes to
-`main`. Nothing in CI needs Postgres, Redis or a secret: unit tests fake their stores.
-Keep it that way. A test that needs a live service does not belong in `npm test`.
+**There is no CI** (the workflows were removed on 2026-11-06). Nothing enforces anything, so you are the
+gate: typecheck, lint and test in every package you touched before each commit. In `prism-api`,
+`no-floating-promises` and `no-misused-promises` are errors; fix the finding, or disable with the reason
+on the same line. `npm run test:e2e` always fails (no `test/jest-e2e.json`); ignore it. Dependency audit
+is manual: `npm audit --omit=dev --audit-level=high`.
 
-`npm run test:e2e` in `prism-api` fails because `test/jest-e2e.json` was never created.
-That is known. Do not report it as a regression and do not chase it unless asked.
+Run commands from inside the package. **Run the API from `prism-api/`, on port 3999** (the web defaults to
+it). **The `.env` in the repo root holds production credentials**: never load or point anything at it, and
+check connection strings say `127.0.0.1`. Redis must be `maxmemory-policy noeviction`. Local setup:
+[docs/development.md](docs/development.md).
 
-Lint is a gate, not advice. In `prism-api`, `no-floating-promises` and
-`no-misused-promises` are errors, because an unawaited promise there is a lost write
-or an unhandled rejection in the worker. Fix what a rule finds. If a disable is truly
-right, put the reason on the same line.
+## Rules that break silently
 
-## Running locally
+Each is a one-liner; the doc named after it has the why.
 
-Full steps are in [docs/development.md](docs/development.md). The parts that bite:
+**Stored data** ([database](docs/database.md))
+- `synchronize: false` and `migrationsRun: false`, forever. DDL is hand-applied from `schema.sql`.
+- Status columns are `varchar`, never enums. CHECKs exist only on `pull_requests.status` and
+  `review_comments.layer/severity`; code alone guards `commit_reviews.status`, `review_mode`, score.
+- `bigint` ids serialise as JSON numbers (`database/transformers.ts`). Timestamps go through
+  `common/utils/iso8601.ts` (`+00:00`), never `toISOString()`. `pg-types.ts` runs before any connection;
+  `TZ=UTC`.
+- `users.github_token`: only `common/utils/crypt.service.ts` reads or writes it (AES-256-CBC + MAC,
+  PHP-serialised inside). Rotating `APP_KEY` makes every stored token unreadable. `JWT_SECRET` is not
+  `APP_KEY`.
+- API tokens are `{id}|{plaintext}` with `sha256(plaintext)` stored. `/api/v1` is additive-only.
+- Error bodies are contracts: 422 `{message, errors}`; 401 exactly `Unauthenticated.`; 429 exactly
+  `Too Many Attempts.`. `rawBody: true` stays (webhook HMAC). `esModuleInterop` is off: use
+  `import x = require('x')` for CommonJS.
+- Golden fixtures in `prism-api/test/fixtures/` are frozen. A prompt change must break a test on purpose:
+  [procedure](docs/testing.md#changing-a-prompt-on-purpose), and say why in the commit.
 
-- Run the API on port **3999**. `prism-web` defaults `PRISM_API_ORIGIN` to
-  `http://127.0.0.1:3999` in both `next.config.mjs` and `src/lib/api.ts`.
-- Redis must run with `maxmemory-policy noeviction`. BullMQ requires it. Under an
-  eviction policy job keys are dropped silently and reviews never run, with no error.
-- The schema is applied by hand from `prism-api/schema.sql`. TypeORM never creates or
-  alters a table.
-- **The `.env` in the repository root holds production credentials.** It is gitignored
-  and nothing in the local workflow reads it. Never point a local command at it, and
-  check that any connection string you are about to use says `127.0.0.1`.
+**Review pipeline** ([pipeline](docs/review-pipeline.md))
+- `pr-review.runner.ts` and `commit-review.runner.ts` are near-parallel. Change both.
+- Runners throw so BullMQ retries; terminal cleanup lives in the processor's `failed` handler.
+- The deadline **cancels**: the `AbortSignal` reaches every `fetch`, and a runner calls
+  `signal.throwIfAborted()` before each side effect (persist, GitHub comment). New side effects must be
+  safe to repeat. The job budget is **derived** in `review.queue.ts`; never hard-code it.
+- Notification failures never fail a review. Worker `concurrency: 1` (512 MB).
+- No usable model output **completes** the review as `not_reviewed`, behind two fixed summary strings in
+  `ai/verdict.ts` that `isIncompleteReview()` recognises. Change both or neither.
+- Groq only; model list, order and temperature are measured. Don't change them without re-measuring.
+- Findings are validated against the anchors the model was shown; the **anchor's** location is displayed.
+- Risk Radar is pure and `tryAssessRisk()` never throws. The risk comment section appears only when `risk`
+  is supplied.
+- Design Studio runs inline, with a 55 s abort and a per-user Redis limit that **fails closed**; any AI
+  failure degrades to `baselineBlueprint()`.
+- Redis data about a user must be erasable: write through the erasure-marker script and purge it in
+  `AccountDataService`. Missing, foreign and malformed design ids are one identical 404.
 
-## Architecture rules
+**Auth and security** ([security](docs/security.md))
+- Two live mechanisms: bearer tokens (`auth/api-token-auth.guard.ts`) and the JWT cookie
+  (`modules/auth/web-auth.guard.ts`, loads the user row, checks revocation, fails open on a Redis error).
+  Any new session guard must check revocation.
+- The global `RateLimitGuard` runs first, so it verifies the cookie itself and keys signed-in traffic per
+  user. Never key a bucket on an unverified claim.
+- Log with Nest's `Logger`, never `console.*`. The access log records the path only.
 
-Background in [docs/architecture.md](docs/architecture.md).
+**Web** ([frontend](docs/frontend.md))
+- All API calls go through `lib/api.ts` on the server. No `NEXT_PUBLIC_` for the API origin. Both services
+  must answer on **one hostname** (rewrites in `next.config.mjs`), or sign-in looks fine and every later
+  request is anonymous.
+- Only `/waking` may connect to the API origin (sleeping Render API; [ADR 0005](docs/adr/0005-wake-the-api-from-the-browser.md)).
+  Server Actions throw a 503 `ApiError` instead of redirecting. `apiGetAuthed()` folds 400/403/404 into
+  not-found on purpose.
+- CSP is per-request nonce (`middleware.ts`): an inline script reads `x-nonce`; a new third-party origin
+  must be added to the policy.
+- UI: Inter and JetBrains Mono **self-hosted**, no font CDN; text >= 12px; WCAG AA contrast (4.5:1) in both
+  themes; `--accent` for text/borders/focus, `--accent-solid` for fills with white text; never remove the
+  `:focus-visible` ring; icon buttons >= 44px; labels hidden on mobile use `sr-only sm:not-sr-only`, never
+  `hidden`; a Server Action's rejection or `ok: false` must show; works at 390px without horizontal scroll
+  (`grid-cols-1`); colours from tokens, no hex.
 
-### Request path
+## Deploy, docs, git
 
-The browser only ever talks to `prism-web`. Every API call is made on the server, from
-a React Server Component or a Server Action, through `prism-web/src/lib/api.ts`. The
-API origin, the session cookie and the user's GitHub token never reach client
-JavaScript. That is why `PRISM_API_ORIGIN` has no `NEXT_PUBLIC_` prefix.
-
-**Both services must answer on one hostname.** `prism-api` sets the session cookie and a
-browser returns a cookie only to the origin that set it. `next.config.mjs` rewrites
-`/auth/*`, `/api/v1/*` and `/webhook/*` to the API. Break that and sign-in appears to
-work while every later request is anonymous.
-
-**The one exception is the wake page.** On Render's free tier `prism-api` sleeps after
-15 idle minutes. While it sleeps, Render's edge answers every request `prism-web`
-makes with a 429 (`x-render-routing: hibernate-rate-limited`) without starting the
-service. Only a request from outside Render wakes it. So `lib/api.ts` sends a page
-load that finds the API asleep to `/waking`, where the visitor's browser pings the API
-itself and then returns. `/waking` is the only page whose CSP `connect-src` includes
-the API origin. Sign-in starts at `/login/github` for the same reason. Server actions do
-not redirect; they get a 503 `ApiError` asking the visitor to reload.
-
-`apiGetAuthed()` folds 400, 403 and 404 into the same not-found page on purpose. A
-distinct "forbidden" screen would confirm that a review id exists. Keep it.
-
-### Security headers
-
-- **prism-web:** `src/middleware.ts` sets a per-request nonce CSP
-  (`script-src 'self' 'nonce-...' 'strict-dynamic'`). An inline `<script>` you add must
-  take the nonce from the `x-nonce` request header, the way `layout.tsx` does for the
-  theme script, or it will not run. A new third-party origin (images, fonts, APIs)
-  must be added to the policy deliberately. `'unsafe-eval'` and `ws:` are allowed in
-  development only. `style-src` keeps `'unsafe-inline'` because components use inline
-  `style` throughout.
-- **prism-api:** helmet with `default-src 'none'; frame-ancestors 'none'`. The API
-  never serves a page.
-
-### Observability
-
-Every API request gets an `X-Request-Id` (a safe incoming one is kept). It is returned
-in the response and held in AsyncLocalStorage (`common/observability/request-context.ts`).
-`AppLogger` stamps it on every log line, and stamps the job id inside `ReviewProcessor`.
-Production writes one JSON object per line. `prism-web`'s middleware assigns an id per
-render and `lib/api.ts` forwards it. Use Nest's `Logger`, never `console.*`, or the line
-loses its id. The access log records the path only, because the OAuth callback carries
-a code in its query string.
-
-### Two auth mechanisms, both live
-
-- `auth/api-token-auth.guard.ts`: bearer tokens in `personal_access_tokens`, format
-  `"{id}|{plaintext}"`, with `sha256(plaintext)` stored. Deployed MCP servers hold
-  tokens issued before this codebase existed. **The format cannot drift.**
-- `modules/auth/web-auth.guard.ts`: the browser's JWT session cookie, signed with
-  `JWT_SECRET`. It loads the user row instead of trusting the claims, so a deleted
-  account stops working at once. Logout revokes the token
-  (`session-revocation.store.ts` keeps `sha256(token)` in Redis until the token would
-  have expired). Both `WebAuthGuard` and `OptionalWebAuthGuard` refuse a revoked token.
-  The revocation check fails open on a Redis error, because an outage must not sign
-  everyone out; the JWT signature is still verified. Any new guard that reads the
-  session must check revocation too.
-
-The global `RateLimitGuard` runs before either guard, so it verifies the session cookie
-itself and keys signed-in browser traffic per user. Every browser request reaches the
-API from `prism-web`'s one address, so keying those by IP would put the whole site in
-one 100/minute bucket. Never key a bucket on an unverified claim.
-
-`JWT_SECRET` and `APP_KEY` are not interchangeable. Rotating `JWT_SECRET` signs everyone
-out. Rotating `APP_KEY` makes every stored `github_token` permanently unreadable.
-
-### The review pipeline
-
-Background in [docs/review-pipeline.md](docs/review-pipeline.md).
-
-A webhook (HMAC over the raw body; IP allow-listing was removed because Render's edge
-masks GitHub's source address) or a re-analyze route enqueues **only a row id** onto the
-`prism-reviews` BullMQ queue. `ReviewProcessor` consumes it in the same Nest process.
-Render's free tier has no background-worker type, and `concurrency: 1` is what keeps
-peak memory inside 512 MB.
-
-`commit-review.runner.ts` and `pr-review.runner.ts` are near-parallel. A change to one
-usually belongs in the other. Each does: fetch diff (Redis-cached 1 h) -> `prepareDiff()`
--> first AI pass -> validate every finding against the diff -> persist -> second AI pass
-(`FixesService`, reusing the model that succeeded) -> post a GitHub comment -> audit log
--> Slack, if configured. There are no email notifications; the feature was removed.
-`users.email_notifications` still exists in the database but is unmapped and unread.
-
-Behaviours to preserve:
-
-- Runners let exceptions propagate so BullMQ retries. Terminal cleanup lives in the
-  processor's `failed` handler. The run/cleanup split is deliberate.
-- Retry backoff is `[60, 180, 600]` seconds through a custom strategy
-  (`review.queue.ts`); BullMQ's built-in strategies cannot express it. With 3 attempts
-  only the first two delays are used.
-- Notification failures are caught and logged, never rethrown. A Slack outage must not
-  roll back a completed review.
-- If every model returns unparseable output the review **completes** with a null score
-  and the raw text, behind one of two fixed summary prefixes (`ai/verdict.ts`). Those
-  prefixes are a contract: `isIncompleteReview()` recognises them to report
-  `not_reviewed`. Reword one without the other and a review that checked nothing
-  becomes a green "nothing found".
-- `ai/ai-client.service.ts` is **Groq only**: `llama-3.3-70b-versatile`, then
-  `llama-3.1-8b-instant`, temperature 0.2, `response_format: json_object`. The OpenRouter
-  chain was removed in `bec6ce6`, so native JSON mode is now what keeps output parseable. The model list,
-  its order and the temperature are measured behaviour. Do not reorder or "modernise"
-  them without re-measuring parse rates. `GROQ_API_KEY` is required at boot.
-- The per-attempt job budget is **derived**, not written down (`review.queue.ts`). It
-  imports `GROQ_TIMEOUT_MS`, `GROQ_MODELS` and the GitHub timeout, so it cannot drift
-  back under the work it wraps. (The original fixed 120 s was too small, which made
-  graceful degradation unreachable whenever models failed by hanging.)
-- The deadline **cancels**; it does not just stop waiting. `review.processor.ts` aborts
-  an `AbortController` that is threaded into every `fetch`, and the runners call
-  `signal.throwIfAborted()` before each side effect. An earlier `Promise.race` version
-  left the timed-out runner alive, which double-posted GitHub comments and raced
-  `markFailed` against its own `status: 'completed'`.
-- Every reported location is checked against the lines the model was actually shown
-  (`diff/render.ts`, `ai/issue-validator.ts`). The location displayed is the anchor's,
-  never the model's. A finding that does not resolve is dropped, not shown at a guess.
-
-### Risk Radar and Design Studio
-
-Background in [docs/risk-radar.md](docs/risk-radar.md) and
-[docs/design-studio.md](docs/design-studio.md).
-
-- `diff/risk-radar.ts` is **pure and deterministic**: no model, network or database.
-  The runners call `tryAssessRisk()`, which never throws, because a risk bug must cost
-  a comment its risk section and never cost the user their review. The PR runner saves
-  the assessment of the diff it reviewed (`ReviewRiskStore`) and the pages serve that,
-  so risk always matches the verdict beside it. A live assessment of the current head is
-  only a fallback and stays labelled `basis: "current"`.
-- `SummaryCommentBuilder` appends the risk section only when `risk` is supplied, so the
-  byte-for-byte comment tests stay valid.
-- Design Studio runs **inline**, not on the concurrency-1 queue. It is bounded by
-  `DESIGN_BUDGET_MS` (an `AbortSignal`) and a per-user Redis limit checked *before* the
-  model call. The limit **fails closed** (503) when Redis is unreadable, and every
-  `MULTI/EXEC` result is checked per command. It is a service-level limit and not
-  `@Throttle` because it must be per user on both the web and API-token routes, and it
-  lives in Redis so it survives restarts.
-- Every AI failure in Design Studio degrades to `baselineBlueprint()` with a `notice`.
-  It never fails the request.
-- **User data in Redis must be erasable.** Account deletion sets the account's erasure
-  marker (`account/erasure-marker.ts`) and then clears Redis (`AccountDataService`). Any
-  store that holds a user's data must write through an atomic script that refuses while
-  that marker exists, as `DesignStore` and `ReviewRiskStore` do, and must be purged
-  there. Otherwise work in flight during deletion re-creates data nothing can find.
-- Blueprints live in **Redis** (`design:{uuid}`, 30-day TTL, owner stored beside the
-  payload), deliberately not Postgres: no DDL. Missing, expired, malformed and foreign
-  ids must stay one indistinguishable 404.
-- `design/design-prompt.ts` is separate from `ai/prompt-builder.service.ts` so the frozen
-  review fixtures are unaffected by design-prompt changes.
-
-## UI standards (prism-web)
-
-The bar is what Apple, Google or GitHub would ship. These are rules, not preferences.
-Detail is in [docs/frontend.md](docs/frontend.md).
-
-- **Type:** Inter (optical-size variable cut) for UI and JetBrains Mono for code, both
-  **self-hosted** through `@fontsource-variable/*` imported in `layout.tsx`. Never add a
-  Google Fonts `<link>` or any third-party font CDN.
-- **Minimum text size is 12px** (`text-xs`). No `text-[10px]`, `text-[11px]` or smaller,
-  including badges and counters.
-- **Contrast is WCAG AA (4.5:1) for all text**, in both themes, on every surface it can
-  sit on (`--bg-card` and `--bg-hover` included). Check the ratio before changing a
-  colour token.
-- **Two accents:** `--accent` is for text, icons, borders and focus rings.
-  `--accent-solid` is for fills that carry white text (`.btn-primary`, avatars). Never put
-  white text on `--accent`.
-- **Keyboard:** the global `:focus-visible` ring in `globals.css` must not be removed or
-  overridden with `outline: none` without a visible replacement.
-- **Touch targets:** at least 44x44px for icon-only buttons, 32px for inline chips.
-- **Motion** respects `prefers-reduced-motion`; that is handled globally.
-- **Labels hidden on mobile** use `sr-only sm:not-sr-only`, never `hidden`. `hidden`
-  removes the text from screen readers and leaves an unnamed button.
-- **Server actions can reject** (network drop, a deploy mid-page). One called from a
-  `useEffect` must `.catch` into a visible state, or the component spins forever. One
-  whose result says `ok: false` must show that result. A failure must never look like a
-  success.
-- **Layout** works at 390px with no horizontal scroll. A grid that collapses on mobile
-  uses an explicit `grid-cols-1`, because an implicit `auto` column grows to fit
-  `truncate`d text.
-- Colours come from the CSS tokens. No hard-coded hex in components.
-
-`prism-web` has a Vitest suite (`npm test`), but most views are untested. Verify UI
-changes in a real browser, in both themes, before committing: no console errors and no
-overflow at 390px.
-
-## Stored-data invariants
-
-These are not legacy clutter. Live production data depends on every one of them, and
-breaking one usually produces no error, only wrong data. They describe bytes already on
-disk or already in someone's MCP config. Detail in [docs/database.md](docs/database.md).
-
-- **`synchronize: false` and `migrationsRun: false`, forever.** `schema.sql` is the source
-  of truth. TypeORM reconciliation would drop the CHECK constraints some columns rely on.
-- **Status columns are `varchar`, not Postgres enums.** Entities declare `varchar` with a
-  TypeScript union; `type: 'enum'` makes TypeORM look for a type that does not exist.
-  CHECK constraints exist on `pull_requests.status`, `review_comments.layer` and
-  `review_comments.severity`. They do **not** exist on `commit_reviews.status`,
-  `repositories.review_mode` or `overall_score`, so only code guards those.
-- **`bigint` ids must serialise as JSON numbers.** node-postgres returns strings;
-  `database/transformers.ts` casts them back.
-- **Timestamps go through `common/utils/iso8601.ts`, not `Date#toISOString()`.** The
-  stored format carries an explicit `+00:00` offset where JS emits `.000Z`, and the MCP
-  client displays the strings verbatim.
-- **`database/pg-types.ts` must run before any DataSource connects** (it does, at the top
-  of `main.ts`) so naive `timestamp` columns parse as UTC. `main.ts` also pins
-  `process.env.TZ = 'UTC'`.
-- **`users.github_token` is encrypted at rest** (AES-256-CBC, MAC-verified, PHP-serialised
-  inner value, keyed by `APP_KEY`). `common/utils/crypt.service.ts` is the only reader and
-  writer. The PHP serialisation is part of the stored ciphertext; it cannot become JSON
-  without rewriting every row.
-- **API tokens are `"{id}|{plaintext}"` with `sha256(plaintext)` stored.**
-- **Error envelopes are fixed by their clients.** Validation errors are 422
-  `{message, errors}` from `validationException`. Everything else goes through
-  `ApiExceptionFilter`. A 401 body is exactly `{"message":"Unauthenticated."}` and a 429 is
-  exactly `{"message":"Too Many Attempts."}`. The frontend's forms read `errors`, and the
-  MCP server relays the response body to the model, so these strings are part of the API.
-- **`rawBody: true` in `main.ts`.** The webhook HMAC is computed over the exact bytes
-  GitHub sent.
-- **`/api/v1` is additive-only.** Fields may be added, never removed or renamed.
-- `esModuleInterop` is off in `prism-api`. CommonJS packages use `import x = require('x')`.
-
-### The golden fixtures are frozen
-
-`prism-api/test/fixtures/` holds system prompts and encrypted payloads captured from the
-deleted implementation, asserted byte for byte. The encrypted payloads cannot be
-regenerated. A prompt change must break a test on purpose: update
-`system-prompts.json` in the same commit and say why in the commit message. The
-procedure, and the three spec assertions that break by hand, are in
-[docs/testing.md](docs/testing.md#changing-a-prompt-on-purpose).
-
-## Deployment
-
-`render.yaml` defines both services on Render's free tier. `buildCommand` uses
-`npm ci --include=dev` in both, and the flag is required, not stylistic:
-`NODE_ENV=production` makes npm skip devDependencies, which is where `@nestjs/cli` (for
-`nest build`) and tailwind, postcss and typescript (for `next build`) live. See
-[docs/deployment.md](docs/deployment.md).
-
-## Working in this repository
-
-- **Docs are part of the change.** If a change alters behaviour a document describes,
-  update that document in the same pull request. [docs/README.md](docs/README.md) says
-  which document owns what. Do not hard-code test counts, route counts or line numbers
-  in prose; they go stale within a week.
-- **Decisions get a record.** A choice that is surprising, constrained by production data
-  or expensive to reverse gets an ADR in [docs/adr/](docs/adr/). Add one in the pull
-  request that makes the choice.
-- **Commits** are one logical change each, in the imperative, and the body says *why*
-  (see `git log` for the house style). Do not commit generated output, `.env` files or
-  anything under `node_modules`.
-- **Known defects** are listed in [docs/known-issues.md](docs/known-issues.md). If you fix
-  one, remove it from that file in the same pull request. If you find one, add it.
+- `render.yaml` builds with `npm ci --include=dev` (devDependencies hold the build tools). Render deploys
+  `main`; a local or unpushed change is not live. The hosted instance is currently offline
+  ([known issue](docs/known-issues.md#hosted-offline)).
+- **Docs are part of the change.** Update the owning doc in the same commit. Don't hard-code counts or
+  line numbers in prose. If you add, rename or delete a file the code map lists, update the map.
+- A surprising, data-constrained or hard-to-reverse choice gets an [ADR](docs/adr/README.md). Fixed a
+  known defect? Remove it from [known-issues](docs/known-issues.md); found one? Add it.
+- Commits: one logical change, imperative subject, body says **why**. Stage files by name. Never commit
+  `.env`, `dist/`, `.next/` or `node_modules/`.

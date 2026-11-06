@@ -31,7 +31,7 @@ root's `.env` holds production credentials.
 | `npm test` | Jest. Must pass. `npm test -- <path fragment>` or `-- -t "<name>"` to narrow |
 | `npm run test:e2e` | Fails: `test/jest-e2e.json` was never created. Known, not a regression |
 
-Engines: Node 20.11 or newer (CI runs 22).
+Engines: Node 20.11 or newer.
 
 ## Layout
 

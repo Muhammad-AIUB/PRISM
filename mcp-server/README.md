@@ -124,7 +124,7 @@ PRISM_API_TOKEN=... PRISM_URL=http://127.0.0.1:3999 node index.js   # speaks MCP
 ```
 
 The server is one file, `index.js`, with no build step. There is deliberately no lockfile: this is a
-published package, so users resolve its ranges fresh, and CI installs it the same way. The API's
+published package, so users resolve its ranges fresh. The API's
 `/api/v1` contract is additive-only, so a new server keeps working against an old API and the reverse.
 
 When you change a tool, keep the `design_system` input schema in step with the API's

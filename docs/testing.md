@@ -11,8 +11,8 @@ What is tested, how, and the rules that keep the suite fast, offline and trustwo
 | `mcp-server` | `node --check index.js` only | Syntax. There are no behavioural tests |
 
 **Nothing in `npm test` may need Postgres, Redis, the network or a secret.** Unit tests fake
-their stores (a Redis stand-in, an in-memory repository). CI relies on this: it has no services.
-A test that needs a live service does not belong in `npm test`; verify it by booting the stack
+their stores (a Redis stand-in, an in-memory repository). That keeps the suite fast and runnable
+anywhere, including a CI job with no services should one return. A test that needs a live service does not belong in `npm test`; verify it by booting the stack
 ([development.md](development.md#5-prove-the-review-pipeline-is-wired)).
 
 Unit tests cannot catch a broken dependency-injection graph, a misconfigured entity or an
@@ -39,8 +39,16 @@ npm test                              # vitest run
 known, not a regression.
 
 Gates: before every commit run `npm run typecheck`, `npm run lint` and `npm test` in each
-package you touched. In `prism-api`, `no-floating-promises` and `no-misused-promises` are lint
-errors, and lint runs with `--max-warnings 0`.
+package you touched. There is no CI, so nothing else will. In `prism-api`, `no-floating-promises`
+and `no-misused-promises` are lint errors, and lint runs with `--max-warnings 0`.
+
+**Spend checks in order of cost.** Typecheck takes 5 s (api) or 17 s (web); an API test run on one
+directory about 50 s against about 110 s for the whole suite; a web test run costs about the same
+for one file as for all of them (startup dominates); lint takes 50 to 70 s per package. Typecheck
+while editing, run one narrow API test when logic changed, and run web tests, lint and each full
+suite once, before committing. The code map has the table of which command matches which change
+([code-map.md](code-map.md#tests-run-the-one-that-matches)). Do not boot the stack unless the change
+needs it (below).
 
 ## What to test when you change something
 

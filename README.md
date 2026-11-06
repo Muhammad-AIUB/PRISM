@@ -9,7 +9,6 @@ can check, not a score you have to trust.
 
 **Hosted demo: offline** ([details](docs/known-issues.md#hosted-offline)) · [Run it yourself](#run-it-locally) · [Documentation](docs/README.md) · [MCP server](mcp-server/README.md)
 
-[![CI](https://github.com/Muhammad-AIUB/PRISM/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhammad-AIUB/PRISM/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 <sub>PRism was hosted on Render's free tier at `prism-web-fgts.onrender.com`. When last checked
@@ -91,7 +90,7 @@ process because Render's free tier has no background-worker service type. Read
 | [`mcp-server/`](mcp-server/README.md) | MCP server exposing reviews, Risk Radar and Design Studio to AI editors |
 | [`docs/`](docs/README.md) | Architecture, reference, how-to guides, runbook, decision records |
 | `render.yaml` | Render deployment for both services |
-| `.github/workflows/` | CI, and a keep-alive ping for the free tier |
+| `.github/` | The pull-request template. There is no CI ([why](docs/deployment.md#ci)) |
 
 ## Run it locally
 
@@ -115,6 +114,7 @@ afternoon.
 
 | If you want to... | Read |
 |---|---|
+| Find the right file fast | [Code map](docs/code-map.md) |
 | Understand the system | [Architecture](docs/architecture.md), [Review pipeline](docs/review-pipeline.md) |
 | Run or change it | [Development](docs/development.md), [Testing](docs/testing.md), [Contributing](CONTRIBUTING.md) |
 | Look something up | [API reference](docs/api-reference.md), [Configuration](docs/configuration.md), [Database](docs/database.md) |

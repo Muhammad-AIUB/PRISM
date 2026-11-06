@@ -7,6 +7,7 @@ everything else lives, and which document owns which fact, so a change can updat
 
 | Document | Read it to |
 |---|---|
+| [Code map](code-map.md) | Find the two or three files a change needs, which files not to read, and which test to run. **Start here when changing code** |
 | [Development guide](development.md) | Go from a fresh clone to a running stack, prove the review pipeline is wired without a tunnel, and fix the common local problems |
 | [Testing](testing.md) | Know what is tested, run the checks, change a prompt on purpose, and measure model behaviour |
 
@@ -59,7 +60,8 @@ repeating it, and never hard-code counts (tests, routes, lines) in prose.
 | Design Studio behaviour or storage | [design-studio.md](design-studio.md) |
 | Auth, headers, CSP, anything that touches secrets or deletion | [security.md](security.md) |
 | A page, a theme token, a UI rule | [frontend.md](frontend.md) |
-| Deploy steps, hosting, CI | [deployment.md](deployment.md) |
+| Deploy steps, hosting | [deployment.md](deployment.md) |
+| A file moved, was added or deleted | [code-map.md](code-map.md) |
 | How to diagnose a failure you just diagnosed | [operations.md](operations.md) |
 | A bug you found or fixed | [known-issues.md](known-issues.md) |
 | A surprising or hard-to-reverse choice | a new [ADR](adr/README.md) |

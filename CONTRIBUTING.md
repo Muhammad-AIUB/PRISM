@@ -30,8 +30,10 @@ Run the API from `prism-api/`, and check that connection strings say `127.0.0.1`
    npm run typecheck && npm run lint && npm test
    ```
 
-   Lint runs with `--max-warnings 0`. CI also runs both builds, `node --check` on the MCP
-   server, and `npm audit --omit=dev --audit-level=high`. All of it must be green.
+   Lint runs with `--max-warnings 0`. **There is no CI** (the workflows were removed on
+   2026-11-06), so nothing else will catch a failure: you are the gate. Also run `node --check
+   index.js` in `mcp-server` if you touched it, and `npm audit --omit=dev --audit-level=high` when
+   dependencies change.
 5. **Boot it** if you touched modules, entities, configuration or the pipeline. Unit tests cannot
    catch a broken dependency-injection graph or an environment variable that fails validation
    ([docs/testing.md](docs/testing.md)).

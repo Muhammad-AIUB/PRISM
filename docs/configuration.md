@@ -71,12 +71,6 @@ at run time. Changing it requires a rebuild.
 | `PRISM_API_TOKEN` | **yes** | | A token created under *Settings -> API tokens*. The process exits with a hint if it is missing |
 | `PRISM_URL` | **yes** | | The API's base URL, `http` or `https`. Point it at the **API**, not the web app, so a request wakes a sleeping service. There is no default: the process exits with a message if it is missing or not an `http(s)` URL (the former hosted instance is offline, [known issue](known-issues.md#hosted-offline)) |
 
-## GitHub Actions
-
-| Variable | Where | Effect |
-|---|---|---|
-| `PRISM_API_URL`, `PRISM_WEB_URL` | Repository *Settings -> Secrets and variables -> Actions -> Variables* | Targets of the keep-alive workflow: the API is pinged at `/health`, the web app at `/login`. Neither has a default. With both unset the job is skipped; with one set, only that one is pinged |
-
 ## Generating values
 
 ```bash

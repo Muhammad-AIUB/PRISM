@@ -9,7 +9,7 @@ checks every change must pass read [testing.md](testing.md) and [CONTRIBUTING.md
 
 | Tool | Version | Why |
 |---|---|---|
-| Node.js | **22.12 or newer** | `prism-web`'s test toolchain (Vitest 5, jsdom 30) requires it. `prism-api` runs on 20.11+, but use one version for both. CI uses 22 |
+| Node.js | **22.12 or newer** | `prism-web`'s test toolchain (Vitest 5, jsdom 30) requires it. `prism-api` runs on 20.11+, but use one version for both |
 | npm | 10+ | Each package has its own lockfile; there is no workspace tooling |
 | Docker | any recent | Postgres 16 and Redis 7 |
 | A GitHub OAuth app | | Needed to sign in through the real flow ([step 4](#4-start-the-web-app-and-sign-in)) |
@@ -203,8 +203,9 @@ Variations worth trying: a bad signature returns `401 Invalid signature`; an unk
 | Web in watch mode | `npm run dev` (`prism-web`) |
 | Syntax-check the MCP server | `node --check index.js` (`mcp-server`) |
 
-Run typecheck, lint and tests before every commit. CI runs the same, plus both builds and a
-dependency audit.
+Run typecheck, lint and tests before every commit. There is no CI, so nothing else will. Typecheck
+is the cheap loop (5 to 17 s); lint and tests take about a minute each, so run them once at the end
+([timings and the test-per-area table](code-map.md#tests-run-the-one-that-matches)).
 
 For UI changes, also open the page in a browser, in both themes, with the console open, and
 at 390 px wide: no console errors and no horizontal scroll
