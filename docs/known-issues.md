@@ -200,12 +200,12 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
   `x-render-routing: no-server`, which means no service answers at those hostnames. Whether the
   services were deleted, suspended or renamed has not been determined; it needs the Render dashboard.
   The keep-alive run at 04:57 UTC that day succeeded and the next, at 12:45 UTC, failed with the API's
-  404. Consequences: there is no live demo; the MCP server's default `PRISM_URL` points at the dead
-  host, so its tools fail with a 404 until `PRISM_URL` is set; and the keep-alive workflow's default
-  hosts are the same, so every scheduled run fails. **Fix:** restore or redeploy the services from
-  `render.yaml`, and if Render assigns new hostnames update `PRISM_API_URL`/`PRISM_WEB_URL`, the
-  GitHub OAuth app's callback URL and the docs. **Proposed code changes, not made:** make `PRISM_URL` required in
-  `mcp-server/index.js` instead of defaulting to a dead host, and stop defaulting the keep-alive hosts.
+  404. **Still open:** there is no live demo. Restore or redeploy the services from `render.yaml`; if
+  Render assigns new hostnames, set `PRISM_API_URL`/`PRISM_WEB_URL` (below), update the GitHub OAuth
+  app's callback URL, and update the docs. **Already handled in code:** the MCP server no longer
+  defaults `PRISM_URL` to the dead host (it exits asking for one), and the keep-alive workflow no
+  longer defaults its hosts (the job is skipped until `PRISM_API_URL` or `PRISM_WEB_URL` is set as a
+  repository variable), so it stops failing every ten minutes.
 
 <a id="f3"></a>
 - **Node is not pinned on Render.** `render.yaml` sets no `NODE_VERSION`, so Render resolves the

@@ -163,7 +163,8 @@ the forward one, and make additive changes only.
 | Workflow | Triggers | Does |
 |---|---|---|
 | `ci.yml` | pull requests, pushes to `main`, manual | Three jobs on Node 22. `api`: `npm ci`, typecheck, lint, tests, build, audit. `web`: the same, with the web build. `mcp`: `npm install`, `node --check index.js`, audit. No job needs Postgres, Redis or a secret |
-| `keep-alive.yml` | cron `*/10 * * * *`, manual | Requests `{PRISM_API_URL}/health` and `{PRISM_WEB_URL}/login` with retries and a 150 s timeout, and fails the run if either is not 2xx or 3xx |
+| `keep-alive.yml` | cron `*/10 * * * *`, manual | Requests `{PRISM_API_URL}/health` and `{PRISM_WEB_URL}/login` with retries and a 150 s timeout, and fails the run if one it pings is not 2xx or 3xx |
 
 Set the repository variables `PRISM_API_URL` and `PRISM_WEB_URL` (*Settings -> Secrets and
-variables -> Actions -> Variables*) to your own hosts.
+variables -> Actions -> Variables*) to your own hosts. **There are no defaults**: with neither set
+the job is skipped rather than failing, and with one set only that service is pinged.

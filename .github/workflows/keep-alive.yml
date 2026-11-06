@@ -11,6 +11,12 @@ name: Keep Render awake
 # The interval is 10 min rather than 14 because GitHub's scheduled runs can be
 # delayed several minutes under load — that leaves margin against the 15-minute
 # spin-down even when a run is late.
+#
+# There are no default hosts. Set PRISM_API_URL and/or PRISM_WEB_URL under
+# Settings → Secrets and variables → Actions → Variables. With neither set the
+# job is skipped, so a fork, or a repository whose services are not deployed,
+# does not turn red every ten minutes. (It used to default to the hosted
+# instance, which went away and made every scheduled run fail.)
 
 on:
   schedule:
@@ -24,18 +30,19 @@ concurrency:
 
 jobs:
   ping:
+    # Nothing to ping until at least one host is configured.
+    if: ${{ vars.PRISM_API_URL != '' || vars.PRISM_WEB_URL != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Ping both services
+      - name: Ping the configured services
         env:
           # Render appends a random suffix when the plain service name is already
           # taken, so these are NOT prism-api/prism-web.onrender.com — those names
           # belong to another account and answer 503 (x-render-routing:
-          # suspend-by-user). Pinging them kept every scheduled run red.
-          # Override in repo Settings → Secrets and variables → Actions → Variables.
-          PRISM_API_URL: ${{ vars.PRISM_API_URL || 'https://prism-api-wmam.onrender.com' }}
-          PRISM_WEB_URL: ${{ vars.PRISM_WEB_URL || 'https://prism-web-fgts.onrender.com' }}
+          # suspend-by-user). Use the URLs Render shows for your own services.
+          PRISM_API_URL: ${{ vars.PRISM_API_URL }}
+          PRISM_WEB_URL: ${{ vars.PRISM_WEB_URL }}
         run: |
           failed=0
           body="${RUNNER_TEMP:-/tmp}/ping-body"
@@ -66,7 +73,16 @@ jobs:
 
           # /health is the API's real probe: it checks the database and Redis,
           # so a 200 here means the worker can actually do its job.
-          ping "prism-api" "${PRISM_API_URL}/health"
-          ping "prism-web" "${PRISM_WEB_URL}/login"
+          if [ -n "${PRISM_API_URL}" ]; then
+            ping "prism-api" "${PRISM_API_URL%/}/health"
+          else
+            echo "PRISM_API_URL is not set; skipping prism-api"
+          fi
+
+          if [ -n "${PRISM_WEB_URL}" ]; then
+            ping "prism-web" "${PRISM_WEB_URL%/}/login"
+          else
+            echo "PRISM_WEB_URL is not set; skipping prism-web"
+          fi
 
           exit $failed

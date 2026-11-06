@@ -5,21 +5,52 @@
  *
  * Required env:
  *   PRISM_API_TOKEN  — generate one in PRism → Settings → API Tokens
- * Optional env:
- *   PRISM_URL        — base URL of your PRism instance (default: production)
+ *   PRISM_URL        — base URL of your PRism API, e.g. https://your-prism-api.onrender.com
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+/**
+ * There is deliberately no default. This used to fall back to the project's
+ * hosted instance, which no longer answers (Render returns 404 "no-server"),
+ * so every tool call failed with a bare 404 that said nothing about the cause.
+ * A missing setting should be an error that names the setting.
+ */
+function requireBaseUrl(value) {
+  if (!value) {
+    fail(
+      'PRISM_URL env var is required. Set it to the base URL of your PRism API, ' +
+        'for example https://your-prism-api.onrender.com',
+    );
+  }
+
+  let url = null;
+  try {
+    url = new URL(value);
+  } catch {
+    // reported below
+  }
+
+  if (!url || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+    fail(`PRISM_URL must be an http(s) URL, got "${value}".`);
+  }
+
+  return value.replace(/\/$/, '');
+}
+
 // The API itself, not prism-web: a direct request wakes a sleeping API on
 // Render's free tier, while one proxied through prism-web just gets a 429.
-const PRISM_URL = (process.env.PRISM_URL || 'https://prism-api-wmam.onrender.com').replace(/\/$/, '');
+const PRISM_URL = requireBaseUrl(process.env.PRISM_URL);
 const TOKEN = process.env.PRISM_API_TOKEN;
 
 if (!TOKEN) {
-  console.error('PRISM_API_TOKEN env var is required. Generate one in PRism → Settings → API Tokens.');
-  process.exit(1);
+  fail('PRISM_API_TOKEN env var is required. Generate one in PRism → Settings → API Tokens.');
 }
 
 async function api(path, { method = 'GET', body } = {}) {
