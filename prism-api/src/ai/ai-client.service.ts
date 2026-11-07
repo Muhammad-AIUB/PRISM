@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { extractJson, type ExtractedJson } from './json-extractor';
+import type { AiCallContext } from './providers/ai-provider';
+import { GROQ_MODELS, GroqProvider } from './providers/groq.provider';
+import { AI_TIMEOUT_MS } from './providers/http';
 
 /**
  * The AI calls both review pipelines make.
@@ -19,7 +22,7 @@ import { extractJson, type ExtractedJson } from './json-extractor';
  * Model ids, ordering, temperature and timeouts are observable behaviour.
  * Do not reorder or "modernise" the list without re-measuring parse rates.
  */
-export type AiCallContext = 'commit_review' | 'pr_review' | 'design_advice';
+export type { AiCallContext } from './providers/ai-provider';
 
 export interface RawAiResult {
   parsed: ExtractedJson | null;
@@ -32,8 +35,6 @@ export interface FallbackAiResult extends RawAiResult {
   /** Labelled "groq/<model>" — the format stored in ai_model_used. */
   model: string | null;
 }
-
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 /**
  * Every model was rate limited, which is a failed attempt rather than a review.
@@ -55,39 +56,16 @@ export class RateLimitedError extends Error {
   }
 }
 
-/**
- * Exported because the BullMQ job timeout is derived from it. Those two numbers
- * drifting apart is not a theoretical risk: a job budget smaller than the calls
- * it wraps silently made the graceful-degradation path below unreachable.
- */
-export const GROQ_TIMEOUT_MS = 60_000;
+/** Exported because the BullMQ job timeout is derived from it (see providers/http.ts). */
+export const GROQ_TIMEOUT_MS = AI_TIMEOUT_MS;
 
-/**
- * Tried in order. Groq shut down llama-3.3-70b-versatile and llama-3.1-8b-instant
- * on 2026-08-16 (https://console.groq.com/docs/deprecations); these are its named
- * successors, in the same large-then-small order. Not re-measured: see ADR 0007.
- */
-export const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
-
-/**
- * gpt-oss models spend completion tokens on reasoning before the answer, and
- * Groq's default of 1024 can run out first and leave `content` empty, which the
- * pipeline reads as "no usable review". A generous ceiling avoids that.
- */
-const GROQ_MAX_COMPLETION_TOKENS = 8192;
-
-interface ChatCompletionResponse {
-  choices?: { message?: { content?: string } }[];
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-}
+export { GROQ_MODELS };
 
 @Injectable()
 export class AiClientService {
   private readonly logger = new Logger(AiClientService.name);
+
+  private readonly groq = new GroqProvider();
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -180,120 +158,29 @@ export class AiClientService {
     context: AiCallContext,
     signal?: AbortSignal,
   ): Promise<RawAiResult> {
-    const response = await this.post(
-      {
-        model,
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-        max_completion_tokens: GROQ_MAX_COMPLETION_TOKENS,
-        // The reasoning text is not used, only the JSON answer.
-        include_reasoning: false,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      },
-      { context, model },
+    const result = await this.groq.complete({
+      model,
+      system,
+      user,
+      context,
+      apiKey: this.groqKey(),
       signal,
-    );
+    });
 
-    if (!response.ok) {
-      this.logger.warn(
-        `Groq call failed: ${response.status} ${(response.body ?? '').slice(0, 500)}`,
-      );
+    if (!result.ok) {
+      this.logger.warn(`Groq call failed: ${result.status} ${(result.errorBody ?? '').slice(0, 500)}`);
 
       // `raw` is what the graceful-degradation path shows the user as the model's
       // own words. An HTTP error body is not that, and returning it here is how
       // a rate-limited review ended up displaying Groq's error JSON as its
       // summary. The status is logged above; the user is not shown a transport
       // failure dressed up as a review.
-      return { parsed: null, raw: null, rateLimited: response.status === 429 };
+      return { parsed: null, raw: null, rateLimited: result.status === 429 };
     }
 
-    const content = this.contentOf(response.json);
+    const content = result.content ?? '';
 
     return { parsed: extractJson(content), raw: content };
-  }
-
-  /**
-   * One HTTP round trip plus the `ai_call` structured log line. A network
-   * error or timeout is reported as a non-ok result rather than thrown, so the
-   * caller falls through to the next model instead of failing the whole job.
-   */
-  private async post(
-    payload: Record<string, unknown>,
-    meta: { context: AiCallContext; model: string },
-    signal?: AbortSignal,
-  ): Promise<{ ok: boolean; status: number; body: string | null; json: ChatCompletionResponse }> {
-    const start = Date.now();
-
-    try {
-      const response = await fetch(GROQ_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.groqKey()}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        // Whichever fires first wins: this call's own ceiling, or the job
-        // running out of budget. Without the caller's signal the request keeps
-        // a socket and a response buffer alive long after anyone cares.
-        signal: signal
-          ? AbortSignal.any([signal, AbortSignal.timeout(GROQ_TIMEOUT_MS)])
-          : AbortSignal.timeout(GROQ_TIMEOUT_MS),
-      });
-
-      const body = await response.text();
-      let json: ChatCompletionResponse = {};
-
-      if (response.ok) {
-        try {
-          json = JSON.parse(body) as ChatCompletionResponse;
-        } catch {
-          json = {};
-        }
-      }
-
-      this.logger.log(
-        `ai_call ${JSON.stringify({
-          context: meta.context,
-          provider: 'groq',
-          model: meta.model,
-          status: response.status,
-          duration_ms: Date.now() - start,
-          prompt_tokens: json.usage?.prompt_tokens ?? null,
-          completion_tokens: json.usage?.completion_tokens ?? null,
-        })}`,
-      );
-
-      return { ok: response.ok, status: response.status, body, json };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      this.logger.log(
-        `ai_call ${JSON.stringify({
-          context: meta.context,
-          provider: 'groq',
-          model: meta.model,
-          status: 0,
-          duration_ms: Date.now() - start,
-          error: message,
-          aborted: signal?.aborted ?? false,
-        })}`,
-      );
-
-      // A per-call timeout is a soft failure: report it and let the caller try
-      // the next model. The job budget expiring is not — swallowing it here
-      // would turn a dead job into a "no model answered" review.
-      signal?.throwIfAborted();
-
-      return { ok: false, status: 0, body: null, json: {} };
-    }
-  }
-
-  private contentOf(json: ChatCompletionResponse): string {
-    return json.choices?.[0]?.message?.content ?? '';
   }
 
   private groqKey(): string {
