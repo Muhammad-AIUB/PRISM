@@ -114,6 +114,10 @@ export class PullRequestReviewRunner {
     });
 
     if (outcome.status === 'unusable') {
+      // Same rule as the success path: out of budget, so do not write a row
+      // the retry is about to redo.
+      signal?.throwIfAborted();
+
       await this.upsertReview(pr.id, {
         overallScore: null,
         summary: incompleteReviewSummary(outcome.raw),

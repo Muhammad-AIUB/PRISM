@@ -103,6 +103,10 @@ export class CommitReviewRunner {
     // Graceful degradation: no batch produced a usable answer. The user sees the
     // raw text and a retry hint rather than a failed review.
     if (outcome.status === 'unusable') {
+      // Same rule as the success path: out of budget, so do not write a row
+      // the retry is about to redo.
+      signal?.throwIfAborted();
+
       await this.commitReviews.update(review.id, {
         status: 'completed',
         overallScore: null,

@@ -118,7 +118,11 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
     '+export const allow = true;',
   ].join('\n');
 
-  function build(parsed: Record<string, unknown> | null, generate: jest.Mock = jest.fn().mockResolvedValue(null)) {
+  function build(
+    parsed: Record<string, unknown> | null,
+    generate: jest.Mock = jest.fn().mockResolvedValue(null),
+    onModelCall: () => void = () => undefined,
+  ) {
     const pullRequests = repo();
     const reviews = repo();
     const reviewComments = repo();
@@ -149,7 +153,11 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
       reviews as never,
       reviewComments as never,
       buildBatchedReview({
-        callWithFallback: jest.fn().mockResolvedValue({ model: 'groq/test', parsed, raw: parsed ? null : 'garbled' }),
+        callWithFallback: jest.fn(async () => {
+          onModelCall();
+
+          return { model: 'groq/test', parsed, raw: parsed ? null : 'garbled' };
+        }),
       }).service,
       { generate } as never,
       github as never,
@@ -218,6 +226,15 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
 
     expect(reviews.save).toHaveBeenCalled();
     expect(reviewedRisk.save).toHaveBeenCalledWith(1, 1, expect.objectContaining({ level: expect.any(String) }));
+  });
+
+  it('rejects before persisting when the budget runs out while the model output turns out unusable', async () => {
+    const controller = new AbortController();
+    const { runner, reviews, github } = build(null, undefined, () => controller.abort(new Error('job budget spent')));
+
+    await expect(runner.run(1, 1, controller.signal)).rejects.toThrow('job budget spent');
+    expect(reviews.save).not.toHaveBeenCalled();
+    expect(github.postPullRequestComment).not.toHaveBeenCalled();
   });
 
   it('clears the saved risk when the scan fails, instead of leaving the last push\'s', async () => {

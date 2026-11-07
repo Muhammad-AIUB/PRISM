@@ -140,4 +140,19 @@ describe('CommitReviewRunner batched review', () => {
     expect(saved.overallScore).toBeNull();
     expect(github.postCommitComment).not.toHaveBeenCalled();
   });
+
+  it('rejects before persisting when the budget runs out while the model output turns out unusable', async () => {
+    const controller = new AbortController();
+
+    answer.callWithFallback.mockImplementation(async () => {
+      controller.abort(new Error('job budget spent'));
+
+      return { model: 'groq/test', parsed: null, raw: 'garbled' };
+    });
+
+    const { runner, commitReviews } = build(addedFile('a', 5), answer);
+
+    await expect(runner.run(4, 1, controller.signal)).rejects.toThrow('job budget spent');
+    expect(finalUpdate(commitReviews)).toBeUndefined();
+  });
 });
