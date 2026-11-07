@@ -143,6 +143,15 @@ things with a budget of `DIFF_LIMIT = 8000` characters:
 It also produces a coverage sentence ("Reviewed 7 of 14 changed files. 1 of them only in
 part.") that is stored in the summary whenever anything was left out.
 
+### Coverage
+
+`coverageRatio()` is the share of reviewable files the model was shown: a file included only in
+part counts as half, and noise (lockfiles, generated, vendored, binary) is not in the
+denominator. Below `MIN_COVERAGE` (0.5) the runners store `overall_score = null` and
+`composeSummary` leads the summary with the fixed `PARTIAL_REVIEW` sentence, which
+`isPartialReview()` recognises. On read, `verdictForReview` turns that into `partial` unless a
+blocking finding exists. See [ADR 0011](adr/0011-partial-review-on-thin-coverage.md).
+
 ## 5. The first AI pass
 
 [`PromptBuilderService.buildSystemPrompt`](../prism-api/src/ai/prompt-builder.service.ts)
@@ -204,6 +213,7 @@ category becomes `other` and an unknown severity becomes `suggestion`.
 | `blocking` | any finding has a blocking category |
 | `worth_a_look` | otherwise |
 | `not_reviewed` | not computed here; applied on read when the summary starts with a fallback prefix |
+| `partial` | not computed here; applied on read when the summary starts with `PARTIAL_REVIEW` and no finding is blocking |
 
 `reconcileScore` pulls the model's score into agreement with the verdict: at most 60 when
 blocking, at least 80 when nothing was found, and a null score stays null. Without that, a

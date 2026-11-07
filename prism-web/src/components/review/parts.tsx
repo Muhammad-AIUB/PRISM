@@ -36,6 +36,11 @@ const VERDICTS: Record<Verdict, { label: string; color: string; note: string }> 
     color: 'var(--warning)',
     note: 'The AI did not return a review for this change, so nothing was checked. Re-analyze to try again.',
   },
+  partial: {
+    label: 'Partial review',
+    color: 'var(--warning)',
+    note: 'Too little of this change was covered to score it or call it clean. Read the coverage line in the summary, then review the rest by hand.',
+  },
 };
 
 /**

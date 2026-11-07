@@ -52,4 +52,11 @@ describe('VerdictPanel', () => {
     ]);
     expect(screen.getByText(/2 more findings/)).toBeInTheDocument();
   });
+
+  it('says partial and never shows a green all-clear', () => {
+    render(<VerdictPanel verdict="partial" findings={[]} />);
+
+    expect(screen.getByText('Partial review')).toBeInTheDocument();
+    expect(screen.queryByText('Nothing found')).not.toBeInTheDocument();
+  });
 });

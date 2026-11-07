@@ -84,7 +84,9 @@ Each is a one-liner; the doc named after it has the why.
   safe to repeat. The job budget is **derived** in `review.queue.ts`; never hard-code it.
 - Notification failures never fail a review. Worker `concurrency: 1` (512 MB).
 - No usable model output **completes** the review as `not_reviewed`, behind two fixed summary strings in
-  `ai/verdict.ts` that `isIncompleteReview()` recognises. Change both or neither.
+  `ai/verdict.ts` that `isIncompleteReview()` recognises. Change both or neither. Under half coverage the
+  score is `null` and the summary leads with `PARTIAL_REVIEW`, recognised by `isPartialReview()`
+  ([ADR 0011](docs/adr/0011-partial-review-on-thin-coverage.md)); reword the pair together.
 - Groq only. The model list was swapped on 2026-11-07 after Groq retired the originals, and is **not
   re-measured** ([ADR 0007](docs/adr/0007-groq-is-the-only-ai-provider.md)). Order and temperature are
   measured: don't change them without re-measuring.

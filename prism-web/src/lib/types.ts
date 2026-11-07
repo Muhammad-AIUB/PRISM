@@ -176,8 +176,11 @@ export interface ReviewComment {
  * one deciding for itself. `blocking` requires a category a reader can confirm
  * against the diff, not just a severity the model chose.
  */
-/** `not_reviewed`: no model produced a review, so nothing was checked. Never an all-clear. */
-export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found' | 'not_reviewed';
+/**
+ * `not_reviewed`: no model produced a review, so nothing was checked. Never an all-clear.
+ * `partial`: under half of the reviewable code was covered; no score.
+ */
+export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found' | 'not_reviewed' | 'partial';
 
 export interface ReviewDetail {
   id: number;

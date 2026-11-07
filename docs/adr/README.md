@@ -20,6 +20,7 @@ worth reading alongside.
 | [0008](0008-deterministic-risk-radar.md) | Compute change risk deterministically, without a model | Accepted |
 | [0009](0009-design-studio-inline-and-in-redis.md) | Run Design Studio inline and store blueprints in Redis | Accepted |
 | [0010](0010-lead-with-a-verdict-and-keep-the-score.md) | Lead with a verdict, and keep the score | Accepted |
+| [0011](0011-partial-review-on-thin-coverage.md) | Partial review on thin coverage | Accepted |
 
 ## Writing a new one
 
