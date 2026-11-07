@@ -40,7 +40,7 @@ const ANCHOR_INSTRUCTIONS =
   'For each issue you report, put that anchor id in the "line" field. Report only lines that have an anchor.\n' +
   'Lines with no anchor are unchanged context, shown so you can understand the change.\n\n';
 
-function coverageSentence(selection: Selection): string | null {
+export function coverageSentence(selection: Selection): string | null {
   const left = selection.skipped.length;
   const partial = selection.partial.length;
 
@@ -56,6 +56,33 @@ function coverageSentence(selection: Selection): string | null {
   }
 
   return parts.join(' ');
+}
+
+/** One batch, rendered with its own anchors. Ids start at 1 in every batch. */
+export interface PreparedBatch {
+  /** The rendered diff for the user message; empty when the batch has no text. */
+  body: string;
+  /** Anchor id to real location, for THIS batch only. */
+  anchors: Map<number, Anchor>;
+  index: HunkIndex;
+}
+
+/**
+ * The anchor scheme applied to one batch of a batched review. Ids are numbered
+ * per batch and validated against that batch's own map, so a finding is only
+ * ever accepted if it names an anchor the model was shown in the same call:
+ * exactly as strict as the single-call scheme (ADR 0006), never looser. An id
+ * from another batch is simply unknown here.
+ */
+export function prepareBatch(text: string): PreparedBatch {
+  const index = buildHunkIndex(text);
+  const rendered = renderWithAnchors(index);
+
+  return {
+    body: rendered.text === '' ? '' : ANCHOR_INSTRUCTIONS + rendered.text,
+    anchors: rendered.anchors,
+    index,
+  };
 }
 
 export function prepareDiff(diffBody: string, budget: number): PreparedDiff {

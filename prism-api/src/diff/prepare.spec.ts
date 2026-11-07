@@ -1,4 +1,4 @@
-import { prepareDiff } from './prepare';
+import { prepareBatch, prepareDiff } from './prepare';
 
 /**
  * The stage both runners share.
@@ -87,5 +87,25 @@ index 1111111..2222222 100644
     const diff = ['a', 'b', 'c', 'd'].map(one).join('');
 
     expect(prepareDiff(diff, one('a').length).coverageRatio).toBeCloseTo(0.25);
+  });
+});
+
+describe('prepareBatch', () => {
+  it('numbers anchors from 1 in every batch, so ids from another batch are unknown here', () => {
+    const first = prepareBatch(diff('a.ts', ['+one', '+two']));
+    const second = prepareBatch(diff('b.ts', ['+three']));
+
+    expect([...first.anchors.keys()]).toEqual([1, 2]);
+    expect([...second.anchors.keys()]).toEqual([1]);
+    expect(second.anchors.get(1)?.file).toBe('b.ts');
+    expect(second.anchors.get(2)).toBeUndefined();
+  });
+
+  it('carries the anchor instructions, which the frozen system prompt cannot', () => {
+    expect(prepareBatch(diff('a.ts', ['+x'])).body).toContain('anchor id in square brackets');
+  });
+
+  it('has an empty body for an empty batch', () => {
+    expect(prepareBatch('').body).toBe('');
   });
 });

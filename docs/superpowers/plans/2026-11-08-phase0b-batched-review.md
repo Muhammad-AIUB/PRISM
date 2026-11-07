@@ -1075,7 +1075,7 @@ git commit -m "Gather every batching constant in one module" -m "Nothing about b
   - `interface MergedReview { layers: {security; performance; code_quality: ReviewIssue[]}; kept; dropped; trimmed: number; score: number | null; summary: string | null; models: string[]; lastModel: string }`
   - `mergeBatchResults(results: readonly BatchResult[], maxFindings: number): MergedReview`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append the `prepareBatch` tests to `prism-api/src/diff/prepare.spec.ts` and the `mergeHunkIndexes` tests to `prism-api/src/diff/hunk-index.spec.ts` (the import line of each changes as shown):
 
@@ -1254,12 +1254,12 @@ describe('mergeBatchResults', () => {
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `npm test -- src/diff/prepare src/diff/hunk-index src/ai/batch-merge`
 Expected: FAIL (`prepareBatch`, `mergeHunkIndexes` are not exported; `Cannot find module './batch-merge'`).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```diff
 diff --git a/prism-api/src/diff/hunk-index.ts b/prism-api/src/diff/hunk-index.ts
@@ -1471,12 +1471,12 @@ export function mergeBatchResults(results: readonly BatchResult[], maxFindings: 
 }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `npm test -- src/diff src/ai/batch-merge && npm run typecheck`
 Expected: PASS (the whole `src/diff` directory, including the frozen-prompt-independent specs, stays green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/diff/hunk-index.ts prism-api/src/diff/hunk-index.spec.ts prism-api/src/diff/prepare.ts prism-api/src/diff/prepare.spec.ts prism-api/src/ai/batch-merge.ts prism-api/src/ai/batch-merge.spec.ts

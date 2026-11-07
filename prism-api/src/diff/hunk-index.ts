@@ -85,3 +85,36 @@ export function buildHunkIndex(diff: string): HunkIndex {
 
   return index;
 }
+
+/**
+ * One index out of the per-batch indexes of a batched review. A file cut across
+ * batches appears in several of them with disjoint lines, so its maps are
+ * unioned and its lines concatenated in batch order. The second AI pass checks
+ * its fixes against this, so it has to cover everything that was reviewed.
+ */
+export function mergeHunkIndexes(indexes: readonly HunkIndex[]): HunkIndex {
+  const merged: HunkIndex = new Map();
+
+  for (const index of indexes) {
+    for (const [file, hunks] of index) {
+      const into = merged.get(file);
+
+      if (!into) {
+        merged.set(file, {
+          added: new Map(hunks.added),
+          removed: new Map(hunks.removed),
+          context: new Map(hunks.context),
+          lines: [...hunks.lines],
+        });
+        continue;
+      }
+
+      hunks.added.forEach((text, line) => into.added.set(line, text));
+      hunks.removed.forEach((text, line) => into.removed.set(line, text));
+      hunks.context.forEach((text, line) => into.context.set(line, text));
+      into.lines.push(...hunks.lines);
+    }
+  }
+
+  return merged;
+}

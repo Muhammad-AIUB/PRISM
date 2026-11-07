@@ -1,4 +1,4 @@
-import { buildHunkIndex, type HunkLine } from './hunk-index';
+import { buildHunkIndex, mergeHunkIndexes, type HunkLine } from './hunk-index';
 
 describe('buildHunkIndex', () => {
   it('records the new-side line numbers of added lines', () => {
@@ -196,5 +196,25 @@ describe('buildHunkIndex', () => {
     );
 
     expect(index.get('a.ts')?.lines.map((line) => line.newLine)).toEqual([1, 2, 51]);
+  });
+});
+
+describe('mergeHunkIndexes', () => {
+  const part = (hunk: string) => buildHunkIndex(`diff --git a/f.ts b/f.ts\n${hunk}`);
+
+  it('unions a file cut across batches and keeps the lines in batch order', () => {
+    const merged = mergeHunkIndexes([part('@@ -1,1 +1,2 @@\n ctx\n+a\n'), part('@@ -10,1 +11,2 @@\n ctx\n+b\n')]);
+    const file = merged.get('f.ts');
+
+    expect([...(file?.added.keys() ?? [])]).toEqual([2, 12]);
+    expect(file?.lines.filter((l) => l.kind === 'added').map((l) => l.text)).toEqual(['a', 'b']);
+  });
+
+  it('does not mutate the indexes it was given', () => {
+    const one = part('@@ -1,1 +1,2 @@\n ctx\n+a\n');
+
+    mergeHunkIndexes([one, part('@@ -5,1 +6,2 @@\n ctx\n+b\n')]);
+
+    expect(one.get('f.ts')?.added.size).toBe(1);
   });
 });
