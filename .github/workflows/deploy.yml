@@ -1,5 +1,5 @@
-# Deploys prism-api to the VPS when prism-api or deploy/ changes on main.
-# prism-web deploys itself on Vercel. Setup: docs/deployment.md#auto-deploy-on-push
+# Checks prism-api, then deploys it to the VPS, when prism-api or deploy/ changes
+# on main. A failing check stops the deploy. prism-web deploys itself on Vercel. Setup: docs/deployment.md#auto-deploy-on-push
 name: Deploy API
 
 on:
@@ -20,7 +20,30 @@ permissions:
   contents: read
 
 jobs:
+  # The same gate CLAUDE.md asks for before a commit. None of it needs Postgres,
+  # Redis or a secret: the unit tests fake every store.
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: prism-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: prism-api/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
   deploy:
+    needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -47,7 +47,7 @@ node --check index.js
 ```
 
 **There is no CI** (the checks workflows were removed on 2026-11-06; the only workflow left is the API
-deploy, which runs no tests). Nothing enforces anything, so you are the
+deploy, which gates on `prism-api`'s typecheck, lint and tests only). Nothing enforces anything, so you are the
 gate: typecheck, lint and test in every package you touched before each commit. In `prism-api`,
 `no-floating-promises` and `no-misused-promises` are errors; fix the finding, or disable with the reason
 on the same line. `npm run test:e2e` always fails (no `test/jest-e2e.json`); ignore it. Dependency audit

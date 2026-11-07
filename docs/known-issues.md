@@ -191,9 +191,10 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
 - **Node is not pinned.** No `NODE_VERSION` is set, so the host resolves the
   `engines.node` ranges (`>=20.11` API, `>=22.12` web) and the major version can change under the
   app while development uses 22. Set `NODE_VERSION=22` or add a `.node-version`.
-- **There is no CI, and the API deploy runs no tests.** Both original GitHub Actions workflows were removed on
-  2026-11-06 at the maintainer's request. Nothing runs typecheck, lint, tests or `npm audit` on a
-  push, so a broken change can reach `main`, and the hosts deploy `main`. Restoring CI:
+- **There is no full CI.** Both original GitHub Actions workflows were removed on 2026-11-06 at the
+  maintainer's request. The only workflow is the API deploy, which gates on `prism-api`'s typecheck,
+  lint and tests. Nothing checks `prism-web`, `mcp-server` or `npm audit` on a push, so a broken
+  change there can reach `main`, and Vercel deploys `main`. Restoring CI:
   [deployment.md](deployment.md#ci).
 - **`/health` cannot see the worker.** `queue: running` means the queue is reachable, not that a
   job is being consumed. A heartbeat from the worker would close that.

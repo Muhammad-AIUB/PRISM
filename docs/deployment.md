@@ -141,8 +141,9 @@ GitHub Actions workflow [`.github/workflows/deploy.yml`](../.github/workflows/de
 fails, so GitHub tells you). Deploys run one at a time. Run it by hand from the *Actions* tab
 (*Deploy API -> Run workflow*).
 
-The workflow runs **no tests**: `nest build` type-checks, but a green build is the only gate. Run the
-checks locally before pushing ([CLAUDE.md](../CLAUDE.md)).
+Before deploying, the workflow runs `prism-api`'s typecheck, lint and tests (a `checks` job); if any
+fails, nothing is deployed. `prism-web` is not checked here, so run its gates locally before pushing
+([CLAUDE.md](../CLAUDE.md)).
 
 **One-time setup**
 
@@ -205,7 +206,7 @@ the forward one, and make additive changes only.
 
 There is none. The two GitHub Actions workflows (a CI workflow and a scheduled keep-alive ping) were
 removed on 2026-11-06 at the maintainer's request, so no checks run on a push or pull request. The
-only workflow is the [API deploy](#auto-deploy-on-push), which runs no tests. The gates are manual: typecheck, lint and test in each package you touch, and
+only workflow is the [API deploy](#auto-deploy-on-push), which checks `prism-api` only (not `prism-web`, `mcp-server` or `npm audit`). The gates are manual: typecheck, lint and test in each package you touch, and
 `npm audit --omit=dev --audit-level=high` when dependencies change.
 
 If you want CI back, the files are in history (`git log --diff-filter=D -- .github/workflows/ci.yml`
