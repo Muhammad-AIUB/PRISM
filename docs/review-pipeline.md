@@ -102,10 +102,11 @@ job runs, so a job can never act on a stale copy of an entity.
 | Backoff | `[60, 180, 600]` seconds through a custom strategy. With 3 attempts only the first two delays happen |
 | Retention | last 100 completed, last 500 failed |
 | Worker concurrency | 1 |
-| Per-attempt budget | `GROQ_TIMEOUT_MS x (models + 2) + GITHUB_TIMEOUT_MS x 2 + 30 s` = 60 x 4 + 30 x 2 + 30 = **330 s** (+2 = the fixes pass and one attempt on the user's own model) |
+| Per-attempt budget | `jobBudgetMs(MAX_BATCHES)` = `MAX_BATCHES x (GROQ_TIMEOUT_MS x (models + 1) + pacing wait) + GROQ_TIMEOUT_MS + 2 x GITHUB_TIMEOUT_MS + 30 s` = 8 x (180 + 60) + 60 + 60 + 30 = **2,070 s (34.5 min)** at the defaults. A ceiling reached only if every call hangs; the worker (concurrency 1) is blocked for as long as a review runs. Each batch also has its own deadline (`BATCH_WORST_CASE_MS`). |
 
-The budget is computed by importing the constants it covers. Adding a model or raising a
-timeout raises it automatically.
+The budget is computed from the batch cap and the provider constants
+(`modules/review/batching.config.ts`). Adding a model, raising a timeout or the cap raises it
+automatically.
 
 [`ReviewProcessor`](../prism-api/src/modules/review/review.processor.ts) creates an
 `AbortController` per attempt and aborts it when the budget is spent. The signal is passed
@@ -133,28 +134,29 @@ A Redis failure on the cache falls through to GitHub and the job continues.
 
 ## 4. Preparing the diff
 
-[`prepareDiff`](../prism-api/src/diff/prepare.ts) is shared by both runners and does four
-things with a budget of `DIFF_LIMIT = 8000` characters:
+Both runners hand the fetched diff to `BatchedReviewService`, which does this:
 
-1. **Select** (`file-selection.ts`). Skip noise (build output, vendored code, lockfiles,
-   minified, binary and image files). Take whole files until the budget is spent. A file
-   that does not fit is taken hunk by hunk; if not even one hunk fits, the first hunk is cut
-   at a line boundary. A flat byte cut used to leave the model reasoning about half a hunk.
-2. **Index** (`hunk-index.ts`). Parse the selected text into added lines (new-side
-   numbers), removed lines (old-side numbers) and context, per file.
-3. **Anchor** (`render.ts`). Prefix every changed line with an opaque id like `[7]`,
-   numbered across the whole review, and keep a map from id to file, side and line.
-4. **Detect languages** from the *whole* diff, not the selected slice, so truncation cannot
-   decide which language rules the prompt carries.
+1. **Pack** ([`diff/batch-pack.ts`](../prism-api/src/diff/batch-pack.ts)). Noise (build output,
+   vendored code, lockfiles, minified, binary and image files) is dropped. Reviewable files
+   stay in diff order and are fitted greedily into batches of `batchChars` (16,000). A file
+   larger than a batch is cut into its header plus whole hunks; a hunk larger than a batch is
+   cut at line boundaries, and every cut piece carries its own `@@` header with the true line
+   numbers. At most `maxBatches` (8) batches are kept; past the cap, files are kept in Risk
+   Radar weight order (`diff/risk-rank.ts`) and the rest are reported as not reviewed.
+2. **Anchor per batch** (`prepareBatch` in `diff/prepare.ts`). Parse the batch text with
+   `hunk-index.ts`, prefix every changed line with an opaque id like `[7]` (`render.ts`) and
+   keep a map from id to file, side and line. Ids restart at 1 in each batch and a batch's
+   findings are validated against that batch's own map only.
+3. **Detect languages** from the *whole* diff, not one batch, so batching cannot decide which
+   language rules the prompt carries.
 
 It also produces a coverage sentence ("Reviewed 7 of 14 changed files. 1 of them only in
 part.") that is stored in the summary whenever anything was left out.
 
 ### Coverage
 
-`coverageRatio()` is the share of reviewable files the model was shown: a file included only in
-part counts as half, and noise (lockfiles, generated, vendored, binary) is not in the
-denominator. Below `MIN_COVERAGE` (0.5) the runners store `overall_score = null` and
+`coverageRatio()` is the share of reviewable files the model was shown **in batches that completed**: a file with some pieces reviewed counts as half, and noise (lockfiles, generated, vendored, binary) is not in the
+denominator. A capped review, a batch that timed out and a review cut short by a rate limit all lower the ratio; the coverage sentence ("Reviewed 3 of 5 changed files.") appears whenever it is below 1, and under `MIN_COVERAGE` the label applies. Below `MIN_COVERAGE` (0.5) the runners store `overall_score = null` and
 `composeSummary` leads the summary with the fixed `PARTIAL_REVIEW` sentence, which
 `isPartialReview()` recognises. On read, `verdictForReview` turns that into `partial` unless a
 blocking finding exists. See [ADR 0011](adr/0011-partial-review-on-thin-coverage.md).
@@ -196,6 +198,24 @@ frozen schema is untouched.
 - otherwise returns `parsed: null` with the last raw text.
 
 Every call logs an `ai_call` line with the model, status, duration and token counts.
+
+### Batches, checkpoints and pacing
+
+`BatchedReviewService` makes one call per batch. The user message reads
+`Review this diff (part N of M of one change; ...)` only when M > 1, so a one-batch review
+reads exactly as before. Before each call the `TokenPacer` waits for the provider's per-minute
+token allowance (Groq free-tier profile; a user's own key is not paced). Each validated batch
+is saved to Redis (`review-batches:{ownerId}:{pr|commit}:{id}`, 2 h) before the next call, and a
+retry loads the saved batches instead of paying for them again. A batch that times out is
+skipped and retried by the next attempt. A rate limit after at least one batch has finished ends
+the review with what exists; before any batch it is rethrown for BullMQ's backoff. The results
+are merged in `ai/batch-merge.ts`: de-duplicate, `orderFindings`, keep 40 findings, take the
+lowest batch score, and join the model's summaries as `Part N:` lines. See
+[ADR 0013](adr/0013-review-every-file-in-batches.md).
+
+The pacer is created per `review()` call, so its record of recent token spend is not shared
+between jobs; this is harmless while worker concurrency is 1. A rate-limit-partial review that is
+resumed clears its checkpoint when it finishes, like any other review.
 
 When `parsed` is `null` the runner stores a completed review with a null score, empty
 findings, no comment, and one of two fixed summaries
@@ -250,6 +270,10 @@ the diff and the first meaningful line of its `problematic_code` (whitespace-col
 matches a changed line within 3 lines of the claimed line, or anywhere in the file when no
 line was claimed. The line is snapped to the match. A fix with no quoted code is kept with
 `line: null`. If this pass fails, `suggested_fixes` stays `null` and the review is kept.
+
+With batching the fixes pass still runs **once, for the merged result**, and still sees only the
+first 4,000 characters of the selected text; `validateFixes` checks against the merged hunk
+index. Findings in later batches therefore have fixes dropped more often (known issue).
 
 ## 9. Output
 
@@ -319,5 +343,6 @@ hour, with no error anywhere. Entities use plain `@Column` timestamps, so nothin
 | Add an issue category | Add it to `ISSUE_CATEGORIES`; decide whether it is blocking; update the prompt and fixtures; check the UI category labels |
 | Add a language rule | Edit `getLanguageRules`; regenerate fixtures |
 | Change what a runner does | Make the same change in the other runner, or write down why not |
+| Change batch size, the cap or pacing | Batching constants live in `batching.config.ts`; the budget follows them. Retune after a live run, never by editing `review.queue.ts` |
 | Add a side effect to a runner | Put a `signal.throwIfAborted()` before it, and make it safe to repeat |
 | Change a fallback summary string | Change `UNPARSEABLE_REVIEW` / `EMPTY_REVIEW` in `ai/verdict.ts` only; they are shared on purpose |

@@ -3470,7 +3470,7 @@ git commit -m "Derive the job budget from the batch cap" -m "A review is now up 
 
 **Interfaces:** none (documentation). Do the edits below with the Edit tool, then run `git diff --stat` and re-read nothing you just wrote.
 
-- [ ] **Step 1: Create the ADR** `docs/adr/0013-review-every-file-in-batches.md` with exactly this content:
+- [x] **Step 1: Create the ADR** `docs/adr/0013-review-every-file-in-batches.md` with exactly this content:
 
 ```markdown
 # 0013. Review every file, in batches of a fixed size with a cap
@@ -3540,13 +3540,13 @@ a day per model.
 - **A table for the checkpoint:** hand-applied DDL for data worth keeping for hours.
 ```
 
-- [ ] **Step 2: ADR index.** In `docs/adr/README.md` add after the 0012 row:
+- [x] **Step 2: ADR index.** In `docs/adr/README.md` add after the 0012 row:
 
 ```markdown
 | [0013](0013-review-every-file-in-batches.md) | Review every file, in batches of a fixed size with a cap | Accepted |
 ```
 
-- [ ] **Step 3: `docs/review-pipeline.md`.**
+- [x] **Step 3: `docs/review-pipeline.md`.**
   - Section 2 table: replace the "Per-attempt budget" row with:
     `| Per-attempt budget | \`jobBudgetMs(MAX_BATCHES)\` = \`MAX_BATCHES x (GROQ_TIMEOUT_MS x (models + 1) + pacing wait) + GROQ_TIMEOUT_MS + 2 x GITHUB_TIMEOUT_MS + 30 s\` = 8 x (180 + 60) + 60 + 60 + 30 = **2,070 s (34.5 min)** at the defaults. A ceiling reached only if every call hangs; the worker (concurrency 1) is blocked for as long as a review runs. Each batch also has its own deadline (\`BATCH_WORST_CASE_MS\`). |`
     and change the sentence after the table to: "The budget is computed from the batch cap and the provider constants (`modules/review/batching.config.ts`). Adding a model, raising a timeout or the cap raises it automatically."
@@ -3555,18 +3555,18 @@ a day per model.
   - Section 8: after the first paragraph add: "With batching the fixes pass still runs **once, for the merged result**, and still sees only the first 4,000 characters of the selected text; `validateFixes` checks against the merged hunk index. Findings in later batches therefore have fixes dropped more often (known issue)."
   - "How to change the pipeline safely" list: add "Batching constants live in `batching.config.ts`; the budget follows them. Retune after a live run, never by editing `review.queue.ts`."
 
-- [ ] **Step 4: `docs/architecture.md`** limits table (line near 162): replace the two rows with
+- [x] **Step 4: `docs/architecture.md`** limits table (line near 162): replace the two rows with
   `| Diff shown to the model | 16,000 characters per call, up to 8 calls per review | Groq's free-tier token limits (8,000 tokens a minute) and parse rate; see [ADR 0013](adr/0013-review-every-file-in-batches.md) |` and
   `| Review attempt budget | 34.5 min, derived from the batch cap and the timeouts it wraps | See [ADR 0003](adr/0003-derive-the-job-budget-and-cancel-on-deadline.md) and [ADR 0013](adr/0013-review-every-file-in-batches.md) |`
   (the old row said 270 s, already stale against the 330 s the code had). Also, if the architecture flow diagram or text mentions "one model call", change it to "one call per batch"; run `grep -n "one model call\|AI pass" docs/architecture.md` first.
 
-- [ ] **Step 5: `docs/configuration.md`** (line near 86): replace the `DIFF_LIMIT = 8000` row with
+- [x] **Step 5: `docs/configuration.md`** (line near 86): replace the `DIFF_LIMIT = 8000` row with
   `| \`BATCH_CONFIG\` (\`batchChars\` 16000, \`maxBatches\` 8), \`MAX_MERGED_FINDINGS\`, \`GROQ_FREE_PACE\`, \`OWN_KEY_PACE\`, \`CHECKPOINT_*\` | \`modules/review/batching.config.ts\` | Batch size and cap, findings kept, pacing and checkpoint settings; unmeasured starting values. The job budget derives from them |`.
 
-- [ ] **Step 6: `README.md`** (line near 131): replace the bullet "**The model sees roughly 8,000 characters of a diff** ..." with
+- [x] **Step 6: `README.md`** (line near 131): replace the bullet "**The model sees roughly 8,000 characters of a diff** ..." with
   "- **Every reviewable file is reviewed**, in batches of 16,000 characters and at most 8 calls per review (anything past the cap, or lost to a rate limit, is stated in the review). Files are cut at hunk and line boundaries only when one is larger than a batch."
 
-- [ ] **Step 7: `docs/known-issues.md`.**
+- [x] **Step 7: `docs/known-issues.md`.**
   - **T13**: replace its text with: "*Confirmed.* If every model answers 429 on the **first** batch the attempt throws and BullMQ retries at +60 s and +180 s; a **daily** limit then marks the review `failed` permanently. A 429 after at least one batch has finished now ends the review with what exists (coverage falls; the partial label applies under half). Batching raises call volume (the sample: 129 calls for 70 diffs against 70), so the free tier's 200,000 tokens a day is about 30 average reviews a day per model. **Fix (needs no DDL):** read `retry-after` (not exposed by the provider layer today); keep throwing for a per-minute limit; for a long one finish as `not_reviewed` with a third fixed summary prefix that `isIncompleteReview()` recognises. Waiting in-job was rejected because the worker runs at concurrency 1."
   - Under "Review quality (needs keys)" add: "- **Batched review is unmeasured.** Nothing has run a batched review against a live key: real latency per call, real tokens (and whether Groq counts the reserved `max_completion_tokens` against the per-minute limit), whether batch replies stay valid JSON, whether the two Groq models share the daily quota, the quality of a batch that cannot see the other files (a change and its caller in different batches), and the real size distribution of PRism's own changes. `scripts/measure-batching-live.ts` runs the first four with `GROQ_API_KEY_DEV`; the constants in `modules/review/batching.config.ts` are starting values until then."
   - Under "Correctness and safety" add: "### T17. With batching, the fixes pass sees only the first 4,000 characters of the selected text" with: "*Confirmed.* `FixesService` is unchanged: it runs once for the merged result and `buildFixesPrompt` slices the diff to 4,000 characters. Findings in later batches therefore have their fixes dropped by `validateFixes` more often. **Fix:** pick the files the findings are in, or run fixes per batch; both change the number of calls." (use the next free `T` number; check `grep -n '^### T' docs/known-issues.md`).
@@ -3574,17 +3574,17 @@ a day per model.
   - Add: "`diff/prepare.ts` `prepareDiff` is no longer called by the runners; remove it and its spec cases in a follow-up."
   - In the "Review quality" bullet that says "set `DIFF_LIMIT` (8,000 today ..." change `DIFF_LIMIT` to `BATCH_CONFIG.batchChars` (16,000 today; the earlier 8,000 dry run is history).
 
-- [ ] **Step 8: `docs/code-map.md`.** In the "I want to change" table add rows:
+- [x] **Step 8: `docs/code-map.md`.** In the "I want to change" table add rows:
   `| Batching: size, cap, pacing, the job budget numbers | \`modules/review/batching.config.ts\` | [ADR 0013](adr/0013-review-every-file-in-batches.md); retune after a live run |` and
   `| How a change is split into batches, or merged back | \`diff/batch-pack.ts\`, \`diff/risk-rank.ts\`, \`ai/batch-merge.ts\`, \`modules/review/batched-review.service.ts\` | [review-pipeline](review-pipeline.md#4-preparing-the-diff) |` and
   `| The saved progress of a review (retry resume), its erasure | \`modules/review/review-checkpoint.store.ts\`, \`modules/account/account-data.service.ts\` | Redis; write through the erasure-marker script |`.
   Change the "Which part of a diff is shown, anchors" row's Files to `diff/prepare.ts` (\`prepareBatch\`), \`batch-pack.ts\`, \`file-selection.ts\`, \`hunk-index.ts\`, \`render.ts\`. In the `prism-api/src` table: `ai/` row add `token-pacer`, `batch-merge`; `diff/` row add `batch-pack`, `risk-rank`; `modules/review` row add "batching config, batched review service, checkpoint store". In the tests table add: `| Batching (packer, pacer, merge) | \`npm test -- src/diff src/ai\`; the service: \`npm test -- src/modules/review/\` |`.
 
-- [ ] **Step 9: `CLAUDE.md`** under **Review pipeline**, add one rule after the "Findings are validated" line:
+- [x] **Step 9: `CLAUDE.md`** under **Review pipeline**, add one rule after the "Findings are validated" line:
   `- Every reviewable file is reviewed in batches (\`modules/review/batching.config.ts\`: 16,000 characters, at most 8 calls; ADR 0013). Anchors are per batch and validated against that batch's own map only. Each batch is checkpointed in Redis before the next call (erasable: erasure-marker script + \`AccountDataService\`). The job budget derives from the cap; never hard-code it. Both runners call \`BatchedReviewService\`; do not loop over batches in a runner.`
   Do not change any other line.
 
-- [ ] **Step 10: Check and commit**
+- [x] **Step 10: Check and commit**
 
 Run: `git diff --stat` and read that only the listed docs changed. No tests run (docs only).
 

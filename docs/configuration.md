@@ -83,7 +83,7 @@ budget derived from them stays consistent.
 
 | Value | Where | Why it matters |
 |---|---|---|
-| `DIFF_LIMIT = 8000` | each runner | Characters of diff shown to the model |
+| `BATCH_CONFIG` (`batchChars` 16000, `maxBatches` 8), `MAX_MERGED_FINDINGS`, `GROQ_FREE_PACE`, `OWN_KEY_PACE`, `CHECKPOINT_*` | `modules/review/batching.config.ts` | Batch size and cap, findings kept, pacing and checkpoint settings; unmeasured starting values. The job budget derives from them |
 | `GROQ_MODELS`, `GROQ_TIMEOUT_MS = 60000` (= `AI_TIMEOUT_MS`) | `ai/providers/groq.provider.ts`, `ai/providers/http.ts` (re-exported by `ai/ai-client.service.ts`) | Measured behaviour; the job budget is derived from them |
 | `MAX_DIFF_BYTES = 2000000` | `github/github-client.service.ts` | Memory ceiling on a diff |
 | `REVIEW_JOB_ATTEMPTS = 3`, backoff `[60, 180, 600]` | `modules/review/review.queue.ts` | Retry policy |

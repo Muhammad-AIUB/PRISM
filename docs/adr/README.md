@@ -22,6 +22,7 @@ worth reading alongside.
 | [0010](0010-lead-with-a-verdict-and-keep-the-score.md) | Lead with a verdict, and keep the score | Accepted |
 | [0011](0011-partial-review-on-thin-coverage.md) | Partial review on thin coverage | Accepted |
 | [0012](0012-optional-user-supplied-api-key.md) | Optional user-supplied API key | Accepted |
+| [0013](0013-review-every-file-in-batches.md) | Review every file, in batches of a fixed size with a cap | Accepted |
 
 ## Writing a new one
 

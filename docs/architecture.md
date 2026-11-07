@@ -148,7 +148,7 @@ for validation. A 401 body is exactly `Unauthenticated.` and a 429 body exactly
 | **GitHub diff fetch fails** | The attempt throws and is retried; failed after the third |
 | **GitHub comment post fails** | Logged. The review still completes; a non-2xx response is not checked |
 | **Slack fails** | Logged and swallowed. A Slack outage never rolls back a review |
-| **A job runs past its 270 s budget** | The abort signal cancels in-flight `fetch` calls and the attempt throws so BullMQ retries |
+| **A job runs past its budget** (34.5 min, derived) | The abort signal cancels in-flight `fetch` calls and the attempt throws so BullMQ retries |
 | **Redis is unreachable** | Webhook intake cannot enqueue; `/health` returns 503; the diff cache falls through to GitHub; session revocation **fails open**; Design Studio's rate limit **fails closed** (503) |
 | **Postgres is unreachable** | `/health` returns 503 and most routes error |
 | **`prism-api` is slow or unreachable** | A GET fails with a 504 after 15 s; a webhook that arrives meanwhile may be lost |
@@ -159,8 +159,8 @@ for validation. A 401 body is exactly `Unauthenticated.` and a 429 body exactly
 |---|---|---|
 | Worker concurrency | 1 | Peak memory inside 512 MB |
 | Diff read from GitHub | 2,000,000 bytes | The one allocation with no natural upper bound |
-| Diff shown to the model | about 8,000 characters | Groq's free-tier token limits and parse rate |
-| Review attempt budget | 270 s, derived from the timeouts it wraps | See [ADR 0003](adr/0003-derive-the-job-budget-and-cancel-on-deadline.md) |
+| Diff shown to the model | 16,000 characters per call, up to 8 calls per review | Groq's free-tier token limits (8,000 tokens a minute) and parse rate; see [ADR 0013](adr/0013-review-every-file-in-batches.md) |
+| Review attempt budget | 34.5 min, derived from the batch cap and the timeouts it wraps | See [ADR 0003](adr/0003-derive-the-job-budget-and-cancel-on-deadline.md) and [ADR 0013](adr/0013-review-every-file-in-batches.md) |
 | Database pool | 5 connections | Free-tier Postgres connection ceiling |
 | Design generation | 55 s, 10 per user per hour | Inline request; protects the Groq quota |
 

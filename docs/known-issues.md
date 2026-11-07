@@ -133,13 +133,8 @@ UTF-8-decoded string rather than the raw bytes, and bodies are limited to the pa
 <a id="t13"></a>
 ### T13. A daily Groq limit fails a review in about four minutes
 
-*Confirmed.* If every model answers 429 the attempt throws and BullMQ retries at +60 s and
-+180 s; the 600 s step is never reached with three attempts. A per-minute limit usually clears;
-a **daily** limit marks the review `failed` permanently. This is a knowingly accepted regression
-from when the same case completed with an error blob. **Fix (needs no DDL):** read `retry-after`;
-keep throwing for a per-minute limit; for a long one, finish as `not_reviewed` with a third fixed
-summary prefix that `isIncompleteReview()` recognises. Waiting in-job was rejected because the
-worker runs at concurrency 1 and would block every other review.
+*Confirmed.* If every model answers 429 on the **first** batch the attempt throws and BullMQ retries at +60 s and
++180 s; a **daily** limit then marks the review `failed` permanently. A 429 after at least one batch has finished now ends the review with what exists (coverage falls; the partial label applies under half). Batching raises call volume (the sample: 129 calls for 70 diffs against 70), so the free tier's 200,000 tokens a day is about 30 average reviews a day per model. **Fix (needs no DDL):** read `retry-after` (not exposed by the provider layer today); keep throwing for a per-minute limit; for a long one finish as `not_reviewed` with a third fixed summary prefix that `isIncompleteReview()` recognises. Waiting in-job was rejected because the worker runs at concurrency 1.
 
 <a id="t14"></a>
 ### T14. Rate limiting is per route, in memory, and spoofable behind a proxy
@@ -157,6 +152,21 @@ reports success. Redis errors in `DesignStore.find` and `list` become 500s inste
 `varchar(255)` values from webhooks and DTOs are not length-guarded, so an over-long branch,
 title or path fails the insert. `/api/v1/reviews` merges two lists by the `created_at` string
 with no tiebreak.
+
+<a id="t17"></a>
+### T17. With batching, the fixes pass sees only the first 4,000 characters of the selected text
+
+*Confirmed.* `FixesService` is unchanged: it runs once for the merged result and `buildFixesPrompt` slices the diff to 4,000 characters. Findings in later batches therefore have their fixes dropped by `validateFixes` more often. **Fix:** pick the files the findings are in, or run fixes per batch; both change the number of calls.
+
+<a id="t18"></a>
+### T18. The worker is blocked for the length of a review
+
+*Confirmed.* Concurrency is 1 (512 MB) and a review of up to 8 batches can take about 8 minutes on the Groq free tier (pacing) and up to 34.5 minutes if every call hangs. Other reviews wait behind it. **Fix:** a second worker or concurrency 2 after measuring memory; not done.
+
+<a id="t19"></a>
+### T19. Batch pacing state is per review, and dead code remains
+
+*Confirmed.* The `TokenPacer` is created inside each `BatchedReviewService.review()` call, so its record of recent token spend is not shared across jobs; this is harmless only while worker concurrency is 1 (T18). A resumed rate-limit-partial review clears its checkpoint when it finishes, so re-analyzing the same diff starts fresh. Separately, `diff/prepare.ts` `prepareDiff` is no longer called by the runners; remove it and its spec cases in a follow-up.
 
 <a id="integrity-gaps"></a>
 ## Data integrity gaps
@@ -203,12 +213,13 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
 ## Review quality (needs keys)
 
 - **The model-accuracy arm of the harness has never been run against the current pipeline.**
-  It is the only evidence that could overturn the anchor decision, set `DIFF_LIMIT` (8,000 today;
+  It is the only evidence that could overturn the anchor decision, set `BATCH_CONFIG.batchChars` (16,000 today; the earlier 8,000 dry run is history;
   an earlier dry run reported that 40,000 would fully cover four of five under-covered PRs; not
   re-run for this page), and measure the real fabrication rate. The coverage and prompt-overhead
   halves have run with `--dry-run`. See
   [testing.md](testing.md#measuring-model-behaviour). Do not change the diff budget, the model
   list, the prompt or a threshold before this is done.
+- **Batched review is unmeasured.** Nothing has run a batched review against a live key: real latency per call, real tokens (and whether Groq counts the reserved `max_completion_tokens` against the per-minute limit), whether batch replies stay valid JSON, whether the two Groq models share the daily quota, the quality of a batch that cannot see the other files (a change and its caller in different batches), and the real size distribution of PRism's own changes. A live-measurement script (to run with `GROQ_API_KEY_DEV`) is not written yet; `scripts/measure-batching.ts` is the offline spike harness only. The constants in `modules/review/batching.config.ts` are starting values until then.
 - **Does GitHub return a usable diff for a merge commit?** A push's head commit is a merge commit
   after every PR merge. If GitHub returns an empty or combined (`@@@`) diff for
   `GET /repos/{owner}/{repo}/commits/{sha}` with `Accept: application/vnd.github.v3.diff`, every

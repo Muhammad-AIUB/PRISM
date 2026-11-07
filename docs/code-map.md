@@ -20,7 +20,10 @@ starting `prism-web/` or `docs/` is repo-relative; one starting `app/`,
 | Finding validation, the verdict, the score | `ai/issue-validator.ts`, `ai/verdict.ts` | The two fallback summaries are a contract |
 | A user's own provider key and model | `ai/providers/`, `ai/user-ai-settings.service.ts`, `modules/settings/ai-settings.*`, `components/settings/AiModelSection.tsx`, table `user_ai_settings` | [ADR 0012](adr/0012-optional-user-supplied-api-key.md) |
 | Suggested fixes | `ai/fixes.service.ts`, `ai/fix-validator.ts` | |
-| Which part of a diff is shown, anchors | `diff/prepare.ts`, `file-selection.ts`, `hunk-index.ts`, `render.ts` | |
+| Which part of a diff is shown, anchors | `diff/prepare.ts` (`prepareBatch`), `batch-pack.ts`, `file-selection.ts`, `hunk-index.ts`, `render.ts` | |
+| Batching: size, cap, pacing, the job budget numbers | `modules/review/batching.config.ts` | [ADR 0013](adr/0013-review-every-file-in-batches.md); retune after a live run |
+| How a change is split into batches, or merged back | `diff/batch-pack.ts`, `diff/risk-rank.ts`, `ai/batch-merge.ts`, `modules/review/batched-review.service.ts` | [review-pipeline](review-pipeline.md#4-preparing-the-diff) |
+| The saved progress of a review (retry resume), its erasure | `modules/review/review-checkpoint.store.ts`, `modules/account/account-data.service.ts` | Redis; write through the erasure-marker script |
 | A Risk Radar signal or question | `diff/risk-radar.ts` (**24 KB: grep the constant, read a range**) | `risk-radar.spec.ts`, [risk-radar](risk-radar.md) |
 | The GitHub comment text | `modules/review/summary-comment.builder.ts` | Byte-for-byte tests |
 | GitHub REST calls | `github/github-client.service.ts` | |
@@ -52,8 +55,8 @@ starting `prism-web/` or `docs/` is repo-relative; one starting `app/`,
 | `app.module.ts` | TypeORM (`synchronize: false`), BullMQ, throttler, every feature module |
 | `config/` | Env validation (fails at boot) and typed config |
 | `database/` | `entities/` (one per table), `transformers.ts` (bigint), `pg-types.ts`, `repository.helpers.ts` (review modes, watched branches, webhook events), `review-feed.mapper.ts` |
-| `ai/` | `ai-client`, `prompt-builder`, `json-extractor`, `issue-validator`, `fix-validator`, `fixes.service`, `verdict`, `user-ai-settings.service` (the encrypted personal key), `providers/` (`AiProvider`, `groq`, `openai-compatible`, `anthropic`, `registry`, `http`) |
-| `diff/` | Pure: `hunk-index`, `render`, `file-selection`, `prepare`, `language-detector`, `git-paths`, `risk-radar` |
+| `ai/` | `ai-client`, `prompt-builder`, `json-extractor`, `issue-validator`, `fix-validator`, `fixes.service`, `verdict`, `token-pacer`, `batch-merge`, `user-ai-settings.service` (the encrypted personal key), `providers/` (`AiProvider`, `groq`, `openai-compatible`, `anthropic`, `registry`, `http`) |
+| `diff/` | Pure: `hunk-index`, `render`, `file-selection`, `prepare`, `batch-pack`, `risk-rank`, `language-detector`, `git-paths`, `risk-radar` |
 | `design/` | Pure: `blueprint`, `design-prompt`, `blueprint-normaliser`, `design-baseline`, `blueprint-markdown` |
 | `github/` | The GitHub REST client |
 | `cache/`, `redis/` | Redis client; `diff-cache.service.ts` (1 h), `json-cache.service.ts` |
@@ -61,7 +64,7 @@ starting `prism-web/` or `docs/` is repo-relative; one starting `app/`,
 | `common/` | `filters/api-exception.filter.ts`, `guards/rate-limit.guard.ts`, `observability/` (request id, logger), `pipes/parse-id.pipe.ts`, `validation/validation-errors.ts` (422), `utils/` (crypto, `iso8601.ts`) |
 | `notifications/`, `audit/` | Slack; the audit-log writer |
 | `modules/webhook` | GitHub intake |
-| `modules/review` | Queue policy, `review.processor.ts`, the two runners, comment builder, summary composer |
+| `modules/review` | Queue policy, `review.processor.ts`, the two runners, comment builder, summary composer, batching config, `batched-review.service.ts` (+ `batched-review.testing.ts`, shared test fakes), `review-checkpoint.store.ts` / `.module.ts` |
 | `modules/api-v1/reviews` | `/api/v1` reviews, risk, re-analyze |
 | `modules/auth` | OAuth, session guard, optional guard, revocation store |
 | `modules/reviews-web`, `modules/repositories`, `modules/dashboard`, `modules/settings`, `modules/profile`, `modules/security`, `modules/demo`, `modules/health` | Browser-facing routes, one folder each |
@@ -111,6 +114,7 @@ full suite **once**, before committing.
 | You changed | Run (from the package directory) |
 |---|---|
 | `diff/` | `npm test -- src/diff` |
+| Batching (packer, pacer, merge) | `npm test -- src/diff src/ai`; the service: `npm test -- src/modules/review/` |
 | `ai/` | `npm test -- src/ai` |
 | A runner, the processor, the queue, the comment | `npm test -- src/modules/review/` (keep the trailing slash, or `reviews-web` matches too) |
 | Risk (service or store) | `npm test -- src/modules/risk` |

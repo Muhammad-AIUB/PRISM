@@ -128,8 +128,7 @@ it:
   is retried (60 s, then 180 s); after the third failure the review is marked failed.
 - **Language rules** exist for PHP, JavaScript and TypeScript, Python and Go. Ruby and Java
   are detected but get no language-specific rules.
-- **The model sees roughly 8,000 characters of a diff**, chosen whole file first, then
-  whole hunk. Every review states how much of the change it covered.
+- **Every reviewable file is reviewed**, in batches of 16,000 characters and at most 8 calls per review (anything past the cap, or lost to a rate limit, is stated in the review). Files are cut at hunk and line boundaries only when one is larger than a batch.
 - **Free-tier hosting** means cold starts, and a webhook that arrives while the API sleeps
   may be lost. See [known issues](docs/known-issues.md).
 

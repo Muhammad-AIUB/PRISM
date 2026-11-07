@@ -93,6 +93,7 @@ Each is a one-liner; the doc named after it has the why.
   ([ADR 0007](docs/adr/0007-groq-is-the-only-ai-provider.md)). Order and temperature are measured: don't
   change them without re-measuring.
 - Findings are validated against the anchors the model was shown; the **anchor's** location is displayed.
+- Every reviewable file is reviewed in batches (`modules/review/batching.config.ts`: 16,000 characters, at most 8 calls; ADR 0013). Anchors are per batch and validated against that batch's own map only. Each batch is checkpointed in Redis before the next call (erasable: erasure-marker script + `AccountDataService`). The job budget derives from the cap; never hard-code it. Both runners call `BatchedReviewService`; do not loop over batches in a runner.
 - Risk Radar is pure and `tryAssessRisk()` never throws. The risk comment section appears only when `risk`
   is supplied.
 - Design Studio runs inline, with a 55 s abort and a per-user Redis limit that **fails closed**; any AI
