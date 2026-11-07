@@ -52,7 +52,7 @@
 **Interfaces:**
 - Produces: `Selection.noise: string[]`; `export function coverageRatio(selection: Selection): number` (0..1, `1` when nothing reviewable).
 
-- [ ] **Step 1: Write the failing tests** (append to `file-selection.spec.ts`, and add `coverageRatio` to the import)
+- [x] **Step 1: Write the failing tests** (append to `file-selection.spec.ts`, and add `coverageRatio` to the import)
 
 ```ts
 import { coverageRatio, selectForReview } from './file-selection';
@@ -98,12 +98,12 @@ describe('coverageRatio', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run (in `prism-api/`): `npm test -- src/diff/file-selection`
 Expected: FAIL, `coverageRatio is not a function` / TS error on `noise`.
 
-- [ ] **Step 3: Implement** in `file-selection.ts`
+- [x] **Step 3: Implement** in `file-selection.ts`
 
 Add to `interface Selection` after `partial`:
 
@@ -141,12 +141,12 @@ export function coverageRatio(selection: Selection): number {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `npm test -- src/diff/file-selection`
 Expected: PASS. If an older test does `toEqual` on a whole `Selection`, add `noise: []` to its expectation.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/diff/file-selection.ts prism-api/src/diff/file-selection.spec.ts
@@ -165,7 +165,7 @@ git commit -m "Compute how much of a change the model was shown"
 - Consumes: `coverageRatio(selection: Selection): number`
 - Produces: `PreparedDiff.coverageRatio: number`
 
-- [ ] **Step 1: Failing test** (append to `prepare.spec.ts`; reuse its diff helpers if it has them, else inline as below)
+- [x] **Step 1: Failing test** (append to `prepare.spec.ts`; reuse its diff helpers if it has them, else inline as below)
 
 ```ts
 describe('prepareDiff coverageRatio', () => {
@@ -184,13 +184,13 @@ describe('prepareDiff coverageRatio', () => {
 });
 ```
 
-- [ ] **Step 2:** Run `npm test -- src/diff/prepare`. Expected: FAIL (`coverageRatio` undefined).
+- [x] **Step 2:** Run `npm test -- src/diff/prepare`. Expected: FAIL (`coverageRatio` undefined).
 
-- [ ] **Step 3: Implement.** Import `coverageRatio` next to `selectForReview`; add to the interface `/** 0..1 share of reviewable code the model saw. */ coverageRatio: number;` and to the returned object `coverageRatio: coverageRatio(selection),`.
+- [x] **Step 3: Implement.** Import `coverageRatio` next to `selectForReview`; add to the interface `/** 0..1 share of reviewable code the model saw. */ coverageRatio: number;` and to the returned object `coverageRatio: coverageRatio(selection),`.
 
-- [ ] **Step 4:** Run `npm test -- src/diff`. Expected: PASS.
+- [x] **Step 4:** Run `npm test -- src/diff`. Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/diff/prepare.ts prism-api/src/diff/prepare.spec.ts
@@ -209,7 +209,7 @@ git commit -m "Carry the coverage ratio on the prepared diff"
 - Produces from `verdict.ts`: `MIN_COVERAGE = 0.5`; `isUnderCovered(ratio: number): boolean`; `PARTIAL_REVIEW: string`; `isPartialReview(summary): boolean`; `Verdict` gains `'partial'`; `scoreFor(score: number | null, verdict: Verdict, ratio: number): number | null`; `verdictForReview` returns `'partial'`.
 - Produces from `review-summary.ts`: `composeSummary(modelSummary, coverage, dropped, partial = false)`.
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 `verdict.spec.ts` (add imports `EMPTY_REVIEW, PARTIAL_REVIEW, isUnderCovered, scoreFor, verdictForReview` from `./verdict`, and `type ReviewIssue` from `../database/entities/review.entity`):
 
@@ -261,9 +261,9 @@ it('does not add the marker by default', () => {
 });
 ```
 
-- [ ] **Step 2:** Run `npm test -- src/ai/verdict src/modules/review/review-summary`. Expected: FAIL (missing exports).
+- [x] **Step 2:** Run `npm test -- src/ai/verdict src/modules/review/review-summary`. Expected: FAIL (missing exports).
 
-- [ ] **Step 3: Implement** `verdict.ts`
+- [x] **Step 3: Implement** `verdict.ts`
 
 Change the type and add:
 
@@ -322,9 +322,9 @@ export function scoreFor(score: number | null, verdict: Verdict, ratio: number):
   }
 ```
 
-- [ ] **Step 4:** Run the same command. Expected: PASS.
+- [x] **Step 4:** Run the same command. Expected: PASS.
 
-- [ ] **Step 5: Do not commit yet.** Adding `'partial'` makes `Record<Verdict, string>` in `summary-comment.builder.ts` fail typecheck until Task 4 lands, and the gate is typecheck-clean commits. Tasks 3 and 4 are one commit (message in Task 4).
+- [x] **Step 5: Do not commit yet.** Adding `'partial'` makes `Record<Verdict, string>` in `summary-comment.builder.ts` fail typecheck until Task 4 lands, and the gate is typecheck-clean commits. Tasks 3 and 4 are one commit (message in Task 4).
 
 ---
 
@@ -337,7 +337,7 @@ export function scoreFor(score: number | null, verdict: Verdict, ratio: number):
 **Interfaces:**
 - Consumes: `prepared.coverageRatio`, `scoreFor`, `isUnderCovered`, `composeSummary(..., partial)`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 First read the setup of `describe('PullRequestReviewRunner reviewed-revision risk')` in `pr-review.runner.spec.ts` (it mocks the diff fetch, the AI client and `reviews.save`) and copy it for a new `describe('PullRequestReviewRunner coverage')`. Case 1: the fetched diff is eight files of 150 added lines each (about 3 KB per file, so only two fit in the 8,000-character budget, ratio 0.25) and the mocked model returns `overall_score: 95`, no issues. The runner persists with `reviews.save`; assert on its first argument:
 
@@ -367,9 +367,9 @@ it('labels a thin review as partial and prints no score', () => {
 
 (`builder` and `baseReview` are whatever the existing spec calls its builder and base fixture; reuse them.)
 
-- [ ] **Step 2:** Run `npm test -- src/modules/review/`. Expected: new tests FAIL.
+- [x] **Step 2:** Run `npm test -- src/modules/review/`. Expected: new tests FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In both runners, import `isUnderCovered, scoreFor` from `'../../ai/verdict'` (replace the `reconcileScore` import if now unused) and replace the score and summary lines:
 
@@ -394,9 +394,9 @@ In `summary-comment.builder.ts`: import `verdictForReview` instead of `verdictFo
     let out = `${verdict} — ${count}${scorePart}\n\n`;
 ```
 
-- [ ] **Step 4:** Run `npm test -- src/modules/review/` then `npm run typecheck && npm run lint`. Expected: all PASS. Golden fixtures untouched (no prompt change); if `npm test -- src/ai` goes red, stop and find out why.
+- [x] **Step 4:** Run `npm test -- src/modules/review/` then `npm run typecheck && npm run lint`. Expected: all PASS. Golden fixtures untouched (no prompt change); if `npm test -- src/ai` goes red, stop and find out why.
 
-- [ ] **Step 5: Commit Tasks 3 and 4 together**
+- [x] **Step 5: Commit Tasks 3 and 4 together**
 
 ```bash
 git add prism-api/src/ai/verdict.ts prism-api/src/ai/verdict.spec.ts prism-api/src/modules/review/review-summary.ts prism-api/src/modules/review/review-summary.spec.ts prism-api/src/modules/review/pr-review.runner.ts prism-api/src/modules/review/commit-review.runner.ts prism-api/src/modules/review/summary-comment.builder.ts prism-api/src/modules/review/pr-review.runner.spec.ts prism-api/src/modules/review/summary-comment.builder.spec.ts
@@ -412,7 +412,7 @@ git commit -m "Withhold the score and the all-clear on thin coverage"
 - Test: `prism-web/src/components/review/VerdictPanel.test.tsx`
 - Docs: `docs/review-pipeline.md`, `docs/adr/0011-partial-review-on-thin-coverage.md` (new), `docs/adr/README.md`, `docs/known-issues.md`, `CLAUDE.md`
 
-- [ ] **Step 1: Failing test** (append to `VerdictPanel.test.tsx`, matching how existing cases render the panel)
+- [x] **Step 1: Failing test** (append to `VerdictPanel.test.tsx`, matching how existing cases render the panel)
 
 ```tsx
 it('says partial and never shows a green all-clear', () => {
@@ -423,9 +423,9 @@ it('says partial and never shows a green all-clear', () => {
 });
 ```
 
-- [ ] **Step 2:** Run (in `prism-web/`) `npm test -- VerdictPanel`. Expected: FAIL (TS error: `'partial'` not assignable).
+- [x] **Step 2:** Run (in `prism-web/`) `npm test -- VerdictPanel`. Expected: FAIL (TS error: `'partial'` not assignable).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `types.ts`: `export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found' | 'not_reviewed' | 'partial';` and extend the comment: `` `partial`: under half of the reviewable code was covered; no score. ``
 
@@ -441,15 +441,15 @@ it('says partial and never shows a green all-clear', () => {
 
 Docs: in `docs/review-pipeline.md` add a short "Coverage" subsection (threshold, half-credit for partial files, noise excluded, `null` score, marker string). Write ADR 0011 with the three decisions at the top of this plan and the consequence "fourth fixed summary string: reword `PARTIAL_REVIEW` and `isPartialReview` together". Add it to the ADR index. In `CLAUDE.md` change "behind two fixed summary strings in `ai/verdict.ts` that `isIncompleteReview()` recognises. Change both or neither." to also mention the partial marker recognised by `isPartialReview()`. Remove nothing from known-issues unless a "Reviewed 1 of N" entry exists; if it does, delete it.
 
-- [ ] **Step 4: Full gate, once**
+- [x] **Step 4: Full gate, once**
 
 Run in `prism-api/`: `npm run typecheck && npm run lint && npm test`
 Run in `prism-web/`: `npm run typecheck && npm run lint && npm test`
 Expected: all green.
 
-- [ ] **Step 5: One browser check** (only now, not per edit). Start the stack once per `docs/development.md`, open a review whose summary starts with the partial marker, confirm the panel reads "Partial review" at 390px with no horizontal scroll. Stop the server.
+- [x] **Step 5 (NOT DONE, stack not started): One browser check** (only now, not per edit). Start the stack once per `docs/development.md`, open a review whose summary starts with the partial marker, confirm the panel reads "Partial review" at 390px with no horizontal scroll. Stop the server.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prism-web/src/lib/types.ts prism-web/src/components/review/parts.tsx prism-web/src/components/review/VerdictPanel.test.tsx docs/review-pipeline.md docs/adr/0011-partial-review-on-thin-coverage.md docs/adr/README.md docs/known-issues.md CLAUDE.md
