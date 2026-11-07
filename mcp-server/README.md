@@ -44,7 +44,7 @@ Cursor (`.cursor/mcp.json`) all use the same block. Use the absolute path to `in
       "args": ["/absolute/path/to/PRISM/mcp-server/index.js"],
       "env": {
         "PRISM_API_TOKEN": "<id>|<token>",
-        "PRISM_URL": "https://your-prism-api.onrender.com"
+        "PRISM_URL": "https://your-prism-api.example.com"
       }
     }
   }
@@ -66,10 +66,8 @@ Once the package is published, the equivalent block will be:
 | `PRISM_API_TOKEN` | yes | A token from *Settings -> API tokens*. The process exits with a hint if it is missing |
 | `PRISM_URL` | yes | The base URL of the PRism **API**, `http` or `https`. There is no default; the process exits with a message if it is missing or not an `http(s)` URL |
 
-Point `PRISM_URL` at the **API** and not the web app. On Render's free tier a request made straight
-to a sleeping API wakes it (about 40 seconds), while one proxied through the web app only receives a
-429 and wakes nothing. There is currently no hosted PRism to point at: run your own
-([docs/deployment.md](../docs/deployment.md), or locally with [docs/development.md](../docs/development.md)).
+Point `PRISM_URL` at the **API** and not the web app. There is no shared hosted PRism: use your own
+deployment ([docs/deployment.md](../docs/deployment.md)), or run locally with [docs/development.md](../docs/development.md).
 
 ## Tools
 
@@ -108,7 +106,6 @@ claude:  applies PRism's suggested fixes to your files
 | `PRISM_URL must be an http(s) URL, got "..."` | The value is not a URL, or uses another scheme. Use the full `https://host` form |
 | `PRism API 401: {"message":"Unauthenticated."}` | The token is wrong, revoked or expired. Create a new one |
 | `PRism API 429: {"message":"Too Many Attempts."}` | More than 100 requests per minute from your address. Wait a minute |
-| The first call hangs for about 40 seconds, then works | The free-tier API was asleep and is waking |
 | `PRism API 404: ...` on **every** tool, including `list_recent_reviews` | `PRISM_URL` points at a host with no PRism API behind it (a wrong or retired hostname, or the web app's address). Check it against your deployment |
 | `PRism API 404: No query results for model ...` | That id does not exist. Take it from `list_recent_reviews` |
 | `PRism API 403: ... Not your repository` | That id belongs to another user |

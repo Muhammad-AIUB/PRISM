@@ -1,6 +1,7 @@
 # 0005. Wake a sleeping API from the visitor's browser
 
-Status: Accepted
+Status: Superseded. `prism-api` now runs on a VPS that does not sleep, and the wake page, `lib/wake.ts` and
+`/login/github` were removed. Kept as history.
 Date: 2026-10-04 (`0ba3cc6`)
 
 ## Context

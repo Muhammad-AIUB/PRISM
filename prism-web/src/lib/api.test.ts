@@ -44,7 +44,7 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-const { ApiError, apiGet, apiGetAuthed, apiRaw, apiSend } = await import('./api');
+const { ApiError, apiGet, apiGetAuthed, apiSend } = await import('./api');
 const { notFound, redirect } = await import('next/navigation');
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -196,74 +196,32 @@ describe('errors and retries', () => {
 });
 
 /**
- * On Render's free tier prism-api sleeps after 15 idle minutes, and Render
- * answers for it: 429, `x-render-routing: hibernate-rate-limited`. A request
- * from this server never wakes it, so retrying here is pointless. A page load
- * goes to the wake page, where the visitor's browser can.
+ * A page render must not wait on the API forever. A GET is aborted after
+ * GET_TIMEOUT_MS and fails with a 504 ApiError; writes have no timeout.
  */
-describe('a sleeping API', () => {
-  const asleep = () =>
-    new Response('Too Many Requests', {
-      status: 429,
-      headers: { 'x-render-routing': 'hibernate-rate-limited' },
-    });
+describe('a slow API', () => {
+  const timeout = () => Object.assign(new Error('timed out'), { name: 'TimeoutError' });
 
-  it('sends a page load to the wake page, with the page to come back to', async () => {
-    request.headers.set('x-prism-path', '/repositories/3?kind=commits');
-    fetchMock.mockResolvedValue(asleep());
+  it('turns a timed-out GET into a 504 ApiError', async () => {
+    fetchMock.mockRejectedValue(timeout());
 
-    await expect(apiGetAuthed('/repositories/3/reviews')).rejects.toMatchObject({
-      url: '/waking?next=%2Frepositories%2F3%3Fkind%3Dcommits',
-    });
-    // Not retried: the retry is for the API's own throttle.
+    await expect(apiGet('/dashboard')).rejects.toMatchObject({ name: 'ApiError', status: 504 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does the same for the session read every page starts with', async () => {
-    request.headers.set('x-prism-path', '/dashboard');
-    fetchMock.mockResolvedValue(asleep());
+  it('gives a GET a timeout signal and a write none', async () => {
+    fetchMock.mockImplementation(async () => json(200, {}));
 
-    await expect(apiRaw('/auth/me')).rejects.toMatchObject({ url: '/waking?next=%2Fdashboard' });
+    await apiGet('/dashboard');
+    await apiSend('/reviews/1/re-analyze', 'POST');
+
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ signal: expect.any(AbortSignal) });
+    expect(fetchMock.mock.calls[1]?.[1]?.signal).toBeUndefined();
   });
 
-  it('still goes to the wake page when the path is unknown', async () => {
-    fetchMock.mockResolvedValue(asleep());
+  it('passes other fetch failures through unchanged', async () => {
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
 
-    await expect(apiGet('/dashboard')).rejects.toMatchObject({ url: '/waking' });
-  });
-
-  // Server actions catch what the API call throws and show its message. A
-  // redirect thrown there would be swallowed and reported as a generic failure.
-  it('tells a server action what to do instead of redirecting', async () => {
-    request.headers.set('next-action', 'abc123');
-    request.headers.set('x-prism-path', '/settings');
-    fetchMock.mockResolvedValue(asleep());
-
-    const error = await apiGet('/repositories/branches').catch((caught: unknown) => caught);
-
-    expect(error).toBeInstanceOf(ApiError);
-    expect(error).toMatchObject({ status: 503 });
-    expect((error as Error).message).toMatch(/asleep/i);
-    expect((error as Error).message).toMatch(/reload/i);
-    expect(redirect).not.toHaveBeenCalled();
-  });
-
-  it('does the same for a write, which must not be replayed', async () => {
-    request.headers.set('x-prism-path', '/reviews/1');
-    fetchMock.mockResolvedValue(asleep());
-
-    await expect(apiSend('/reviews/1/re-analyze', 'POST')).rejects.toMatchObject({
-      name: 'ApiError',
-      status: 503,
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(redirect).not.toHaveBeenCalled();
-  });
-
-  it("leaves the API's own throttle alone", async () => {
-    fetchMock.mockResolvedValue(json(429, 'Too Many Attempts.', { 'retry-after': '60' }));
-
-    await expect(apiGet('/dashboard')).rejects.toMatchObject({ status: 429 });
-    expect(redirect).not.toHaveBeenCalled();
+    await expect(apiGet('/dashboard')).rejects.toBeInstanceOf(TypeError);
   });
 });

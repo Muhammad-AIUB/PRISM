@@ -223,7 +223,7 @@ at 390 px wide: no console errors and no horizontal scroll
 | `redirect_uri_mismatch` from GitHub | The OAuth app's callback URL does not exactly equal `GITHUB_REDIRECT_URI` |
 | `npm test` in `prism-web` dies with `webidl.util.markAsUncloneable is not a function` | Node is older than 22.12 |
 | `npm run test:e2e` fails in `prism-api` | Known: `test/jest-e2e.json` was never created. It is not a regression |
-| Pages redirect to `/waking` and never return | `prism-web` cannot reach the API at `PRISM_API_ORIGIN`, or a Render-style `x-render-routing: hibernate` header is present. Check the API is up |
+| Pages fail with "The server took too long to respond" | `prism-web` cannot reach the API at `PRISM_API_ORIGIN` within 15 s. Check the API is up |
 | `ECONNREFUSED 127.0.0.1:55432` | The Postgres container is not running |
 
 ## Tear down

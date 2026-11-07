@@ -36,7 +36,7 @@ everything else lives, and which document owns which fact, so a change can updat
 
 | Document | Read it to |
 |---|---|
-| [Deployment](deployment.md) | Stand up your own copy on Render, Neon and Upstash, and understand the free-tier limits |
+| [Deployment](deployment.md) | Stand up your own copy (API on a VPS, web on Vercel, Neon, Upstash) and the resource limits |
 | [Operations runbook](operations.md) | Diagnose a symptom, follow one request through the logs, rotate a secret |
 | [Known issues and roadmap](known-issues.md) | See what is broken or unfinished, honestly |
 
@@ -53,7 +53,7 @@ repeating it, and never hard-code counts (tests, routes, lines) in prose.
 | If you change... | Update |
 |---|---|
 | A route, a status code, an error body, a rate limit | [api-reference.md](api-reference.md) |
-| An environment variable or a fixed limit | [configuration.md](configuration.md), `prism-api/.env.example`, `render.yaml` |
+| An environment variable or a fixed limit | [configuration.md](configuration.md), `prism-api/.env.example` |
 | A table, a column, a JSON shape, a Redis key, an encoding | [database.md](database.md) and `prism-api/schema.sql` |
 | A step of the review pipeline, a prompt, a model, a timeout | [review-pipeline.md](review-pipeline.md), and [testing.md](testing.md) if fixtures move |
 | A Risk Radar signal or question | [risk-radar.md](risk-radar.md) |

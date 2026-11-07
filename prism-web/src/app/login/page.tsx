@@ -119,10 +119,10 @@ export default async function LoginPage({
         </div>
 
         {/* A plain anchor, not next/link: this leaves the app for GitHub and
-            must be a full navigation. It goes by way of /login/github, which
-            wakes a sleeping prism-api before handing over to /auth/github. */}
+            must be a full navigation. /auth/github is proxied to prism-api by the
+            rewrite in next.config.mjs. */}
         <a
-          href="/login/github"
+          href="/auth/github"
           className="btn min-h-[44px] w-full text-sm font-semibold transition active:scale-95"
           style={{
             backgroundColor: '#0f0f13',

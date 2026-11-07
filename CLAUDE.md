@@ -108,9 +108,8 @@ Each is a one-liner; the doc named after it has the why.
 - All API calls go through `lib/api.ts` on the server. No `NEXT_PUBLIC_` for the API origin. Both services
   must answer on **one hostname** (rewrites in `next.config.mjs`), or sign-in looks fine and every later
   request is anonymous.
-- Only `/waking` may connect to the API origin (sleeping Render API; [ADR 0005](docs/adr/0005-wake-the-api-from-the-browser.md)).
-  Server Actions throw a 503 `ApiError` instead of redirecting. `apiGetAuthed()` folds 400/403/404 into
-  not-found on purpose.
+- The browser never connects to the API origin (CSP `connect-src 'self'`). A GET aborts after 15 s with a
+  504 `ApiError`. `apiGetAuthed()` folds 400/403/404 into not-found on purpose.
 - CSP is per-request nonce (`middleware.ts`): an inline script reads `x-nonce`; a new third-party origin
   must be added to the policy.
 - UI: Inter and JetBrains Mono **self-hosted**, no font CDN; text >= 12px; WCAG AA contrast (4.5:1) in both
@@ -121,9 +120,8 @@ Each is a one-liner; the doc named after it has the why.
 
 ## Deploy, docs, git
 
-- `render.yaml` builds with `npm ci --include=dev` (devDependencies hold the build tools). Render deploys
-  `main`; a local or unpushed change is not live. The hosted instance is currently offline
-  ([known issue](docs/known-issues.md#hosted-offline)).
+- Production builds need `npm ci --include=dev` (devDependencies hold the build tools). Production is `prism-api`
+  on a VPS and `prism-web` on Vercel, both from `main`; a local or unpushed change is not live.
 - **Docs are part of the change.** Update the owning doc in the same commit. Don't hard-code counts or
   line numbers in prose. If you add, rename or delete a file the code map lists, update the map.
 - A surprising, data-constrained or hard-to-reverse choice gets an [ADR](docs/adr/README.md). Fixed a

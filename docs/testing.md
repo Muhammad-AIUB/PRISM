@@ -7,7 +7,7 @@ What is tested, how, and the rules that keep the suite fast, offline and trustwo
 | Package | Runner | What it covers |
 |---|---|---|
 | `prism-api` | Jest 29 with ts-jest. Specs sit beside the code as `*.spec.ts` | Pure logic with fakes: the AI client, validators, verdict, diff parsing, Risk Radar, both runners, the processor, the queue policy, guards, stores, services, DTO validation. A few specs drive a Nest HTTP app (the repository reviews route, the OAuth throttle) |
-| `prism-web` | Vitest 5, jsdom, Testing Library. Tests sit beside the code as `*.test.ts(x)` | The `/login/github` route, `lib/api.ts`, the wake logic, the middleware CSP, time helpers, the reviews query, and several components (`RepoCard`, `RepositoryReviewsView`, `ReviewFeedTable`, `RiskPanel`, `VerdictPanel`, `ThemeSync`, `WakeView`) |
+| `prism-web` | Vitest 5, jsdom, Testing Library. Tests sit beside the code as `*.test.ts(x)` | `lib/api.ts`, the middleware CSP, time helpers, the reviews query, and several components (`RepoCard`, `RepositoryReviewsView`, `ReviewFeedTable`, `RiskPanel`, `VerdictPanel`, `ThemeSync`) |
 | `mcp-server` | `node --check index.js` only | Syntax. There are no behavioural tests |
 
 **Nothing in `npm test` may need Postgres, Redis, the network or a secret.** Unit tests fake

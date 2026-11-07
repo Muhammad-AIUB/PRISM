@@ -16,7 +16,6 @@ src/
   components/        client components, grouped by feature (review/, repositories/, design/, ...)
   lib/
     api.ts           the only way to call prism-api; forwards the session cookie and X-Request-Id
-    wake.ts          waking a sleeping API (no Next imports; used by middleware, server and browser)
     session.ts       getSessionUser / getOptionalSessionUser (the shared "who am I" for pages)
     types.ts         the API's response shapes
     time.ts          relative-time formatting
@@ -33,8 +32,7 @@ each page can supply its own sticky header.
 | Route | Auth | What it shows |
 |---|---|---|
 | `/` | public | Redirects to `/dashboard` when signed in, otherwise to `/login` |
-| `/login`, `/login/github` | public | Sign-in; the second is the route handler that probes the API, then redirects to `/auth/github` |
-| `/waking` | public | The wake page ([below](#waking-a-sleeping-api)) |
+| `/login` | public | Sign-in; "Continue with GitHub" goes to `/auth/github`, proxied to the API by the rewrite |
 | `/dashboard` | session | Totals, recent PR and commit reviews, score timeline |
 | `/repositories`, `/repositories/[id]`, `/repositories/[id]/settings` | session | Connect a repository; its reviews (25 per page); its mode and branches |
 | `/reviews/[pullRequest]`, `/reviews/[pullRequest]/export` | session | A PR review (verdict, findings, risk, fixes, diff); the PDF |
@@ -62,10 +60,9 @@ Behaviour built in:
 - A `GET` that gets a `429` with a short `Retry-After` (up to 5 seconds) is retried once, because
   every call leaves from this server's single address and shares the API's per-IP buckets
   until a request is authenticated. Writes are never retried.
-- A `GET` is aborted after 15 seconds (`GET_TIMEOUT_MS`) and treated like a sleeping API (wake page
-  for a page load, 503 for an action), because a cold start takes 40 to 60 seconds and would
-  otherwise hold a blank page. Writes have no timeout: Design Studio generation runs up to 55 s.
-  `app/loading.tsx` shows a fallback while a page waits.
+- A `GET` is aborted after 15 seconds (`GET_TIMEOUT_MS`) and fails with a 504 `ApiError`, so a
+  slow API cannot hold a blank page open. Writes have no timeout: Design Studio generation runs
+  up to 55 s. `app/loading.tsx` shows a fallback while a page waits.
 - Text built from the current time or the viewer's locale (`relativeTime`, `toLocaleString`)
   differs between server and browser, so the element carries `suppressHydrationWarning`
   (otherwise React error #418 discards the server HTML).
@@ -75,29 +72,12 @@ Behaviour built in:
 A new data need is a new API route plus a typed call here, never a `fetch` in a component and
 never an environment variable with `NEXT_PUBLIC_` in it.
 
-## Waking a sleeping API
-
-On Render's free tier a sleeping API answers `prism-web`'s requests with a 429 and
-`x-render-routing: hibernate-rate-limited` without waking. `lib/api.ts` recognises that header
-(`isHibernating`):
-
-- A **page load** redirects to `/waking?next=<path>`. The wake page's client pings
-  `{API origin}/health` directly (`no-cors`) every 10 seconds and polls same-origin `/auth/me`
-  every 3 seconds, then returns the visitor to `next`. `safeNext()` only accepts a path on this
-  site and never the wake page itself.
-- A **Server Action** throws `ApiError(503, 'The server was asleep. Reload this page to wake it, then try again.')`.
-  Actions catch what the API call throws and show its message, so a redirect would be swallowed,
-  and a write must not be replayed behind the visitor's back.
-- `/waking` is the only page whose CSP `connect-src` includes the API origin
-  ([ADR 0005](adr/0005-wake-the-api-from-the-browser.md)).
-
 ## Security headers
 
 `src/middleware.ts` runs on pages (not static assets, `/auth`, `/api/v1` or `/webhook`) and:
 
 - generates a nonce and sets the CSP ([security.md](security.md#http-hardening));
 - assigns or keeps a safe `X-Request-Id`, forwards it to server code, and returns it;
-- records the page being rendered in `x-prism-path` so the wake redirect can return to it.
 
 An inline `<script>` you add must read the nonce from the `x-nonce` request header, as
 `layout.tsx` does for the theme script, or it will not run. Browsers blank a `nonce` attribute

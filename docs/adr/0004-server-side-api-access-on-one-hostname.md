@@ -37,8 +37,8 @@ set it.
   so all anonymous traffic shares the API's per-IP rate-limit buckets. The global rate limiter verifies
   the session cookie and keys signed-in traffic per user for this reason, and `api.ts` retries a `GET`
   that lands on a nearly-reset 429.
-- The webhook reaches the API through the web host's rewrite, which interacts badly with a sleeping API
-  ([ADR 0005](0005-wake-the-api-from-the-browser.md), [T15](../known-issues.md#t15)).
+- The webhook reaches the API through the web host's rewrite, which interacted badly with a sleeping API
+  on the original host ([ADR 0005](0005-wake-the-api-from-the-browser.md), superseded).
 - `apiGetAuthed()` folds 400, 403 and 404 into one not-found page so that a "forbidden" screen cannot
   confirm a review id exists.
 

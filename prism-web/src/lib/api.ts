@@ -1,6 +1,5 @@
 import { cookies, headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { isHibernating, wakeUrl } from './wake';
 
 /**
  * Server-side calls into prism-api.
@@ -11,8 +10,7 @@ import { isHibernating, wakeUrl } from './wake';
  * next.config.mjs stand in for the proxy.
  *
  * Everything is fetched server-side, which means the session cookie and the
- * user's GitHub token never reach the browser. Nor does the API origin, with
- * one exception: the wake page (src/lib/wake.ts).
+ * user's GitHub token never reach the browser. Nor does the API origin.
  */
 const API_ORIGIN = process.env.PRISM_API_ORIGIN ?? 'http://127.0.0.1:3999';
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME ?? 'prism_session';
@@ -59,18 +57,13 @@ async function request(path: string, init: ApiRequest = {}): Promise<Response> {
   try {
     response = await send(path, init);
   } catch (error) {
-    // A GET that outlasts GET_TIMEOUT_MS is almost always a sleeping API (a
-    // cold start takes 40 to 60 s). Treat it like the 429 case: send the visitor
-    // to the wake page instead of leaving a blank page loading for minutes.
+    // The API did not answer within GET_TIMEOUT_MS. Fail with a clear error
+    // instead of leaving a blank page loading indefinitely.
     if (error instanceof Error && error.name === 'TimeoutError') {
-      return asleep(init.method ?? 'GET');
+      throw new ApiError(504, 'The server took too long to respond. Try again in a moment.');
     }
 
     throw error;
-  }
-
-  if (isHibernating(response)) {
-    return asleep(init.method ?? 'GET');
   }
 
   if (response.status !== 429 || (init.method ?? 'GET') !== 'GET') {
@@ -90,29 +83,6 @@ async function request(path: string, init: ApiRequest = {}): Promise<Response> {
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 
   return send(path, init);
-}
-
-/**
- * prism-api is asleep, and nothing sent from here will wake it: see
- * src/lib/wake.ts. A page load goes to the wake page and comes back.
- *
- * A server action cannot be handled that way. Actions catch what the API call
- * throws and show its message, so a redirect would be swallowed and reported
- * as a generic failure; and a write must not be replayed behind the visitor's
- * back. They get an error that says what to do: reloading is a page load.
- */
-async function asleep(method: string): Promise<never> {
-  const incoming = await headers();
-
-  if (method !== 'GET' || incoming.has('next-action')) {
-    throw new ApiError(
-      503,
-      'The server was asleep. Reload this page to wake it, then try again.',
-    );
-  }
-
-  // Set by src/middleware.ts: the page being rendered, to return to.
-  redirect(wakeUrl(incoming.get('x-prism-path')));
 }
 
 async function send(path: string, init: ApiRequest): Promise<Response> {

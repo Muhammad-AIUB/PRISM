@@ -147,7 +147,7 @@ script-src 'self' 'nonce-<per request>' 'strict-dynamic'          (+ 'unsafe-eva
 style-src 'self' 'unsafe-inline'
 img-src 'self' data: blob: https://github.com https://avatars.githubusercontent.com
 font-src 'self'
-connect-src 'self'                                                  (+ the API origin on /waking; + ws: in development)
+connect-src 'self'                                                  (+ ws: in development)
 object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 

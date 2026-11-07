@@ -56,7 +56,7 @@ whichever host answers the callback, and that must be the host the user browses.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `PRISM_API_ORIGIN` | `http://127.0.0.1:3999` | Where server-side calls and the `/auth`, `/api/v1` and `/webhook` rewrites go. **No `NEXT_PUBLIC_` prefix, on purpose**: the browser must never learn it, except on `/waking` |
+| `PRISM_API_ORIGIN` | `http://127.0.0.1:3999` | Where server-side calls and the `/auth`, `/api/v1` and `/webhook` rewrites go. **No `NEXT_PUBLIC_` prefix, on purpose**: the browser must never learn it |
 | `APP_URL` | `http://localhost:3001` | Public origin; used for `metadataBase` (absolute link-preview URLs) |
 | `SESSION_COOKIE_NAME` | `prism_session` | Must match `prism-api`, or the session is never found |
 | `PORT` | `3000` for `next start`, `3001` for `npm run dev` | `next start` honours `$PORT`, which hosts such as Render set |
@@ -69,7 +69,7 @@ at run time. Changing it requires a rebuild.
 | Variable | Required | Default | Effect |
 |---|---|---|---|
 | `PRISM_API_TOKEN` | **yes** | | A token created under *Settings -> API tokens*. The process exits with a hint if it is missing |
-| `PRISM_URL` | **yes** | | The API's base URL, `http` or `https`. Point it at the **API**, not the web app, so a request wakes a sleeping service. There is no default: the process exits with a message if it is missing or not an `http(s)` URL (the former hosted instance is offline, [known issue](known-issues.md#hosted-offline)) |
+| `PRISM_URL` | **yes** | | The API's base URL, `http` or `https`. Point it at the **API**, not the web app. There is no default: the process exits with a message if it is missing or not an `http(s)` URL |
 
 ## Generating values
 
@@ -81,7 +81,7 @@ node -e "console.log('base64:' + require('crypto').randomBytes(32).toString('bas
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-The `JWT_SECRET` in `render.yaml` uses `generateValue: true`, so Render creates it once.
+Generate `JWT_SECRET` once (any long random string) and keep it; changing it only signs everyone out.
 
 ## Fixed values worth knowing
 

@@ -11,9 +11,8 @@ can check, not a score you have to trust.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-<sub>PRism was hosted on Render's free tier at `prism-web-fgts.onrender.com`. When last checked
-(2026-11-06) that address returned Render's 404 `no-server`, meaning no service is running there.
-You can [run your own copy](docs/deployment.md).</sub>
+<sub>Production runs `prism-api` on a VPS and `prism-web` on Vercel. You can
+[run your own copy](docs/deployment.md).</sub>
 
 </div>
 
@@ -78,7 +77,7 @@ flowchart LR
 
 The browser only ever talks to `prism-web`. The API origin, the session cookie and the
 user's GitHub token never reach client JavaScript. The review worker runs inside the API
-process because Render's free tier has no background-worker service type. Read
+process (the original host had no background-worker service type). Read
 [docs/architecture.md](docs/architecture.md) for the reasoning.
 
 ## Repository layout
@@ -89,7 +88,6 @@ process because Render's free tier has no background-worker service type. Read
 | [`prism-web/`](prism-web/README.md) | Next.js 15 App Router frontend. All data is fetched on the server |
 | [`mcp-server/`](mcp-server/README.md) | MCP server exposing reviews, Risk Radar and Design Studio to AI editors |
 | [`docs/`](docs/README.md) | Architecture, reference, how-to guides, runbook, decision records |
-| `render.yaml` | Render deployment for both services |
 | `.github/` | The pull-request template. There is no CI ([why](docs/deployment.md#ci)) |
 
 ## Run it locally
@@ -128,9 +126,8 @@ afternoon.
 PRism works end to end and has no outside users yet. Be aware of these before you rely on
 it:
 
-- **No hosted instance is running.** The address it used (`prism-web-fgts.onrender.com`) returned
-  a 404 when last checked on 2026-11-06. You need your own deployment or a local stack, and the
-  MCP server needs `PRISM_URL` set to it ([known issue](docs/known-issues.md#hosted-offline)).
+- **No shared hosted instance.** You need your own deployment or a local stack, and the MCP
+  server needs `PRISM_URL` set to it.
 - **One AI provider.** Groq's free tier, two models. When both are rate-limited the attempt
   is retried (60 s, then 180 s); after the third failure the review is marked failed.
 - **Language rules** exist for PHP, JavaScript and TypeScript, Python and Go. Ruby and Java

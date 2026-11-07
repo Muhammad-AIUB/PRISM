@@ -18,7 +18,7 @@ reported incident; PRism has no outside users yet.
    half of the harness has not been run).
 3. **Schema integrity fixes wait on one decision**: who applies DDL to production, and how it is
    rolled back.
-4. **Reviews can be lost while the free-tier API sleeps** (T15).
+4. **A webhook delivered while the API is down is not redelivered** by GitHub or by PRism.
 5. A set of smaller correctness, privacy and UI defects.
 
 ## Correctness and safety
@@ -147,16 +147,6 @@ worker runs at concurrency 1 and would block every other review.
 the IP bucket can be evaded with a forged `X-Forwarded-For`. **Fix:** set `trust proxy` to the
 real hop count and move counters to Redis.
 
-<a id="t15"></a>
-### T15. Webhooks received while the API sleeps may be lost
-
-*Reported; the mechanism is confirmed.* Through `prism-web`, a sleeping API answers with Render's
-429 and is never woken; direct to the API, a 40 to 60 s cold start exceeds GitHub's 10 s delivery
-timeout. GitHub does not redeliver automatically. Whether this bites depends on the production
-`APP_URL`. **Fix:** first check "Recent deliveries" on a connected repository after a sleep; if
-they fail, redeliver failed ones on boot and on a timer through GitHub's hook-deliveries API using
-each repository's `webhook_id`.
-
 <a id="t16"></a>
 ### T16. Smaller defects
 
@@ -192,28 +182,18 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
 
 (G8 is the stale-results part of T7.)
 
-## Free tier and operations
+## Operations
 
 <a id="hosted-offline"></a>
-- **The hosted instance is offline.** On 2026-11-06 both `https://prism-api-wmam.onrender.com/health`
-  and `https://prism-web-fgts.onrender.com/login` returned Render's 404 with
-  `x-render-routing: no-server`, which means no service answers at those hostnames. Whether the
-  services were deleted, suspended or renamed has not been determined; it needs the Render dashboard.
-  The keep-alive run at 04:57 UTC that day succeeded and the next, at 12:45 UTC, failed with the API's
-  404. **Still open:** there is no live demo. Restore or redeploy the services from `render.yaml`; if
-  Render assigns new hostnames, update the GitHub OAuth app's callback URL, the MCP configs'
-  `PRISM_URL` and the docs. **Already handled in code:** the MCP server no longer defaults `PRISM_URL`
-  to the dead host (it exits asking for one), and the keep-alive workflow that kept failing against
-  it was removed.
-
+- **The original Render instance is gone.** Production is now `prism-api` on a VPS and `prism-web` on
+  Vercel. The MCP server has no default `PRISM_URL`; it exits asking for one.
 <a id="f3"></a>
-- **Node is not pinned on Render.** `render.yaml` sets no `NODE_VERSION`, so Render resolves the
+- **Node is not pinned.** No `NODE_VERSION` is set, so the host resolves the
   `engines.node` ranges (`>=20.11` API, `>=22.12` web) and the major version can change under the
   app while development uses 22. Set `NODE_VERSION=22` or add a `.node-version`.
-- **There is no CI and nothing keeps the API awake.** Both GitHub Actions workflows were removed on
+- **There is no CI.** Both GitHub Actions workflows were removed on
   2026-11-06 at the maintainer's request. Nothing runs typecheck, lint, tests or `npm audit` on a
-  push, so a broken change can reach `main`, and Render deploys `main`. The scheduled keep-alive never
-  worked in practice either, because GitHub ran its `*/10` cron every few hours. Restoring CI:
+  push, so a broken change can reach `main`, and the hosts deploy `main`. Restoring CI:
   [deployment.md](deployment.md#ci).
 - **`/health` cannot see the worker.** `queue: running` means the queue is reachable, not that a
   job is being consumed. A heartbeat from the worker would close that.
@@ -290,7 +270,7 @@ the legacy tables.
 - **Design drift**: link a blueprint to a repository and check pull requests against its SLOs and
   failure-mode mitigations.
 - **Calibrate Risk Radar weights from outcomes** (reverts, incident-linked PRs) once there is data.
-- **Redeliver missed webhooks** (T15) and report worker liveness in `/health`.
+- **Redeliver missed webhooks** and report worker liveness in `/health`.
 
 **Not planned:** a second AI provider (see [ADR 0007](adr/0007-groq-is-the-only-ai-provider.md)),
 email notifications (removed), and password sign-in.

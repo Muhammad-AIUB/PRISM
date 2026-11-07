@@ -47,7 +47,6 @@ src/
   components/      client components by feature (review/, repositories/, design/, security/, ...)
   lib/
     api.ts         the only way to call prism-api; forwards the cookie and X-Request-Id
-    wake.ts        waking a sleeping API (shared by middleware, server and browser)
     session.ts     getSessionUser / getOptionalSessionUser
     types.ts       the API's response shapes
   middleware.ts    per-request CSP nonce and request id
@@ -58,7 +57,7 @@ src/
 - **Data comes from `lib/api.ts` only.** No `fetch` in a component, no `NEXT_PUBLIC_` variable.
   `apiGetAuthed()` folds 400, 403 and 404 into the not-found page on purpose.
 - **CSP:** an inline `<script>` must use the nonce from the `x-nonce` request header; a new third-party
-  origin must be added to `middleware.ts` deliberately. Only `/waking` may connect to the API origin.
+  origin must be added to `middleware.ts` deliberately. The browser never connects to the API origin.
 - **Fonts are self-hosted** (`@fontsource-variable/*`). Never add a font CDN.
 - **UI standards:** 12 px minimum text, WCAG AA contrast in both themes, tokens not hex, visible focus,
   44 px touch targets, 390 px with no horizontal scroll, and a visible failure state for every Server

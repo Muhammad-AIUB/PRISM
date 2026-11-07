@@ -16,8 +16,7 @@ The source of truth for every route is the controller named beside it. Response 
 ## Conventions
 
 **Base URL.** The API itself, for example `https://<your-api-host>`. Use the
-API origin, not `prism-web`, for programmatic access: a request to the API wakes it from
-sleep, while one proxied through `prism-web` gets Render's 429 ([why](adr/0005-wake-the-api-from-the-browser.md)).
+API origin, not `prism-web`, for programmatic access.
 
 **Authentication.** Send `Authorization: Bearer {id}|{plaintext}` on `/api/v1`. Create a
 token in the app under *Settings -> API tokens*; it is shown once. Browser routes use the

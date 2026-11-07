@@ -10,9 +10,9 @@ changing anything that crosses a package boundary. For field-level detail see th
 
 Three facts shaped almost every decision in this codebase:
 
-1. **It runs on free tiers.** Render's free web services have 512 MB of memory, no
-   background-worker type, and sleep after 15 idle minutes. Postgres is on Neon and Redis
-   on Upstash.
+1. **It was designed for free tiers.** The original Render deployment had 512 MB of memory and
+   no background-worker type. Production is now `prism-api` on a VPS and `prism-web` on
+   Vercel, but the limits below still shape the code. Postgres is on Neon and Redis on Upstash.
 2. **It inherited production data.** The database, its schema, the encrypted GitHub tokens
    and the API tokens in MCP users' config files were all written by an earlier PHP
    application. The code was rewritten; the bytes were not. See
@@ -26,7 +26,6 @@ Three facts shaped almost every decision in this codebase:
 ```mermaid
 flowchart LR
     B[Browser] -->|pages, server actions| WEB[prism-web<br/>Next.js 15]
-    B -.->|/waking only:<br/>GET /health| API
     WEB -->|server-side fetch<br/>cookie + X-Request-Id| API[prism-api<br/>NestJS 11]
     WEB -->|rewrites: /auth/*<br/>/api/v1/* /webhook/*| API
     GH[GitHub] -->|webhook| API
@@ -47,15 +46,15 @@ flowchart LR
 
 | Component | Responsibility | Runs where |
 |---|---|---|
-| `prism-web` | Renders every page. Calls the API from the server only. Owns the CSP and the theme | Render web service |
-| `prism-api` | HTTP API, webhook intake, session and token auth, the review worker, Risk Radar, Design Studio | Render web service |
+| `prism-web` | Renders every page. Calls the API from the server only. Owns the CSP and the theme | Vercel |
+| `prism-api` | HTTP API, webhook intake, session and token auth, the review worker, Risk Radar, Design Studio | A VPS |
 | `mcp-server` | Translates MCP tool calls into `/api/v1` requests | The developer's machine |
 | PostgreSQL 16 | Users, repositories, pull requests, reviews, commit reviews, comments, tokens, audit log | Neon |
 | Redis | The review queue, caches, saved risk, Design Studio blueprints, session revocations, erasure markers | Upstash (must be `noeviction`) |
 | Groq | The only AI provider | External |
 | GitHub | OAuth, REST API (diffs, comments, webhooks), webhook deliveries | External |
 
-## Three decisions to understand first
+## Two decisions to understand first
 
 ### 1. The browser never talks to the API
 
@@ -74,26 +73,12 @@ and every later request is anonymous. See [ADR 0004](adr/0004-server-side-api-ac
 ### 2. The review worker lives in the API process
 
 `ReviewProcessor` is a BullMQ worker registered in the same Nest application that serves
-HTTP. There is no separate worker deployment because Render's free tier offers none, and
+HTTP. There is no separate worker deployment (the original host offered none), and
 `concurrency: 1` is what keeps peak memory inside 512 MB. The cost is that the worker
 cannot scale independently, and a review in progress shares the event loop with requests.
 Design Studio, which also calls Groq, runs inline on its HTTP request for the opposite
 reason: a design queued behind three reviews would wait minutes. See
 [ADR 0002](adr/0002-review-worker-in-the-api-process.md).
-
-### 3. A sleeping API is woken by the visitor's browser
-
-While `prism-api` sleeps, Render's edge answers every request `prism-web` makes with a 429
-and `x-render-routing: hibernate-rate-limited`, **without starting the service**. Only a
-request from outside Render wakes it (measured: one such request, 42 seconds; 25 proxied
-requests over four minutes, no wake).
-
-So `lib/api.ts` detects that header. A page load is redirected to `/waking?next=<path>`;
-there the browser pings `{API origin}/health` itself and polls `/auth/me` until the API
-answers, then returns. A Server Action cannot be redirected, so it throws a 503 `ApiError`
-asking the visitor to reload. `/waking` is the only page whose CSP `connect-src` includes
-the API origin, and sign-in starts at `/login/github` (which probes first) instead of
-`/auth/github` for the same reason. See [ADR 0005](adr/0005-wake-the-api-from-the-browser.md).
 
 ## prism-api internals
 
@@ -167,7 +152,7 @@ for validation. A 401 body is exactly `Unauthenticated.` and a 429 body exactly
 | **A job runs past its 270 s budget** | The abort signal cancels in-flight `fetch` calls and the attempt throws so BullMQ retries |
 | **Redis is unreachable** | Webhook intake cannot enqueue; `/health` returns 503; the diff cache falls through to GitHub; session revocation **fails open**; Design Studio's rate limit **fails closed** (503) |
 | **Postgres is unreachable** | `/health` returns 503 and most routes error |
-| **`prism-api` is asleep** | Page loads go to `/waking`; actions get a 503; a webhook that arrives meanwhile may be lost ([known issue](known-issues.md#t15)) |
+| **`prism-api` is slow or unreachable** | A GET fails with a 504 after 15 s; a webhook that arrives meanwhile may be lost |
 
 ## Limits that define the design
 

@@ -5,7 +5,7 @@
  *
  * Required env:
  *   PRISM_API_TOKEN  — generate one in PRism → Settings → API Tokens
- *   PRISM_URL        — base URL of your PRism API, e.g. https://your-prism-api.onrender.com
+ *   PRISM_URL        — base URL of your PRism API, e.g. https://your-prism-api.example.com
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -26,7 +26,7 @@ function requireBaseUrl(value) {
   if (!value) {
     fail(
       'PRISM_URL env var is required. Set it to the base URL of your PRism API, ' +
-        'for example https://your-prism-api.onrender.com',
+        'for example https://your-prism-api.example.com',
     );
   }
 
@@ -44,8 +44,7 @@ function requireBaseUrl(value) {
   return value.replace(/\/$/, '');
 }
 
-// The API itself, not prism-web: a direct request wakes a sleeping API on
-// Render's free tier, while one proxied through prism-web just gets a 429.
+// The API itself, not prism-web.
 const PRISM_URL = requireBaseUrl(process.env.PRISM_URL);
 const TOKEN = process.env.PRISM_API_TOKEN;
 

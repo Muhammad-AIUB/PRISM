@@ -29,14 +29,14 @@ starting `prism-web/`, `mcp-server/` or `docs/` is repo-relative; one starting `
 | Sign-in, sessions, logout | `modules/auth/*` | [security](security.md) |
 | API tokens | `auth/api-token-auth.guard.ts`, `auth/personal-access-token.service.ts` | Format cannot change |
 | Rate limits | `common/guards/rate-limit.guard.ts`, `app.module.ts` (`ThrottlerModule`) | |
-| An environment variable | `config/env.validation.ts`, `config/configuration.ts` | `prism-api/.env.example`, `render.yaml`, [configuration](configuration.md) |
+| An environment variable | `config/env.validation.ts`, `config/configuration.ts` | `prism-api/.env.example`, [configuration](configuration.md) |
 | A table or column | `database/entities/*`, `prism-api/schema.sql` (**hand-applied DDL**) | [database](database.md) |
 | Account deletion, erasure | `modules/account/*`, `modules/security/security.service.ts` | Any Redis store of user data |
 | Design Studio | `design/*` (pure), `modules/design/*` (service, store, controllers) | [design-studio](design-studio.md) |
 | Dashboard numbers | `modules/dashboard/dashboard.service.ts` | |
 | PDF export | `modules/reviews-web/pdf-report.service.ts` | |
 | An MCP tool | `mcp-server/index.js` (one file) | The API route, [mcp-server README](../mcp-server/README.md) |
-| How the web app calls the API, the wake page | `prism-web/src/lib/api.ts`, `lib/wake.ts`, `app/waking/page.tsx`, `components/wake/WakeView.tsx` | [ADR 0005](adr/0005-wake-the-api-from-the-browser.md) |
+| How the web app calls the API | `prism-web/src/lib/api.ts` | [frontend](frontend.md) |
 | CSP, request id | `prism-web/src/middleware.ts` | |
 | Colours, spacing, focus ring | `prism-web/src/app/globals.css`, `tailwind.config.ts` | Contrast rules in [frontend](frontend.md#standards) |
 | Nav, shell, theme toggle | `components/layouts/AuthenticatedLayout.tsx`, `components/ui/ThemeToggle.tsx`, `ThemeSync.tsx` | |
@@ -73,9 +73,9 @@ starting `prism-web/`, `mcp-server/` or `docs/` is repo-relative; one starting `
 
 | Path | What it holds |
 |---|---|
-| `app/` | Routes. `page.tsx` is a Server Component that fetches; `actions.ts` holds Server Actions; `app/login/github/route.ts`, `app/reviews/[pullRequest]/export/route.ts` and `app/design/[id]/markdown/route.ts` are route handlers; `globals.css` is the theme |
-| `components/` | By feature: `review/`, `repositories/`, `design/`, `security/`, `settings/`, `dashboard/`, `demo/`, `help/`, `layouts/`, `ui/`, `wake/`, `auth/`, `profile/` |
-| `lib/` | `api.ts` (the only API client), `wake.ts`, `session.ts`, `types.ts` (API response shapes), `time.ts`, `repository-reviews.ts` |
+| `app/` | Routes. `page.tsx` is a Server Component that fetches; `actions.ts` holds Server Actions; `app/reviews/[pullRequest]/export/route.ts` and `app/design/[id]/markdown/route.ts` are route handlers; `globals.css` is the theme |
+| `components/` | By feature: `review/`, `repositories/`, `design/`, `security/`, `settings/`, `dashboard/`, `demo/`, `help/`, `layouts/`, `ui/`, `auth/`, `profile/` |
+| `lib/` | `api.ts` (the only API client), `session.ts`, `types.ts` (API response shapes), `time.ts`, `repository-reviews.ts` |
 | `middleware.ts` | Per-request CSP nonce and request id |
 | `test/setup.ts` | Vitest setup |
 

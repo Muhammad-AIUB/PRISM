@@ -18,7 +18,7 @@ curl -s https://<api-host>/health
 | `redis` | `PING` succeeded within 3 s |
 | `queue` | `running` if BullMQ answered `getJobCounts` within 3 s, else `stopped`. This alone does not change the status code, and it does not prove a worker is *consuming* jobs |
 
-Render uses `/health` as the API's health check. The web app has none; probe `/login`.
+Point the API's health check (or an uptime monitor) at `/health`. The web app has none; probe `/login`.
 
 ## Following one request
 
@@ -107,19 +107,11 @@ comment was posted. Check the `ai_call` lines for the row's time: statuses of `0
 retried instead), `200` means the model answered but not with parseable JSON. **Re-analyze**.
 The two fixed summaries are in [database.md](database.md#summary-text).
 
-### The API was asleep when a webhook arrived
+### A page shows "The server took too long to respond"
 
-On the free tier a sleeping API does not wake for requests proxied through `prism-web`
-(Render's edge answers 429 instead), and GitHub does not redeliver on its own. Redeliver from
-the repository's *Recent deliveries*, or push again. To prevent it, keep the API awake with an
-external monitor, or move to an always-on plan ([deployment.md](deployment.md#free-tier-realities)).
-
-### Visitors see the waking page, or "The server was asleep"
-
-Expected after 15 idle minutes: `/waking` pings the API and returns the visitor in about 40
-seconds. If it never returns, the API is failing to start; check the Render deploy log. A
-Server Action shows "The server was asleep. Reload this page to wake it, then try again.";
-reloading is a page load, which wakes the API.
+`prism-web` aborts an API read after 15 seconds and returns a 504. Check that the API process is up
+(`/health`), then Postgres and Redis. A webhook GitHub sent while the API was down is not redelivered
+automatically: redeliver it from the repository's *Settings -> Webhooks -> Recent deliveries*.
 
 ### Sign-in succeeds but every page is anonymous
 

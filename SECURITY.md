@@ -23,8 +23,8 @@ something is not a vulnerability, and to credit you if you want it. There is no 
 ## Scope
 
 In scope: this repository (`prism-api`, `prism-web`, `mcp-server`), and any running deployment of
-it. The hosted instance that was at `prism-web-fgts.onrender.com` is offline (checked 2026-11-06),
-so there is nothing there to test right now.
+it. The old Render instance (`prism-web-fgts.onrender.com`) no longer exists, so there is nothing
+there to test.
 
 Examples of what matters most here: anything that exposes or lets someone forge a GitHub token, a
 session or an API token; authentication or authorisation bypass; one user reading another's reviews,

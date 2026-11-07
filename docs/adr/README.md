@@ -14,7 +14,7 @@ worth reading alongside.
 | [0002](0002-review-worker-in-the-api-process.md) | Run the review worker inside the API process | Accepted |
 | [0003](0003-derive-the-job-budget-and-cancel-on-deadline.md) | Derive the job budget from its parts, and make the deadline cancel | Accepted |
 | [0004](0004-server-side-api-access-on-one-hostname.md) | Call the API only from the server, and serve both services on one hostname | Accepted |
-| [0005](0005-wake-the-api-from-the-browser.md) | Wake a sleeping API from the visitor's browser | Accepted |
+| [0005](0005-wake-the-api-from-the-browser.md) | Wake a sleeping API from the visitor's browser | Superseded |
 | [0006](0006-validate-findings-against-the-diff.md) | Show the model anchors and validate every finding against the diff | Accepted |
 | [0007](0007-groq-is-the-only-ai-provider.md) | Groq is the only AI provider | Accepted, with a known cost |
 | [0008](0008-deterministic-risk-radar.md) | Compute change risk deterministically, without a model | Accepted |
