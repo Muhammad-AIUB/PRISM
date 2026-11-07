@@ -65,7 +65,7 @@ export default function ReviewFeedTable({
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <StatusPill status={row.status} />
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }} suppressHydrationWarning>
                       {relativeTime(row.created_at)}
                     </span>
                   </div>
@@ -151,6 +151,7 @@ export default function ReviewFeedTable({
                 <td
                   className="whitespace-nowrap px-5 py-3 text-xs"
                   style={{ color: 'var(--text-muted)' }}
+                  suppressHydrationWarning
                 >
                   {relativeTime(row.created_at)}
                 </td>

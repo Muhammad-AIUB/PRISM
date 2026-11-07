@@ -71,6 +71,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
             className="text-xs"
             style={{ color: 'var(--text-muted)' }}
             title={absoluteTime(log.created_at)}
+            suppressHydrationWarning
           >
             {relativeTime(log.created_at, 'datetime')}
           </span>

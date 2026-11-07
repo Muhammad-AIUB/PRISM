@@ -385,7 +385,7 @@ export default function DesignStudioView({
                     className="min-w-0 flex-1 hover:opacity-80"
                   >
                     <span className="block truncate text-sm font-medium">{design.title}</span>
-                    <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="block text-xs" style={{ color: 'var(--text-muted)' }} suppressHydrationWarning>
                       {design.scale} · {relativeTime(design.created_at)}
                       {design.source === 'baseline' ? ' · baseline' : ''}
                     </span>

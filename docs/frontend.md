@@ -62,6 +62,13 @@ Behaviour built in:
 - A `GET` that gets a `429` with a short `Retry-After` (up to 5 seconds) is retried once, because
   every call leaves from this server's single address and shares the API's per-IP buckets
   until a request is authenticated. Writes are never retried.
+- A `GET` is aborted after 15 seconds (`GET_TIMEOUT_MS`) and treated like a sleeping API (wake page
+  for a page load, 503 for an action), because a cold start takes 40 to 60 seconds and would
+  otherwise hold a blank page. Writes have no timeout: Design Studio generation runs up to 55 s.
+  `app/loading.tsx` shows a fallback while a page waits.
+- Text built from the current time or the viewer's locale (`relativeTime`, `toLocaleString`)
+  differs between server and browser, so the element carries `suppressHydrationWarning`
+  (otherwise React error #418 discards the server HTML).
 - 400/403/404 fold into one not-found page on purpose. A distinct "forbidden" screen would
   confirm that a review id exists.
 

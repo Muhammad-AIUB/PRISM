@@ -42,13 +42,32 @@ interface ApiRequest {
 const MAX_RETRY_WAIT_MS = 5_000;
 
 /**
+ * How long a page render waits for the API. Reads only: a write such as Design
+ * Studio generation legitimately runs for up to 55 s and must not be cut short.
+ */
+const GET_TIMEOUT_MS = 15_000;
+
+/**
  * Every call here leaves from this server's address, so all visitors share
  * the API's per-IP throttle buckets until a request is authenticated. A GET
  * that lands on a nearly-reset bucket is retried once rather than turned into
  * an error page. Writes are never retried.
  */
 async function request(path: string, init: ApiRequest = {}): Promise<Response> {
-  const response = await send(path, init);
+  let response: Response;
+
+  try {
+    response = await send(path, init);
+  } catch (error) {
+    // A GET that outlasts GET_TIMEOUT_MS is almost always a sleeping API (a
+    // cold start takes 40 to 60 s). Treat it like the 429 case: send the visitor
+    // to the wake page instead of leaving a blank page loading for minutes.
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      return asleep(init.method ?? 'GET');
+    }
+
+    throw error;
+  }
 
   if (isHibernating(response)) {
     return asleep(init.method ?? 'GET');
@@ -114,6 +133,7 @@ async function send(path: string, init: ApiRequest): Promise<Response> {
     // Every response is user-specific. Caching one would serve it to the next
     // visitor, so this must stay 'no-store'.
     cache: init.cache ?? 'no-store',
+    signal: (init.method ?? 'GET') === 'GET' ? AbortSignal.timeout(GET_TIMEOUT_MS) : undefined,
   });
 }
 

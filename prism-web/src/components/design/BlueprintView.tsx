@@ -213,7 +213,7 @@ export default function BlueprintView({ user, design }: { user: SessionUser; des
             <Network className="h-4 w-4" style={{ color: 'var(--accent)' }} />
             <span>{SCALE_LABELS[design.brief.scale]} scale</span>
             {design.architecture_style && <span>· {design.architecture_style}</span>}
-            <span>· {absoluteTime(design.created_at)}</span>
+            <span suppressHydrationWarning>· {absoluteTime(design.created_at)}</span>
           </div>
           <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight sm:text-3xl">
             {design.title}

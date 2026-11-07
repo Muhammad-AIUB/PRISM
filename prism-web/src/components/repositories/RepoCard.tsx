@@ -114,7 +114,7 @@ export default function RepoCard({
             {stars}
           </span>
           {repo.updated_at && (
-            <span title={new Date(repo.updated_at).toLocaleString()}>
+            <span title={new Date(repo.updated_at).toLocaleString()} suppressHydrationWarning>
               Updated {relativeTime(repo.updated_at)}
             </span>
           )}
