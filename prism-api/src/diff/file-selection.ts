@@ -24,6 +24,8 @@ export interface Selection {
   skipped: string[];
   /** Paths included but missing some of their hunks. */
   partial: string[];
+  /** The subset of `skipped` that is generated, vendored, locked or binary. Not code anyone has to review. */
+  noise: string[];
   /** Every path the diff touched, including the noise. */
   totalFiles: number;
 }
@@ -94,6 +96,7 @@ export function selectForReview(diff: string, budget: number): Selection {
     files: [],
     skipped: [],
     partial: [],
+    noise: [],
     totalFiles: chunks.length,
   };
 
@@ -106,6 +109,7 @@ export function selectForReview(diff: string, budget: number): Selection {
 
     if (NOISE.test(path)) {
       selection.skipped.push(path);
+      selection.noise.push(path);
       continue;
     }
 
@@ -130,4 +134,19 @@ export function selectForReview(diff: string, budget: number): Selection {
   }
 
   return selection;
+}
+
+/**
+ * The share of the code a person would have to read that the model was actually
+ * shown. A file included only in part counts as half. Noise is out of scope:
+ * a lockfile the model never saw is not a hole in the review.
+ */
+export function coverageRatio(selection: Selection): number {
+  const reviewable = selection.totalFiles - selection.noise.length;
+
+  if (reviewable <= 0) {
+    return 1;
+  }
+
+  return (selection.files.length - selection.partial.length * 0.5) / reviewable;
 }

@@ -1,4 +1,4 @@
-import { selectForReview } from './file-selection';
+import { coverageRatio, selectForReview } from './file-selection';
 
 /**
  * What the model is allowed to see, and what it is told it did not see.
@@ -98,9 +98,50 @@ describe('selectForReview', () => {
       text: '',
       files: [],
       skipped: [],
+      noise: [],
       partial: [],
       totalFiles: 0,
     });
     expect(selectForReview('not a diff at all', 8000).totalFiles).toBe(0);
+  });
+});
+
+describe('coverageRatio', () => {
+  it('is 1 when every reviewable file is included whole', () => {
+    const diff = file('a.ts', [hunk(1, ['+const a = 1'])]) + file('b.ts', [hunk(1, ['+const b = 2'])]);
+
+    expect(coverageRatio(selectForReview(diff, 10_000))).toBe(1);
+  });
+
+  it('does not count lockfiles as missed code', () => {
+    const diff =
+      file('a.ts', [hunk(1, ['+const a = 1'])]) + file('package-lock.json', [hunk(1, ['+x'])]);
+    const selection = selectForReview(diff, 10_000);
+
+    expect(selection.noise).toEqual(['package-lock.json']);
+    expect(coverageRatio(selection)).toBe(1);
+  });
+
+  it('is 1/8 when only the first of eight files fits', () => {
+    const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const diff = names.map((n) => file(`${n}.ts`, [hunk(1, [`+const ${n} = 1`])])).join('');
+    const budget = file('a.ts', [hunk(1, ['+const a = 1'])]).length;
+
+    expect(coverageRatio(selectForReview(diff, budget))).toBeCloseTo(0.125);
+  });
+
+  it('counts a file included only in part as half', () => {
+    const diff = file('a.ts', [hunk(1, ['+one']), hunk(10, ['+two'])]);
+    const budget = file('a.ts', [hunk(1, ['+one'])]).length;
+    const selection = selectForReview(diff, budget);
+
+    expect(selection.partial).toEqual(['a.ts']);
+    expect(coverageRatio(selection)).toBe(0.5);
+  });
+
+  it('is 1 when the change is nothing but noise', () => {
+    const selection = selectForReview(file('yarn.lock', [hunk(1, ['+x'])]), 10_000);
+
+    expect(coverageRatio(selection)).toBe(1);
   });
 });
