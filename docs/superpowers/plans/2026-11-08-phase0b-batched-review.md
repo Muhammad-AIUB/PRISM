@@ -106,7 +106,7 @@ Each decision was made by the plan's author from the spike and the code; the num
   - `splitFile(body: string, budget: number): string[] | null`, `cutHunk(hunk: string, room: number): string[]`
   - `riskRankOf(risk: RiskAssessment | null): RiskRank`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `prism-api/src/diff/batch-pack.spec.ts`:
 
@@ -290,12 +290,12 @@ describe('riskRankOf', () => {
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run (from `prism-api/`): `npm test -- src/diff/batch-pack src/diff/risk-rank`
 Expected: FAIL, `Cannot find module './batch-pack'` and `Cannot find module './risk-rank'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Export the regex (one character change in `prism-api/src/diff/file-selection.ts`):
 
@@ -657,12 +657,12 @@ export function riskRankOf(risk: RiskAssessment | null): RiskRank {
 }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `npm test -- src/diff/batch-pack src/diff/risk-rank && npm run typecheck`
 Expected: PASS, `Tests: 15 passed, 15 total`; typecheck prints no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/diff/batch-pack.ts prism-api/src/diff/batch-pack.spec.ts prism-api/src/diff/risk-rank.ts prism-api/src/diff/risk-rank.spec.ts prism-api/src/diff/file-selection.ts

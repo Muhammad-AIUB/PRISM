@@ -34,7 +34,7 @@ export interface Selection {
  * Generated, vendored, locked or binary. None of it is code a person wrote, and
  * every character of it is a character of real code the model does not see.
  */
-const NOISE =
+export const NOISE =
   /(^|\/)(dist|build|vendor|node_modules|__snapshots__)\/|(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|Gemfile\.lock|go\.sum)$|\.min\.(js|css)$|\.(png|jpe?g|gif|ico|svg|pdf|woff2?|ttf|eot|zip|gz|lock)$/i;
 
 const FILE_START = /(?=^diff --git )/m;
