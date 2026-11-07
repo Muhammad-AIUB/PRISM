@@ -38,7 +38,7 @@ starting `prism-web/`, `mcp-server/` or `docs/` is repo-relative; one starting `
 | An MCP tool | `mcp-server/index.js` (one file) | The API route, [mcp-server README](../mcp-server/README.md) |
 | How the web app calls the API | `prism-web/src/lib/api.ts` | [frontend](frontend.md) |
 | CSP, request id | `prism-web/src/middleware.ts` | |
-| Auto-deploy of the API to the VPS | `deploy/webhook.js`, `deploy/deploy.sh`, `deploy/prism-deploy-webhook.service` | [deployment](deployment.md#auto-deploy-on-push) |
+| Auto-deploy of the API to the VPS | `.github/workflows/deploy.yml`, `deploy/deploy.sh` | [deployment](deployment.md#auto-deploy-on-push) |
 | Colours, spacing, focus ring | `prism-web/src/app/globals.css`, `tailwind.config.ts` | Contrast rules in [frontend](frontend.md#standards) |
 | Nav, shell, theme toggle | `components/layouts/AuthenticatedLayout.tsx`, `components/ui/ThemeToggle.tsx`, `ThemeSync.tsx` | |
 | A review page | `app/reviews/[pullRequest]/page.tsx`, `components/review/ReviewShowView.tsx`; commits: `app/commits/[commitReview]/page.tsx`, `CommitShowView.tsx` | Shared pieces in `components/review/parts.tsx` |

@@ -1,0 +1,56 @@
+# Deploys prism-api to the VPS when prism-api or deploy/ changes on main.
+# prism-web deploys itself on Vercel. Setup: docs/deployment.md#auto-deploy-on-push
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prism-api/**'
+      - 'deploy/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits instead of cancelling a running deploy.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The script is streamed over SSH from this commit, so the server never
+      # runs a copy of itself that git is about to replace. Host key checking is
+      # strict: known_hosts comes from a secret, not from ssh-keyscan.
+      - name: Run deploy script on the VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+          VPS_RESTART_CMD: ${{ secrets.VPS_RESTART_CMD }}
+        run: |
+          remote_env="APP_DIR=$(printf '%q' "$VPS_APP_DIR")"
+          if [ -n "$VPS_RESTART_CMD" ]; then
+            remote_env="$remote_env RESTART_CMD=$(printf '%q' "$VPS_RESTART_CMD")"
+          fi
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" \
+            "$remote_env bash -s" < deploy/deploy.sh

@@ -191,7 +191,7 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
 - **Node is not pinned.** No `NODE_VERSION` is set, so the host resolves the
   `engines.node` ranges (`>=20.11` API, `>=22.12` web) and the major version can change under the
   app while development uses 22. Set `NODE_VERSION=22` or add a `.node-version`.
-- **There is no CI.** Both GitHub Actions workflows were removed on
+- **There is no CI, and the API deploy runs no tests.** Both original GitHub Actions workflows were removed on
   2026-11-06 at the maintainer's request. Nothing runs typecheck, lint, tests or `npm audit` on a
   push, so a broken change can reach `main`, and the hosts deploy `main`. Restoring CI:
   [deployment.md](deployment.md#ci).

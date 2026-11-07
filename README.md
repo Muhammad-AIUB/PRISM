@@ -88,7 +88,7 @@ process (the original host had no background-worker service type). Read
 | [`prism-web/`](prism-web/README.md) | Next.js 15 App Router frontend. All data is fetched on the server |
 | [`mcp-server/`](mcp-server/README.md) | MCP server exposing reviews, Risk Radar and Design Studio to AI editors |
 | [`docs/`](docs/README.md) | Architecture, reference, how-to guides, runbook, decision records |
-| `.github/` | The pull-request template. There is no CI ([why](docs/deployment.md#ci)) |
+| `.github/` | The pull-request template and the API deploy workflow. There is no CI ([why](docs/deployment.md#ci)) |
 
 ## Run it locally
 

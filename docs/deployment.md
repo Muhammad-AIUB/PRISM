@@ -133,41 +133,48 @@ proposed fix, not built.
 
 ## Auto-deploy on push
 
-`prism-web` deploys itself from `main` on Vercel. `prism-api` on the VPS deploys through a small
-webhook listener: GitHub reports each push to `main`, the listener verifies it, and runs
-`deploy/deploy.sh`, which fast-forwards the checkout, builds, restarts the API, waits for `/health`
-and **rolls back to the previous commit if the new build is not healthy**. The files are in
-`deploy/`: `webhook.js` (listener, no dependencies), `deploy.sh`, and a systemd unit.
+`prism-web` deploys itself from `main` on Vercel. `prism-api` on the VPS deploys through the
+GitHub Actions workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml): a push to
+`main` that touches `prism-api/`, `deploy/` or the workflow connects to the server over SSH and runs
+`deploy/deploy.sh`. The script fast-forwards the checkout, builds, restarts the API, waits for
+`/health` and **rolls back to the previous commit if the new build is not healthy** (the job then
+fails, so GitHub tells you). Deploys run one at a time. Run it by hand from the *Actions* tab
+(*Deploy API -> Run workflow*).
 
-Nothing runs tests first: `nest build` type-checks, but a green build is the only gate. Run the
+The workflow runs **no tests**: `nest build` type-checks, but a green build is the only gate. Run the
 checks locally before pushing ([CLAUDE.md](../CLAUDE.md)).
 
-**One-time setup on the VPS** (adjust paths and names to your setup):
+**One-time setup**
 
-1. A user that owns a clone of the repository, e.g. `deploy`, and a clone at `/srv/prism`
-   (`git clone` over a read-only deploy key or an HTTPS URL, so `git fetch` works non-interactively).
-   Node 20.11 or newer, `curl` and `git` installed.
+On the VPS:
+
+1. A user that owns a clone of the repository, e.g. `deploy` and `/srv/prism`, cloned so that
+   `git fetch` works without a prompt (a read-only deploy key, or an HTTPS URL). Node 20.11 or
+   newer, `git` and `curl` installed.
 2. Let that user restart the API without a password. In `visudo`:
-   `deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart prism-api`. If the API runs under another
-   manager, set `RESTART_CMD` instead (for example `pm2 restart prism-api`).
-3. Put the secret in a root-only file, `/etc/prism-deploy.env` (`chmod 600`):
-   `DEPLOY_WEBHOOK_SECRET=<long random string>`. Generate one with `openssl rand -hex 32`.
-4. Copy `deploy/prism-deploy-webhook.service` to `/etc/systemd/system/`, fix the user and paths, then
-   `systemctl daemon-reload && systemctl enable --now prism-deploy-webhook`.
-5. Expose the listener over **HTTPS** through your reverse proxy, for example
-   `https://api.example.com/_deploy` proxied to `127.0.0.1:9000`. The listener binds to loopback on
-   purpose and must not be reachable in plain HTTP from outside.
-6. On GitHub: *Settings -> Webhooks -> Add webhook*. Payload URL is the HTTPS address above, content
-   type `application/json`, the same secret, event **Just the push event**. GitHub's "ping" should show a
-   green tick (the listener answers 200).
+   `deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart prism-api`. If the API runs under
+   another manager, set the `VPS_RESTART_CMD` secret instead (for example `pm2 restart prism-api`).
+3. A dedicated SSH key pair for deployments only: `ssh-keygen -t ed25519 -f deploy_key -N ""`.
+   Append `deploy_key.pub` to that user's `~/.ssh/authorized_keys`.
 
-This is a different webhook from the one each connected repository sends to the API's
-`/webhook/github`; use a different secret.
+On GitHub (*Settings -> Secrets and variables -> Actions -> New repository secret*):
 
-**Checking it:** push a commit, then `journalctl -u prism-deploy-webhook -f` shows `deploy started`
-and `deployed <sha>`. A failed release shows `rolling back`; the API then keeps running the previous
-commit. A diverged server checkout (local edits) fails the fast-forward and deploys nothing, so keep
-the clone clean.
+| Secret | Value |
+|---|---|
+| `VPS_HOST` | The server's hostname or IP |
+| `VPS_USER` | The deploy user, e.g. `deploy` |
+| `VPS_SSH_KEY` | The **private** key (contents of `deploy_key`) |
+| `VPS_KNOWN_HOSTS` | The server's host key line: run `ssh-keyscan -t ed25519 <host>` **from your own machine** and paste the output |
+| `VPS_APP_DIR` | The checkout path, e.g. `/srv/prism` |
+| `VPS_PORT` | Optional; only if SSH is not on 22 |
+| `VPS_RESTART_CMD` | Optional; default is `sudo systemctl restart prism-api` |
+
+Delete `deploy_key` from your machine once the secret is saved. Host key checking is strict, so a
+changed server key (or someone in the middle) stops the deploy instead of being trusted.
+
+**When it fails.** A diverged server checkout (local edits) fails the fast-forward and deploys
+nothing, so keep the clone clean. A failed release rolls back and the job turns red; the log shows
+`rolling back to <sha>`. If the log says `ROLLBACK FAILED`, the API is down: fix it by hand.
 
 ## Releasing
 
@@ -175,7 +182,7 @@ There is no release step beyond merging to `main`.
 
 1. Run typecheck, lint and tests in each package you changed. **There is no CI**, so nothing
    checks this for you, and the host will deploy whatever reaches `main`.
-2. Merge or push to `main`. Vercel deploys `prism-web` from `main`; the push also triggers the VPS webhook ([auto-deploy](#auto-deploy-on-push)) for `prism-api`.
+2. Merge or push to `main`. Vercel deploys `prism-web` from `main`; a push that touches `prism-api/` also deploys the API to the VPS ([auto-deploy](#auto-deploy-on-push)).
 3. Verify the deploy: `/health` is `ok`, and exercise the change. After a change to sign-in,
    request `https://<web-host>/auth/github` and expect a redirect to GitHub, not a 404.
 
@@ -197,8 +204,8 @@ the forward one, and make additive changes only.
 ## CI
 
 There is none. The two GitHub Actions workflows (a CI workflow and a scheduled keep-alive ping) were
-removed on 2026-11-06 at the maintainer's request, so nothing runs automatically on a push or pull
-request. The gates are manual: typecheck, lint and test in each package you touch, and
+removed on 2026-11-06 at the maintainer's request, so no checks run on a push or pull request. The
+only workflow is the [API deploy](#auto-deploy-on-push), which runs no tests. The gates are manual: typecheck, lint and test in each package you touch, and
 `npm audit --omit=dev --audit-level=high` when dependencies change.
 
 If you want CI back, the files are in history (`git log --diff-filter=D -- .github/workflows/ci.yml`
