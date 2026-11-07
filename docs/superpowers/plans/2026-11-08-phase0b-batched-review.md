@@ -3599,32 +3599,34 @@ git commit -m "Document batched review and record the decision" -m "ADR 0013 sta
 
 **Files:** none changed unless a gate fails.
 
-- [ ] **Step 1: Typecheck, lint, full test suite (once)**
+- [x] **Step 1: Typecheck, lint, full test suite (once)**
 
 Run from `prism-api/`: `npm run typecheck && npm run lint && npm test`
 Expected: typecheck clean; lint clean (about 50 to 70 s); all suites pass (the author saw 61 suites and 642 tests with every change from Tasks 1 to 9 applied; the exact count is not a gate, zero failures is). `prism-web` is untouched: no web gate.
 
-- [ ] **Step 2: Boot the stack once (DI wiring and Redis changed)**
+- [x] **Step 2: Boot the stack once (DI wiring and Redis changed)**
 
 Follow `docs/development.md` sections 2 and 3: Postgres and Redis containers (`--maxmemory-policy noeviction`), `prism-api/.env` pointing at `127.0.0.1` (never the repo-root `.env`), then from `prism-api/`: `npm run start:dev` (it listens on :3999; start it once, reuse it, stop it after). Expected: the log ends with `PRism API listening on :3999 (development)` and has no "Nest can't resolve dependencies of the BatchedReviewService / AccountDataService / ReviewCheckpointStore" error, and `curl -s http://127.0.0.1:3999/health` answers 200 with `database` and `redis` both `connected` (`docs/api-reference.md`). If the stack cannot be started in your environment, say "stack not booted" in the report; do not claim it.
 
-- [ ] **Step 3: The in-process end-to-end review**
+- [x] **Step 3: The in-process end-to-end review**
 
 The two many-batch runner tests are the end-to-end check: `pr-review.runner.spec.ts` ("reviews all of it ... when the change needs several batches") and `commit-review.runner.spec.ts` ("reviews every file in several calls") drive the real runner, the real `BatchedReviewService`, packer, validator, merge and pacer with a fake `AiClientService`; Groq's URL is fixed in code, so a fake HTTP server would need a production seam this plan does not add. Re-running them is not needed after Step 1. If `GROQ_API_KEY_DEV` exists, Task 12 supplies the live equivalent.
 
-- [ ] **Step 4: Stop the dev server and containers you started.** Do not leave `dist/` or `.env` changes in `git status`.
+- [x] **Step 4: Stop the dev server and containers you started.** Do not leave `dist/` or `.env` changes in `git status`.
 
-- [ ] **Step 5: Fix and commit only if a gate failed.** One commit per fix, naming the files.
+- [x] **Step 5: Fix and commit only if a gate failed.** One commit per fix, naming the files.
 
 ---
 
 ### Task 12: Live measurement and retune (conditional on `GROQ_API_KEY_DEV`)
 
+> **Status: not measured: no development key.** `GROQ_API_KEY_DEV` was not set in the executing shell, so no live call was made and no script was created; `batching.config.ts` keeps the spike's unmeasured defaults.
+
 **Files:**
 - Create (only if the key exists): `prism-api/scripts/measure-batching-live.ts`, `docs/superpowers/spikes/2026-11-08-batching-live.md`
 - Modify (only if the numbers justify it): `prism-api/src/modules/review/batching.config.ts` and its spec; `docs/known-issues.md`; `docs/superpowers/PROGRESS.md`
 
-- [ ] **Step 1: Check for the key without printing it.**
+- [x] **Step 1: Check for the key without printing it.**
 
 Run: `node -e "console.log(process.env.GROQ_API_KEY_DEV ? 'key present' : 'key missing')"`
 If it prints `key missing`: **stop this task.** Append to `docs/superpowers/PROGRESS.md` under notes: "Phase 0b live measurement: not measured, no `GROQ_API_KEY_DEV`; `batching.config.ts` values are the spike's unmeasured defaults." Make no code change, do not look for any other key, and **never read the repo-root `.env`**. Commit that one doc line. Do not fake numbers.
