@@ -3620,7 +3620,7 @@ The two many-batch runner tests are the end-to-end check: `pr-review.runner.spec
 
 ### Task 12: Live measurement and retune (conditional on `GROQ_API_KEY_DEV`)
 
-> **Status: not measured: no development key.** `GROQ_API_KEY_DEV` was not set in the executing shell, so no live call was made and no script was created; `batching.config.ts` keeps the spike's unmeasured defaults.
+> **Status: measured, constants unchanged.** Run on 2026-11-08 with a development key: 11 live calls, 2 x 429 when sent back to back, none when paced; report `docs/superpowers/spikes/2026-11-08-batching-live.md`. `batching.config.ts` values were not retuned (too few samples).
 
 **Files:**
 - Create (only if the key exists): `prism-api/scripts/measure-batching-live.ts`, `docs/superpowers/spikes/2026-11-08-batching-live.md`
@@ -3631,7 +3631,7 @@ The two many-batch runner tests are the end-to-end check: `pr-review.runner.spec
 Run: `node -e "console.log(process.env.GROQ_API_KEY_DEV ? 'key present' : 'key missing')"`
 If it prints `key missing`: **stop this task.** Append to `docs/superpowers/PROGRESS.md` under notes: "Phase 0b live measurement: not measured, no `GROQ_API_KEY_DEV`; `batching.config.ts` values are the spike's unmeasured defaults." Make no code change, do not look for any other key, and **never read the repo-root `.env`**. Commit that one doc line. Do not fake numbers.
 
-- [ ] **Step 2: If the key is present, create the script** `prism-api/scripts/measure-batching-live.ts` (the author compiled it with `ts-node` and ran its no-key path, which prints `not measured` and makes no call; it was not run with a key):
+- [x] **Step 2: If the key is present, create the script** `prism-api/scripts/measure-batching-live.ts` (the author compiled it with `ts-node` and ran its no-key path, which prints `not measured` and makes no call; it was not run with a key):
 
 ```ts
 /**
@@ -3776,11 +3776,11 @@ async function main(): Promise<void> {
 void main();
 ```
 
-- [ ] **Step 3: Run it** (`npx ts-node scripts/measure-batching-live.ts --cache <dir> --out <results.json>`; at most 15 calls). Write `docs/superpowers/spikes/2026-11-08-batching-live.md`: latency p50 and max per call, parse rate, 429 count and the estimated-tokens-in-window at the first 429 (this is what answers whether reserved `max_completion_tokens` counts against the per-minute limit), and what it changes.
+- [x] **Step 3: Run it** (`npx ts-node scripts/measure-batching-live.ts --cache <dir> --out <results.json>`; at most 15 calls). Write `docs/superpowers/spikes/2026-11-08-batching-live.md`: latency p50 and max per call, parse rate, 429 count and the estimated-tokens-in-window at the first 429 (this is what answers whether reserved `max_completion_tokens` counts against the per-minute limit), and what it changes.
 
-- [ ] **Step 4: Retune only what the numbers justify**, in `batching.config.ts` and its spec: `assumedOutputTokens` from observed output; `GROQ_FREE_PACE.charsPerToken`; `batchChars` if calls are far slower or less parseable than assumed. `jobBudgetMs` follows by derivation; run `npm test -- src/modules/review/ src/modules/account` (the budget and marker specs are the guards) and `npm run typecheck`. Update `docs/known-issues.md` (the "Batched review is unmeasured" bullet shrinks to what is still unmeasured) and ADR 0013 if a number it states changed.
+- [x] **Step 4: Retune only what the numbers justify**, in `batching.config.ts` and its spec: `assumedOutputTokens` from observed output; `GROQ_FREE_PACE.charsPerToken`; `batchChars` if calls are far slower or less parseable than assumed. `jobBudgetMs` follows by derivation; run `npm test -- src/modules/review/ src/modules/account` (the budget and marker specs are the guards) and `npm run typecheck`. Update `docs/known-issues.md` (the "Batched review is unmeasured" bullet shrinks to what is still unmeasured) and ADR 0013 if a number it states changed.
 
-- [ ] **Step 5: Commit** the script, the report, the retune and the doc edits by name, with a message that states the measured numbers and what was **not** measured (review quality is still not measured by this script).
+- [x] **Step 5: Commit** the script, the report, the retune and the doc edits by name, with a message that states the measured numbers and what was **not** measured (review quality is still not measured by this script).
 
 ---
 

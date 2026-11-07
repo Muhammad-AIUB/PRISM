@@ -6,11 +6,11 @@ import { REQUEST_TIMEOUT_MS as GITHUB_TIMEOUT_MS } from '../../github/github-cli
 /**
  * Every number batched review depends on, in one place.
  *
- * None of these is measured against a live Groq key yet (docs/superpowers/spikes/
- * 2026-11-08-batching-spike.md, part C), so each is a starting value chosen from
- * the spike's offline results and Groq's published free-tier limits. Retune
- * them here after a live run; nothing else hard-codes them, and the job budget
- * (`jobBudgetMs`) follows.
+ * Each is a starting value chosen from the spike's offline results and Groq's
+ * published free-tier limits. A live run of 11 calls (docs/superpowers/spikes/
+ * 2026-11-08-batching-live.md) found no reason to move any of them, but is too
+ * small to call them tuned. Retune them here; nothing else hard-codes them, and
+ * the job budget (`jobBudgetMs`) follows.
  */
 export const BATCH_CONFIG: BatchConfig = {
   /** Characters of diff per model call. 16,000 halves the calls of 8,000 and keeps one call near 5,000 input tokens. */
