@@ -2,6 +2,7 @@ import { coverageRatio } from './file-selection';
 import { packForReview, selectionFor, splitFile } from './batch-pack';
 import { buildHunkIndex } from './hunk-index';
 import { renderWithAnchors } from './render';
+import { prepareBatch } from './prepare';
 
 const header = (name: string): string => `diff --git a/${name} b/${name}\n--- a/${name}\n+++ b/${name}\n`;
 
@@ -132,6 +133,35 @@ describe('packForReview', () => {
     expect(packed.batches).toHaveLength(1);
     expect(packed.batches[0]?.text).toBe('');
     expect(coverageRatio(selectionFor(packed, new Set([0])))).toBe(1);
+  });
+});
+
+describe('a file whose pieces share a batch', () => {
+  it('indexes and renders every added line of both pieces at its true line number', () => {
+    // A giant first hunk is cut; the small hunk after it starts a new piece that
+    // lands in the same batch as the last cut, so that batch holds the file header twice.
+    const big = Array.from({ length: 900 }, (_, i) => `+big ${i} ${'x'.repeat(30)}`).join('\n');
+    const diff =
+      header('x.ts') +
+      `@@ -1,1 +1,901 @@\n ctx\n${big}\n` +
+      '@@ -2000,1 +2000,2 @@\n ctx\n+late line\n';
+    const packed = packForReview(diff, CONFIG);
+    const shared = packed.batches.find((batch) => batch.pieces.filter((p) => p.path === 'x.ts').length > 1);
+
+    expect(shared).toBeDefined();
+
+    const prepared = prepareBatch(shared!.text);
+    const added = prepared.index.get('x.ts')?.added;
+    const pieceLines = shared!.pieces.flatMap((p) =>
+      p.text.split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')),
+    );
+
+    expect(added?.size).toBe(pieceLines.length);
+    expect(added?.get(2001)).toBe('late line');
+    expect(added?.get(901)).toContain('big 899');
+    expect(prepared.body).toContain('late line');
+    expect(prepared.body).toContain('big 899');
+    expect(selectionFor(packed, new Set(packed.batches.map((b) => b.index))).partial).toEqual([]);
   });
 });
 

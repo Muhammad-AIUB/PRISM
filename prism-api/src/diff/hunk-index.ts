@@ -40,7 +40,9 @@ export function buildHunkIndex(diff: string): HunkIndex {
     const header = parseGitHeader(line);
 
     if (header) {
-      current = { added: new Map(), removed: new Map(), context: new Map(), lines: [] };
+      // A batch can hold two pieces of one file, each with its own header. The
+      // second must add to the first, not replace it.
+      current = index.get(header.oldPath) ?? { added: new Map(), removed: new Map(), context: new Map(), lines: [] };
       index.set(header.oldPath, current);
       inHunk = false;
       continue;
