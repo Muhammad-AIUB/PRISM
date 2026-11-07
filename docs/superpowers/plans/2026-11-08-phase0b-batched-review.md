@@ -2657,7 +2657,7 @@ git commit -m "Add the service that reviews a change batch by batch" -m "Both ru
 - Consumes: `BatchedReviewService` (Task 6), `detectLanguages` (`diff/language-detector.ts`).
 - Produces: `PullRequestReviewRunner` constructor is now `(pullRequests, reviews, reviewComments, batched, fixes, github, diffCache, crypt, summaryComment, slack, auditLog, reviewedRisk)` (the old `aiClient` and `promptBuilder` parameters are replaced by `batched`). Behaviour: the same states as before, with coverage from `outcome.coverageRatio`.
 
-- [ ] **Step 1: Update the spec** (three constructions swap the fake client and prompt builder for `buildBatchedReview(...)`; the old "withholds the score" test now uses a one-batch cap; a new test proves a multi-batch review keeps its score and shows no label):
+- [x] **Step 1: Update the spec** (three constructions swap the fake client and prompt builder for `buildBatchedReview(...)`; the old "withholds the score" test now uses a one-batch cap; a new test proves a multi-batch review keeps its score and shows no label):
 
 ```diff
 diff --git a/prism-api/src/modules/review/pr-review.runner.spec.ts b/prism-api/src/modules/review/pr-review.runner.spec.ts
@@ -2770,12 +2770,12 @@ diff --git a/prism-api/src/modules/review/pr-review.runner.spec.ts b/prism-api/s
  });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm test -- src/modules/review/pr-review.runner`
 Expected: FAIL (TypeScript: the runner still takes 13 constructor arguments).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```diff
 diff --git a/prism-api/src/modules/review/pr-review.runner.ts b/prism-api/src/modules/review/pr-review.runner.ts
@@ -2978,12 +2978,12 @@ diff --git a/prism-api/src/modules/review/pr-review.runner.ts b/prism-api/src/mo
        `PR review job completed ${JSON.stringify({ pr_id: pr.id, score: overallScore })}`,
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm test -- src/modules/review/pr-review.runner && npm run typecheck`
 Expected: PASS, `Tests: 7 passed, 7 total`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/modules/review/pr-review.runner.ts prism-api/src/modules/review/pr-review.runner.spec.ts

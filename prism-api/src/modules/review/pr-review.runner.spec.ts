@@ -1,4 +1,4 @@
-import { PromptBuilderService } from '../../ai/prompt-builder.service';
+import { buildBatchedReview } from './batched-review.testing';
 import * as riskRadar from '../../diff/risk-radar';
 import { PullRequestReviewRunner } from './pr-review.runner';
 import { PARTIAL_REVIEW } from '../../ai/verdict';
@@ -69,14 +69,13 @@ describe('PullRequestReviewRunner language detection', () => {
       pullRequests as never,
       reviews as never,
       reviewComments as never,
-      {
+      buildBatchedReview({
         callWithFallback: jest.fn().mockResolvedValue({
           model: 'groq/test',
           parsed: { overall_score: 80, summary: 's' },
           raw: null,
         }),
-      } as never,
-      new PromptBuilderService(),
+      }).service,
       { generate: jest.fn().mockResolvedValue(null) } as never,
       {
         fetchPullRequestDiff: jest.fn().mockResolvedValue(diff),
@@ -150,10 +149,9 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
       pullRequests as never,
       reviews as never,
       reviewComments as never,
-      {
+      buildBatchedReview({
         callWithFallback: jest.fn().mockResolvedValue({ model: 'groq/test', parsed, raw: parsed ? null : 'garbled' }),
-      } as never,
-      new PromptBuilderService(),
+      }).service,
       { generate: jest.fn().mockResolvedValue(null) } as never,
       github as never,
       {
@@ -213,7 +211,7 @@ describe('PullRequestReviewRunner coverage', () => {
     Array.from({ length: lines }, (_, i) => `+const ${name}${i} = ${i};`).join('\n') +
     '\n';
 
-  function build(diff: string) {
+  function build(diff: string, config = { batchChars: 16_000, maxBatches: 8 }) {
     const pullRequests = repo();
     const reviews = repo();
 
@@ -230,18 +228,16 @@ describe('PullRequestReviewRunner coverage', () => {
     reviews.findOne.mockResolvedValue(null);
     reviews.save.mockResolvedValue({ id: 99 });
 
+    const callWithFallback = jest.fn().mockResolvedValue({
+      model: 'groq/test',
+      parsed: { overall_score: 95, summary: 'Looks fine.', issues: [] },
+      raw: null,
+    });
     const runner = new PullRequestReviewRunner(
       pullRequests as never,
       reviews as never,
       repo() as never,
-      {
-        callWithFallback: jest.fn().mockResolvedValue({
-          model: 'groq/test',
-          parsed: { overall_score: 95, summary: 'Looks fine.', issues: [] },
-          raw: null,
-        }),
-      } as never,
-      new PromptBuilderService(),
+      buildBatchedReview({ callWithFallback }, { config }).service,
       { generate: jest.fn().mockResolvedValue(null) } as never,
       {
         fetchPullRequestDiff: jest.fn().mockResolvedValue(diff),
@@ -258,12 +254,13 @@ describe('PullRequestReviewRunner coverage', () => {
       { save: jest.fn().mockResolvedValue(undefined), forget: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
-    return { runner, reviews };
+    return { runner, reviews, callWithFallback };
   }
 
-  it('withholds the score and marks the summary when most of the change was not read', async () => {
+  it('withholds the score and marks the summary when the batch cap left most of the change unread', async () => {
     const diff = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((n) => addedFile(n, 150)).join('');
-    const { runner, reviews } = build(diff);
+    // Each file is about 4,000 characters, so 8,000-character batches hold two and one batch reads a quarter.
+    const { runner, reviews } = build(diff, { batchChars: 8000, maxBatches: 1 });
 
     await runner.run(1, 1);
 
@@ -282,5 +279,18 @@ describe('PullRequestReviewRunner coverage', () => {
 
     expect(saved.overallScore).toBe(95);
     expect(saved.summary?.startsWith(PARTIAL_REVIEW)).toBe(false);
+  });
+  it('reviews all of it, with a normal score and no label, when the change needs several batches', async () => {
+    const diff = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((n) => addedFile(n, 150)).join('');
+    const { runner, reviews, callWithFallback } = build(diff, { batchChars: 8000, maxBatches: 8 });
+
+    await runner.run(1, 1);
+
+    const saved = reviews.save.mock.calls[0]?.[0] as { overallScore: number | null; summary: string | null };
+
+    expect(callWithFallback).toHaveBeenCalledTimes(4);
+    expect(saved.overallScore).toBe(95);
+    expect(saved.summary?.startsWith(PARTIAL_REVIEW)).toBe(false);
+    expect(saved.summary).not.toContain('Reviewed');
   });
 });

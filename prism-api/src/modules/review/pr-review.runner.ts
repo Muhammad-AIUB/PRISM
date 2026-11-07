@@ -1,22 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
-import { AiClientService } from '../../ai/ai-client.service';
 import { FixesService, toLine } from '../../ai/fixes.service';
 import type { IssueLayers } from '../../ai/prompt-builder.service';
-import { clampScore } from '../../ai/json-extractor';
-import { PromptBuilderService } from '../../ai/prompt-builder.service';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { PullRequest, Review, ReviewComment } from '../../database/entities';
 import type { ReviewLayer, ReviewSeverity } from '../../database/entities/review-comment.entity';
-import { prepareDiff } from '../../diff/prepare';
+import { detectLanguages } from '../../diff/language-detector';
 import { tryAssessRisk, type RiskAssessment } from '../../diff/risk-radar';
-import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
 import { incompleteReviewSummary, isUnderCovered, scoreFor, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
+import { BatchedReviewService } from './batched-review.service';
 import { GithubClientService } from '../../github/github-client.service';
 import { SlackService } from '../../notifications/slack.service';
 import { ReviewRiskStore } from '../risk/review-risk.store';
@@ -30,7 +27,6 @@ import { SummaryCommentBuilder } from './summary-comment.builder';
  * place), issues are fanned out into `review_comments`, and the posted GitHub
  * comment carries no "View full review" link.
  */
-const DIFF_LIMIT = 8000;
 const VALID_SEVERITIES: ReviewSeverity[] = ['critical', 'warning', 'suggestion'];
 
 @Injectable()
@@ -44,8 +40,7 @@ export class PullRequestReviewRunner {
     private readonly reviews: OrmRepository<Review>,
     @InjectRepository(ReviewComment)
     private readonly reviewComments: OrmRepository<ReviewComment>,
-    private readonly aiClient: AiClientService,
-    private readonly promptBuilder: PromptBuilderService,
+    private readonly batched: BatchedReviewService,
     private readonly fixes: FixesService,
     private readonly github: GithubClientService,
     private readonly diffCache: DiffCacheService,
@@ -88,39 +83,41 @@ export class PullRequestReviewRunner {
       () => this.github.fetchPullRequestDiff(token, repository.fullName, pr.prNumber, signal),
     );
 
-    // Select whole files rather than cutting at a byte, render every changed
-    // line with an anchor, and detect languages from the WHOLE diff. Shared
-    // with the commit runner so a parser fix lands in one place.
-    const prepared = prepareDiff(diffBody, DIFF_LIMIT);
-    const languages = prepared.languages;
+    // Every reviewable file is reviewed, in as many batches as it takes (capped;
+    // see batching.config.ts). Languages come from the WHOLE diff, so what fits
+    // one call cannot decide which language rules the prompt carries.
+    const languages = detectLanguages(diffBody);
 
-    // Risk Radar reads the whole diff, not the budgeted selection the model
-    // saw: blast radius is a property of the change, not of what fit. It is
-    // recorded together with every review row below, never later, so the page
-    // cannot pair this review with the previous push's risk.
+    // Risk Radar reads the whole diff, not the batches the model saw: blast
+    // radius is a property of the change, not of what fit. It is recorded
+    // together with every review row below, never later, so the page cannot pair
+    // this review with the previous push's risk. It also orders the files when
+    // the change is over the batch cap.
     const risk = tryAssessRisk(diffBody);
 
     if (languages.length > 0) {
       await this.pullRequests.update(pr.id, { detectedLanguages: languages });
     }
 
-    // 2. First AI pass.
-    const attemptResult = await this.aiClient.callWithFallback(
-      this.promptBuilder.buildSystemPrompt(languages, 'pull request'),
-      `Review this diff:\n${prepared.body}`,
-      'pr_review',
+    // 2. First AI pass, one call per batch, each checked against its own anchors
+    // and checkpointed, so a retry resumes instead of paying again.
+    const checkpoint = { kind: 'pr', id: pr.id, ownerId: repository.userId } as const;
+    const outcome = await this.batched.review({
+      diffBody,
+      languages,
+      target: 'pull request',
+      lead: 'Review this diff',
+      context: 'pr_review',
+      ref: checkpoint,
+      risk,
       signal,
-      { userId: repository.userId },
-    );
+    });
 
-    const model = attemptResult.model;
-    const parsed = attemptResult.parsed;
-
-    if (!parsed) {
+    if (outcome.status === 'unusable') {
       await this.upsertReview(pr.id, {
         overallScore: null,
-        summary: incompleteReviewSummary(attemptResult.raw),
-        aiModelUsed: model ?? 'multi-fallback',
+        summary: incompleteReviewSummary(outcome.raw),
+        aiModelUsed: outcome.model ?? 'multi-fallback',
         securityIssues: [],
         performanceIssues: [],
         codeQualityIssues: [],
@@ -128,6 +125,7 @@ export class PullRequestReviewRunner {
       await this.recordReviewedRisk(pr.id, repository.userId, risk);
 
       await this.pullRequests.update(pr.id, { status: 'completed' });
+      await this.batched.finish(checkpoint);
 
       this.logger.warn(
         `PR review: no AI model returned a usable review (pr_id=${pr.id})`,
@@ -136,38 +134,27 @@ export class PullRequestReviewRunner {
       return;
     }
 
-    // Every location the model reported is checked against the lines we
-    // actually rendered. A finding that does not resolve is dropped rather than
-    // shown against a guessed line — a comment pointing at the wrong line costs
-    // more trust than a missing comment costs bugs.
-    const layers = validateLayers(FixesService.layersFrom(parsed), prepared.anchors);
-    const dropped = droppedCount(layers);
-
-    if (dropped > 0) {
-      this.logger.log(
-        `issue_validation ${JSON.stringify({
-          pr_id: pr.id,
-          kept: layers.kept,
-          dropped,
-          reasons: layers.reasons,
-        })}`,
-      );
-    }
+    // Every location the model reported was checked, batch by batch, against the
+    // lines that batch rendered; what did not resolve is already dropped.
+    const { merged } = outcome;
+    const layers = merged.layers;
+    const model = merged.models.join(', ');
 
     // The model scored the list it reported, not the list that survived. Pull
     // the number into agreement with the verdict so the page cannot contradict
-    // itself; the score stays because deployed MCP clients read it.
+    // itself; the score stays because deployed MCP clients read it. With several
+    // batches the score starts from the lowest one.
     const verdict = verdictFor([
       ...layers.security,
       ...layers.performance,
       ...layers.code_quality,
     ]);
-    const overallScore = scoreFor(clampScore(parsed.overall_score), verdict, prepared.coverageRatio);
+    const overallScore = scoreFor(merged.score, verdict, outcome.coverageRatio);
     const summary = composeSummary(
-      typeof parsed.summary === 'string' ? parsed.summary : null,
-      prepared.coverage,
-      dropped,
-      isUnderCovered(prepared.coverageRatio),
+      merged.summary,
+      outcome.coverage,
+      merged.dropped,
+      isUnderCovered(outcome.coverageRatio),
     );
 
     // Out of budget. Stop before the upsert: the retry redoes all of this, and
@@ -201,9 +188,9 @@ export class PullRequestReviewRunner {
     // buildFixesPrompt, and its line numbers remain unvalidated — that is
     // tracked separately, not silently fixed here.
     const suggestedFixes = await this.fixes.generate(
-      model ?? '',
+      merged.lastModel,
       layers,
-      prepared.selection.text,
+      outcome.selection.text,
       'pull request',
       'pr_review',
       signal,
@@ -215,7 +202,7 @@ export class PullRequestReviewRunner {
       // so they get checked too: the code they quote has to actually be at the
       // line they claim. Otherwise the weakest surface sets the trust level for
       // every verified finding beside it.
-      const checked = validateFixes(suggestedFixes.fixes, prepared.index);
+      const checked = validateFixes(suggestedFixes.fixes, outcome.index);
 
       if (checked.dropped > 0) {
         this.logger.log(
@@ -251,6 +238,7 @@ export class PullRequestReviewRunner {
     );
 
     await this.pullRequests.update(pr.id, { status: 'completed' });
+    await this.batched.finish(checkpoint);
 
     this.logger.log(
       `PR review job completed ${JSON.stringify({ pr_id: pr.id, score: overallScore })}`,
