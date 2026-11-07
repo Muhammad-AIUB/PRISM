@@ -223,6 +223,48 @@ describe('BatchedReviewService', () => {
     expect(clock.slept.length).toBeGreaterThanOrEqual(1);
   });
 
+  const TIGHT = {
+    tokensPerMinute: 4000,
+    charsPerToken: 3.5,
+    promptOverheadTokens: 800,
+    assumedOutputTokens: 1200,
+    maxWaitMs: 60_000,
+  };
+  // About 8,000 characters each: every file gets its own 16,000-character batch.
+  const big = (name: string): string => `${file(name)}+${'x'.repeat(7000)}
+`;
+  const LARGE = { config: { batchChars: 16_000, maxBatches: 3 }, groqPace: TIGHT };
+
+  it('does not pace a user with their own key, while the default user is paced', async () => {
+    const diff = big('a.ts') + big('b.ts') + big('c.ts');
+    const own = buildBatchedReview({ callWithFallback: model() }, LARGE, undefined, { provider: 'openai' });
+    const plain = buildBatchedReview({ callWithFallback: model() }, LARGE);
+
+    await own.service.review(input(diff));
+    await plain.service.review(input(diff));
+
+    expect(own.clock.slept).toEqual([]);
+    expect(plain.clock.slept.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects, with no checkpoint for that batch, when the deadline passes while the pacer is sleeping', async () => {
+    const controller = new AbortController();
+    const ai = { callWithFallback: model() };
+    const { service, checkpoints, clock } = buildBatchedReview(ai, LARGE);
+
+    clock.sleep = (_ms: number, signal?: AbortSignal) => {
+      controller.abort(new Error('job budget spent'));
+
+      return Promise.reject(signal?.reason as Error);
+    };
+
+    await expect(
+      service.review(input(big('a.ts') + big('b.ts') + big('c.ts'), { signal: controller.signal })),
+    ).rejects.toThrow('job budget spent');
+    expect(ai.callWithFallback).toHaveBeenCalledTimes(1);
+    expect([...(checkpoints.saved.get('pr:1')?.keys() ?? [])]).toEqual([0]);
+  });
+
   it('keeps the checkpoint out of a re-analyze: finish() clears it', async () => {
     const { service, checkpoints } = buildBatchedReview({ callWithFallback: model() }, OPTIONS);
 

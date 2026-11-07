@@ -53,17 +53,19 @@ export function fakeClock(): PaceClock & { time: number; slept: number[] } {
   return clock;
 }
 
-/** A real service with a fake clock, no pacing, no own key and in-memory checkpoints. */
+/** A real service with a fake clock, no Groq pacing, no own key by default and in-memory checkpoints. */
 export function buildBatchedReview(
   aiClient: unknown,
   overrides: Partial<BatchReviewOptions> = {},
   checkpoints: InMemoryCheckpoints = new InMemoryCheckpoints(),
+  /** What `UserAiSettingsService.resolve` returns: null (the default) is a user without their own key. */
+  ownKeySetting: unknown = null,
 ): { service: BatchedReviewService; checkpoints: InMemoryCheckpoints; clock: ReturnType<typeof fakeClock> } {
   const clock = fakeClock();
   const service = new BatchedReviewService(
     aiClient as never,
     new PromptBuilderService(),
-    { resolve: jest.fn().mockResolvedValue(null) } as never,
+    { resolve: jest.fn().mockResolvedValue(ownKeySetting) } as never,
     checkpoints as never,
     {
       clock,
