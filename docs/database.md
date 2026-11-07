@@ -361,11 +361,12 @@ noeviction`.** Keys below are logical; the physical key is `prism:` plus the key
 
 | Key | Value | TTL | Written by | Purged on account deletion |
 |---|---|---|---|---|
-| `account:erased:{userId}` | `'1'` | 1 h | `AccountDataService`, first step of deletion | expires; it is the purge's guard |
+| `account:erased:{userId}` | `'1'` | 2 h | `AccountDataService`, first step of deletion | expires; it is the purge's guard |
 | `design:{uuid}` | `{owner_id, blueprint}` | 30 d | `DesignStore` save script | yes |
 | `design:user:{userId}` | ids, newest first, trimmed to 20 | 30 d, refreshed on save | save script | yes |
 | `design:owned:{userId}` | set of all ids | 30 d, refreshed on save | save script | yes |
 | `design:rate:{userId}:{hourBucket}` | counter | 1 h | `DesignStore.hit()`; limit 10 per clock hour | current bucket only |
+| `review-batches:{ownerId}:{pr\|commit}:{id}` | hash: `fp` fingerprint plus one JSON batch result per field | 2 h | review runners (batched review checkpoint), through the erasure-marker script | yes (by owner prefix, in `AccountDataService`) |
 | `review-risk:pr:{pullRequestId}` | risk assessment | 90 d | PR runner, through the save script | yes (by PR ids read from Postgres) |
 | `session:revoked:{sha256(jwt)}` | `'1'` | until the JWT's own expiry | `POST /auth/logout` | not user-keyed |
 | `nest-cache-commit_diff_{repoId}_{sha}` | raw diff (at most 2 MB) | 1 h | runners, risk service | **no** ([G9](known-issues.md#integrity-gaps)) |
@@ -403,12 +404,13 @@ webhook -> commit_reviews (pending, one per repo+SHA) -> job -> analyzing -> com
 
 `DELETE /security/my-data` with `{ "confirm": "DELETE" }` runs `AccountDataService.deleteAccount`:
 
-1. Set `account:erased:{userId}` for one hour.
+1. Set `account:erased:{userId}` for two hours.
 2. Read the user's PR ids from Postgres and delete their `review-risk:pr:*` keys.
 3. Delete every `design:*` key the user owns.
-4. Remove each repository's GitHub webhook, then delete the `users` row. The cascade removes
+4. Purge the user's `review-batches:{ownerId}:*` checkpoints by prefix.
+5. Remove each repository's GitHub webhook, then delete the `users` row. The cascade removes
    repositories, pull requests, reviews, comments, commit reviews and audit logs.
-5. On any failure, delete the marker and return 503 saying the account has not been deleted.
+6. On any failure, delete the marker and return 503 saying the account has not been deleted.
 
 Left behind: `personal_access_tokens` rows (no FK; unusable because user ids are never reused)
 and the short-lived caches marked "no" above.

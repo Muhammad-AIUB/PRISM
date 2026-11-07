@@ -52,6 +52,10 @@ a day per model.
 - A step of the retry resumes only batches that finished; a batch that timed out is retried by the next
   attempt. A `Part N:` summary line is shown per part, so a many-part review has a long summary.
 - A single diff line longer than a batch is cut and marked `[line cut]`, the only content batching drops.
+- **Single-batch reviews also pass through the merge** (dedupe on file, side, line and category; cap 40), so two
+  different findings of the same category on one line now collapse into one.
+- **`ai_model_used` may hold several model names** joined by ", " when batches fell back to different models;
+  still well under `varchar(255)`.
 - `prepareDiff` is no longer called by the runners (it remains tested); remove it in a follow-up.
 
 ## Rejected

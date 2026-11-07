@@ -88,6 +88,6 @@ budget derived from them stays consistent.
 | `MAX_DIFF_BYTES = 2000000` | `github/github-client.service.ts` | Memory ceiling on a diff |
 | `REVIEW_JOB_ATTEMPTS = 3`, backoff `[60, 180, 600]` | `modules/review/review.queue.ts` | Retry policy |
 | `DESIGN_BUDGET_MS = 55000`, 10 designs per user per hour | `modules/design/` | Design Studio's cost bound |
-| `ERASURE_MARKER_TTL_SECONDS = 3600` | `modules/account/erasure-marker.ts` | At least twice the longest job |
+| `ERASURE_MARKER_TTL_SECONDS = 7200` | `modules/account/erasure-marker.ts` | At least twice the longest job |
 
 A full table of limits is in [architecture.md](architecture.md#limits-that-define-the-design).
