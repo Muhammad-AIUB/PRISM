@@ -32,7 +32,7 @@ each page can supply its own sticky header.
 | Route | Auth | What it shows |
 |---|---|---|
 | `/` | public | Redirects to `/dashboard` when signed in, otherwise to `/login` |
-| `/login` | public | Sign-in; "Continue with GitHub" goes to `/auth/github`, proxied to the API by the rewrite |
+| `/login` | public | Two columns from `lg` up: what PRism does (left), sign-in (right); on mobile the sign-in comes first. "Continue with GitHub" goes to `/auth/github`, proxied to the API by the rewrite. Every feature line must be true per the README |
 | `/dashboard` | session | Totals, recent PR and commit reviews, score timeline |
 | `/repositories`, `/repositories/[id]`, `/repositories/[id]/settings` | session | Connect a repository; its reviews (25 per page); its mode and branches |
 | `/reviews/[pullRequest]`, `/reviews/[pullRequest]/export` | session | A PR review (verdict, findings, risk, fixes, diff); the PDF |
