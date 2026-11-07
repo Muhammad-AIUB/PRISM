@@ -1997,7 +1997,7 @@ git commit -m "Checkpoint finished batches in Redis, erasable with the account" 
   - `class BatchedReviewService { review(input): Promise<BatchedOutcome>; finish(ref: CheckpointRef): Promise<void> }`; `BATCH_REVIEW_OPTIONS` (optional DI token for overrides)
   - test helpers: `InMemoryCheckpoints`, `fakeClock()`, `buildBatchedReview(aiClient, overrides?, checkpoints?)`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create the shared test doubles `prism-api/src/modules/review/batched-review.testing.ts` (Jest never runs it; it is compiled into `dist` like any `src` file, which is accepted):
 
@@ -2324,12 +2324,12 @@ describe('BatchedReviewService', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm test -- src/modules/review/batched-review`
 Expected: FAIL, `Cannot find module './batched-review.service'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `prism-api/src/modules/review/batched-review.service.ts`:
 
@@ -2634,12 +2634,12 @@ diff --git a/prism-api/src/modules/review/review.module.ts b/prism-api/src/modul
      SummaryCommentBuilder,
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm test -- src/modules/review/batched-review && npm run typecheck`
 Expected: PASS, `Tests: 13 passed, 13 total`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/modules/review/batched-review.service.ts prism-api/src/modules/review/batched-review.service.spec.ts prism-api/src/modules/review/batched-review.testing.ts prism-api/src/modules/review/review.module.ts

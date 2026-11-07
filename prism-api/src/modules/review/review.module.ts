@@ -10,6 +10,8 @@ import { NotificationsModule } from '../../notifications/notifications.module';
 import { RiskModule } from '../risk/risk.module';
 import { CommitReviewRunner } from './commit-review.runner';
 import { PullRequestReviewRunner } from './pr-review.runner';
+import { BatchedReviewService } from './batched-review.service';
+import { ReviewCheckpointModule } from './review-checkpoint.module';
 import { ReviewProcessor } from './review.processor';
 import { ReviewQueueService } from './review-queue.service';
 import { REVIEW_JOB_OPTIONS, REVIEW_QUEUE } from './review.queue';
@@ -30,9 +32,11 @@ import { SummaryCommentBuilder } from './summary-comment.builder';
     DiffCacheModule,
     AuditModule,
     RiskModule,
+    ReviewCheckpointModule,
   ],
   providers: [
     ReviewProcessor,
+    BatchedReviewService,
     CommitReviewRunner,
     PullRequestReviewRunner,
     SummaryCommentBuilder,
