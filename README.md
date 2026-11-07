@@ -7,7 +7,7 @@
 Every finding points at a line that really changed. Every review opens with a verdict you
 can check, not a score you have to trust.
 
-**Hosted demo: offline** ([details](docs/known-issues.md#hosted-offline)) · [Run it yourself](#run-it-locally) · [Documentation](docs/README.md) · [MCP server](mcp-server/README.md)
+**Hosted demo: offline** ([details](docs/known-issues.md#hosted-offline)) · [Run it yourself](#run-it-locally) · [Documentation](docs/README.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -39,8 +39,7 @@ you choose. For each one it:
    no model.
 8. Posts one summary comment on the pull request or commit, and optionally a Slack message.
 
-The same reviews are available in a dashboard, as a PDF export, and inside your editor
-through an [MCP server](mcp-server/README.md).
+The same reviews are available in a dashboard and as a PDF export.
 
 ### Risk Radar
 
@@ -65,7 +64,6 @@ flowchart LR
     B[Browser] -->|pages, server actions| WEB[prism-web<br/>Next.js 15]
     WEB -->|server-side fetch| API[prism-api<br/>NestJS 11]
     GH[GitHub] -->|webhook| API
-    MCP[MCP server<br/>on your machine] -->|bearer token| API
     subgraph proc [one Node process]
         API --- Q[BullMQ worker<br/>concurrency 1]
     end
@@ -86,7 +84,6 @@ process (the original host had no background-worker service type). Read
 |---|---|
 | [`prism-api/`](prism-api/README.md) | NestJS 11: REST API, GitHub webhook, session and token auth, the BullMQ review worker |
 | [`prism-web/`](prism-web/README.md) | Next.js 15 App Router frontend. All data is fetched on the server |
-| [`mcp-server/`](mcp-server/README.md) | MCP server exposing reviews, Risk Radar and Design Studio to AI editors |
 | [`docs/`](docs/README.md) | Architecture, reference, how-to guides, runbook, decision records |
 | `.github/` | The pull-request template and the API deploy workflow. There is no CI ([why](docs/deployment.md#ci)) |
 
@@ -126,8 +123,7 @@ afternoon.
 PRism works end to end and has no outside users yet. Be aware of these before you rely on
 it:
 
-- **No shared hosted instance.** You need your own deployment or a local stack, and the MCP
-  server needs `PRISM_URL` set to it.
+- **No shared hosted instance.** You need your own deployment or a local stack.
 - **One AI provider.** Groq's free tier, two models. When both are rate-limited the attempt
   is retried (60 s, then 180 s); after the third failure the review is marked failed.
 - **Language rules** exist for PHP, JavaScript and TypeScript, Python and Go. Ruby and Java

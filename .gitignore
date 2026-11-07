@@ -20,6 +20,5 @@ node_modules
 /prism-api/dist
 /prism-web/.next
 /prism-web/out
-/mcp-server/package-lock.json
 *.tsbuildinfo
 next-env.d.ts

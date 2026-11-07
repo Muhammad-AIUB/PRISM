@@ -30,7 +30,6 @@ everything else lives, and which document owns which fact, so a change can updat
 | [API reference](api-reference.md) | Every route, the error envelopes, rate limits, webhook responses |
 | [Configuration](configuration.md) | Every environment variable and fixed limit |
 | [Database and stored data](database.md) | Tables, JSON shapes, encodings, the Redis keyspace, deletion |
-| [MCP server](../mcp-server/README.md) | Tools and setup for AI editors |
 
 ## Operate it
 
@@ -65,5 +64,4 @@ repeating it, and never hard-code counts (tests, routes, lines) in prose.
 | How to diagnose a failure you just diagnosed | [operations.md](operations.md) |
 | A bug you found or fixed | [known-issues.md](known-issues.md) |
 | A surprising or hard-to-reverse choice | a new [ADR](adr/README.md) |
-| An MCP tool | [mcp-server/README.md](../mcp-server/README.md), and the matching API route |
 | A rule a coding agent keeps breaking | [CLAUDE.md](../CLAUDE.md) |

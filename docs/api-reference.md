@@ -5,7 +5,7 @@ know which one you are calling.
 
 | Surface | Callers | Stability |
 |---|---|---|
-| **`/api/v1/*`** | The MCP server and anything else holding an API token | **Public contract. Additive-only**: fields may be added, never removed or renamed |
+| **`/api/v1/*`** | Any client holding an API token | **Public contract. Additive-only**: fields may be added, never removed or renamed |
 | **`POST /webhook/github`** | GitHub | Fixed by GitHub. Status codes and bodies are visible in its delivery log |
 | **Everything else** (`/dashboard`, `/reviews/*`, ...) | `prism-web`, server-side | Internal. May change together with `prism-web` in one deploy |
 
@@ -46,7 +46,7 @@ token in the app under *Settings -> API tokens*; it is shown once. Browser route
 | 403 | `{"message":"Not your repository"}` | On `/api/v1`: a resource owned by another user |
 | 404 | `No query results for model [App\Models\CommitReview] 42` (and `...\PullRequest]`) | On `/api/v1`. These legacy strings are part of the contract |
 | 422 | `{message, errors}` | Validation |
-| 429 | exactly `{"message":"Too Many Attempts."}` | Rate limit. The MCP server relays this body to the model |
+| 429 | exactly `{"message":"Too Many Attempts."}` | Rate limit. Clients relay this body to their users |
 | 500 | `{"message":"Server Error"}` | The stack is logged server-side and never returned |
 
 **Rate limits.** 100 requests per minute per caller by default (`API_RATE_LIMIT`). The

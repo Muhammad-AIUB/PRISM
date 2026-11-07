@@ -13,7 +13,7 @@ and debugging a live system use the [operations runbook](operations.md).
                          one public hostname (prism-web)
 GitHub ──webhook──▶  prism-web  ──rewrites /auth /api/v1 /webhook──▶  prism-api ──▶ Neon (Postgres 16)
 Browser ─pages───▶  (Next.js)                                         (NestJS +      Upstash (Redis)
-MCP server ──────────────────────bearer token, direct─────────────▶   BullMQ)       Groq, GitHub API
+Other API clients ────────────────bearer token, direct─────────────▶   BullMQ)       Groq, GitHub API
 ```
 
 | Service | Where | Source |
@@ -99,7 +99,7 @@ and the build tools live there: `@nestjs/cli` for
 `nest build`, and Tailwind, PostCSS and TypeScript for `next build`. Without the flag the
 build fails.
 
-Use the API's public URL everywhere a host is needed, including the MCP server's `PRISM_URL`.
+Use the API's public URL everywhere a host is needed.
 
 ### 5. Verify
 
@@ -206,10 +206,10 @@ the forward one, and make additive changes only.
 
 There is none. The two GitHub Actions workflows (a CI workflow and a scheduled keep-alive ping) were
 removed on 2026-11-06 at the maintainer's request, so no checks run on a push or pull request. The
-only workflow is the [API deploy](#auto-deploy-on-push), which checks `prism-api` only (not `prism-web`, `mcp-server` or `npm audit`). The gates are manual: typecheck, lint and test in each package you touch, and
+only workflow is the [API deploy](#auto-deploy-on-push), which checks `prism-api` only (not `prism-web` or `npm audit`). The gates are manual: typecheck, lint and test in each package you touch, and
 `npm audit --omit=dev --audit-level=high` when dependencies change.
 
 If you want CI back, the files are in history (`git log --diff-filter=D -- .github/workflows/ci.yml`
 finds the commit that removed it). It ran, per package on Node 22: `npm ci`, typecheck, lint, tests,
-build and the audit; for `mcp-server`: `npm install`, `node --check index.js` and the audit. None of
+build and the audit. None of
 it needed Postgres, Redis or a secret, and none of it should.

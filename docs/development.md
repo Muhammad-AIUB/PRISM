@@ -20,7 +20,6 @@ checks every change must pass read [testing.md](testing.md) and [CONTRIBUTING.md
 ```bash
 cd prism-api && npm ci && cd ..
 cd prism-web && npm ci && cd ..
-cd mcp-server && npm install && cd ..    # optional: only to run the MCP server
 ```
 
 `.npmrc` sets `ignore-scripts=true`, so installs do not run dependency lifecycle scripts.
@@ -201,7 +200,6 @@ Variations worth trying: a bad signature returns `401 Invalid signature`; an unk
 | Build | `npm run build` |
 | API in watch mode | `npm run start:dev` (`prism-api`) |
 | Web in watch mode | `npm run dev` (`prism-web`) |
-| Syntax-check the MCP server | `node --check index.js` (`mcp-server`) |
 
 Run typecheck, lint and tests before every commit. There is no CI, so nothing else will. Typecheck
 is the cheap loop (5 to 17 s); lint and tests take about a minute each, so run them once at the end

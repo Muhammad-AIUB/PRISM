@@ -170,7 +170,7 @@ The queue name `prism-reviews` is a live Redis key. Renaming it orphans anything
 | `GROQ_API_KEY` | Set on `prism-api`, redeploy | None |
 | GitHub OAuth client secret | Regenerate at GitHub, set `GITHUB_CLIENT_SECRET`, redeploy | Sign-in is unavailable between the two steps |
 | A repository's webhook secret | Disconnect and reconnect the repository (a fresh secret is generated and the hook re-created) | None |
-| An API token | The user revokes it in *Settings -> API tokens* and creates a new one | The MCP config needs the new token |
+| An API token | The user revokes it in *Settings -> API tokens* and creates a new one | Anything using the old token needs the new one |
 | Slack webhook | The user replaces it in *Settings* | None |
 
 ## Capacity

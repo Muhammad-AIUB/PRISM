@@ -59,7 +59,7 @@ function ApiTokensSection({
 
   const revoke = (id: number) => {
     if (
-      !confirm('Revoke this token? Any MCP server or integration using it will stop working.')
+      !confirm('Revoke this token? Anything using it will stop working.')
     ) {
       return;
     }
@@ -90,7 +90,7 @@ function ApiTokensSection({
         <KeyRound className="h-4 w-4" /> API Tokens
       </h2>
       <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-        For the PRism MCP server and other integrations. Tokens grant read access to your reviews
+        For scripts and other integrations that call the PRism API. Tokens grant read access to your reviews
         and the ability to trigger re-analysis — treat them like passwords.
       </p>
 
@@ -171,7 +171,7 @@ function ApiTokensSection({
         <input
           type="text"
           maxLength={64}
-          placeholder="Token name (e.g. claude-code-mcp)"
+          placeholder="Token name (e.g. my-script)"
           value={tokenName}
           onChange={(event) => setTokenName(event.target.value)}
           className="input min-h-[44px] flex-1 text-sm"

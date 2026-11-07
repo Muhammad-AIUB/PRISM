@@ -22,7 +22,7 @@ something is not a vulnerability, and to credit you if you want it. There is no 
 
 ## Scope
 
-In scope: this repository (`prism-api`, `prism-web`, `mcp-server`), and any running deployment of
+In scope: this repository (`prism-api`, `prism-web`), and any running deployment of
 it. The old Render instance (`prism-web-fgts.onrender.com`) no longer exists, so there is nothing
 there to test.
 

@@ -69,7 +69,6 @@ with no visible way back (`migration`); a dependency manifest changed without it
 | **GitHub comment** | One line after the summary and a collapsed task list. Omitted entirely when no assessment is supplied, so older comments are byte-identical |
 | **Review pages** (PR and commit) | The risk panel below the verdict, loaded after the page renders |
 | **API** | `GET /api/v1/pull-requests/:id/risk` and `.../commits/:id/risk` |
-| **MCP** | The `get_change_risk` tool |
 
 ## Why it is deterministic
 

@@ -22,10 +22,10 @@ import type {
 import { ReviewsService } from './reviews.service';
 
 /**
- * Token-authenticated REST API (v1) consumed by the PRism MCP server.
+ * Token-authenticated REST API (v1) consumed by external clients.
  *
- * Paths, verbs and payloads are frozen: mcp-server/index.js is already
- * deployed on users' machines and calls these exact URLs.
+ * Paths, verbs and payloads are frozen: API clients are already
+ * deployed on users' machines and call these exact URLs.
  *
  * The two POST /re-analyze endpoints enqueue the same jobs the webhook does.
  * Their session-authenticated twins live in modules/reviews-web and behave

@@ -5,7 +5,7 @@ import { BLOCKING_CATEGORIES, type IssueCategory } from './prompt-builder.servic
  * The one line a reviewer reads first.
  *
  * `overall_score` stays in the database and in every API response, because
- * `mcp-server/index.js` reads it in both detail and list responses and that
+ * API clients read it in both detail and list responses and that
  * contract is additive-only. But it stops being the headline. A number out of a
  * hundred is unstable across re-runs, unverifiable against anything, and
  * answers a question nobody asked; "is there anything here that should stop me
@@ -71,7 +71,7 @@ const BLOCKING_CEILING = 60;
  * BLOCKING. Both halves are then saying different things about the same change,
  * and a reader who notices once discounts the number and the verdict together.
  *
- * The score cannot be removed — `mcp-server/index.js` reads it in both detail
+ * The score cannot be removed — API clients read it in both detail
  * and list responses, and that contract is additive-only. So it is reconciled
  * instead, and only ever in the direction the verdict already justifies. A null
  * score is left null: that means no model answered, which is a third thing and

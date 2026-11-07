@@ -15,7 +15,6 @@ Decisions: [ADR 0009](adr/0009-design-studio-inline-and-in-redis.md).
 |---|---|
 | **Web** | `/design` has the form and your history; `/design/[id]` shows the blueprint with *Copy Markdown* and *Download .md* |
 | **API** | `POST /api/v1/designs`, `GET /api/v1/designs`, `GET /api/v1/designs/:id` ([reference](api-reference.md#create-a-design)) |
-| **MCP** | `design_system` creates one and returns Markdown to commit (for example to `docs/design/<name>.md`); `get_design` fetches or lists |
 
 A **brief** is: the product (20 to 4,000 characters), a scale, up to four ordered priorities and
 optional constraints (up to 1,500 characters).
@@ -110,8 +109,8 @@ need to outlive 30 days, the stored shape is already the row.
 - **New section in a blueprint:** add it to `blueprint.ts`, the normaliser (with caps), the
   baseline, the Markdown renderer and the web `BlueprintView`, and change the prompt. Old stored
   blueprints will lack it, so the renderers must tolerate a missing section.
-- **New priority or scale:** extend the `DESIGN_*` constants; the DTO, MCP `zod` schema and
-  checklist read from them (the MCP schema is a separate copy in `mcp-server/index.js`; update it).
+- **New priority or scale:** extend the `DESIGN_*` constants; the DTO and
+  checklist read from them.
 - **A change to the prompt** has no frozen fixtures to break, so measure it: run briefs across all
   four scales and read the output for over-engineering and for failure modes that are only
   generic ("add monitoring"). No live model output has been read by a person yet; see

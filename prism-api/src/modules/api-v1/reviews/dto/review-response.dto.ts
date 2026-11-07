@@ -1,6 +1,6 @@
 /**
  * Response contracts for /api/v1. Field names are snake_case because that is
- * what the PRism MCP server (mcp-server/index.js) reads — these interfaces are
+ * what external API clients read — these interfaces are
  * the wire format, not internal models, so they do not follow TS conventions.
  */
 

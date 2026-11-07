@@ -113,7 +113,7 @@ describe('orderFindings', () => {
  * made up its mind, and a reader who notices once stops trusting the number and
  * the verdict together.
  *
- * The score cannot simply be removed — `mcp-server/index.js` reads it in both
+ * The score cannot simply be removed — API clients read it in both
  * detail and list responses and that contract is additive-only. So it is pulled
  * into agreement with the verdict instead, using the bands the prompt itself
  * defines: it tells the model a clean change scores 80-95.

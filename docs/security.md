@@ -195,8 +195,6 @@ request. Counters are in process memory and `trust proxy` is `true`, so a forged
   dependencies change. It used to run in CI; there is no CI now.
 - `.npmrc` sets `ignore-scripts=true` and `audit=true`, so installing dependencies does not run
   their lifecycle scripts.
-- `mcp-server` has no lockfile on purpose (it is a published package whose users resolve its
-  ranges fresh), so run `npm install` before auditing it, to see what users would get.
 
 ## Logging
 

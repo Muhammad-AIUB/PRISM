@@ -64,13 +64,6 @@ whichever host answers the callback, and that must be the host the user browses.
 `PRISM_API_ORIGIN` is read at *build* time by `next.config.mjs` (for the rewrites) as well as
 at run time. Changing it requires a rebuild.
 
-## mcp-server
-
-| Variable | Required | Default | Effect |
-|---|---|---|---|
-| `PRISM_API_TOKEN` | **yes** | | A token created under *Settings -> API tokens*. The process exits with a hint if it is missing |
-| `PRISM_URL` | **yes** | | The API's base URL, `http` or `https`. Point it at the **API**, not the web app. There is no default: the process exits with a message if it is missing or not an `http(s)` URL |
-
 ## Generating values
 
 ```bash

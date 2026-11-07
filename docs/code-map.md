@@ -7,7 +7,7 @@ here, update this page in the same change. If a row is wrong, fix it; do not wor
 ## I want to change... open these
 
 Open the first column's files only. Follow a link to a doc when you need the reasoning. A path
-starting `prism-web/`, `mcp-server/` or `docs/` is repo-relative; one starting `app/`,
+starting `prism-web/` or `docs/` is repo-relative; one starting `app/`,
 `components/` or `lib/` is under `prism-web/src/`; any other is under `prism-api/src/`.
 
 | Change | Files | Also touch |
@@ -24,7 +24,7 @@ starting `prism-web/`, `mcp-server/` or `docs/` is repo-relative; one starting `
 | The GitHub comment text | `modules/review/summary-comment.builder.ts` | Byte-for-byte tests |
 | GitHub REST calls | `github/github-client.service.ts` | |
 | Slack | `notifications/slack.service.ts` | |
-| An `/api/v1` route | `modules/api-v1/reviews/reviews.controller.ts`, `reviews.service.ts`, `modules/api-v1/reviews/dto/review-response.dto.ts` | `mcp-server/index.js`, [api-reference](api-reference.md); additive-only |
+| An `/api/v1` route | `modules/api-v1/reviews/reviews.controller.ts`, `reviews.service.ts`, `modules/api-v1/reviews/dto/review-response.dto.ts` | [api-reference](api-reference.md); additive-only |
 | A browser-facing route | the matching folder under `modules/` (controller + service) | `prism-web/src/lib/types.ts`, the page |
 | Sign-in, sessions, logout | `modules/auth/*` | [security](security.md) |
 | API tokens | `auth/api-token-auth.guard.ts`, `auth/personal-access-token.service.ts` | Format cannot change |
@@ -35,7 +35,6 @@ starting `prism-web/`, `mcp-server/` or `docs/` is repo-relative; one starting `
 | Design Studio | `design/*` (pure), `modules/design/*` (service, store, controllers) | [design-studio](design-studio.md) |
 | Dashboard numbers | `modules/dashboard/dashboard.service.ts` | |
 | PDF export | `modules/reviews-web/pdf-report.service.ts` | |
-| An MCP tool | `mcp-server/index.js` (one file) | The API route, [mcp-server README](../mcp-server/README.md) |
 | How the web app calls the API | `prism-web/src/lib/api.ts` | [frontend](frontend.md) |
 | CSP, request id | `prism-web/src/middleware.ts` | |
 | Auto-deploy of the API to the VPS | `.github/workflows/deploy.yml`, `deploy/deploy.sh` | [deployment](deployment.md#auto-deploy-on-push) |

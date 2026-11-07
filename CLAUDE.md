@@ -24,10 +24,9 @@ every session, so it stays short: the reasons live in [docs/](docs/README.md).
 
 ## What this is
 
-AI code reviewer for GitHub. Three packages, no monorepo tooling, each with its own `package.json`
+AI code reviewer for GitHub. Two packages, no monorepo tooling, each with its own `package.json`
 and `node_modules`: **`prism-api/`** (NestJS 11: REST API, webhook, and the BullMQ review worker in
-the same process), **`prism-web/`** (Next.js 15 App Router; every API call is server-side) and
-**`mcp-server/`** (one-file MCP server calling `/api/v1`). It began as a PHP app that is gone, but the
+the same process), and **`prism-web/`** (Next.js 15 App Router; every API call is server-side). It began as a PHP app that is gone, but the
 production database, schema and API tokens it wrote are not, which is why some formats below are fixed
 ([ADR 0001](docs/adr/0001-keep-the-stored-formats.md)).
 
@@ -42,8 +41,6 @@ npm run build | start:dev | start:prod
 npm run typecheck && npm run lint && npm test     # narrow: npm test -- <path fragment>
 npm run dev  # :3001                              npm run build
 
-# in mcp-server/
-node --check index.js
 ```
 
 **There is no CI** (the checks workflows were removed on 2026-11-06; the only workflow left is the API
@@ -88,7 +85,9 @@ Each is a one-liner; the doc named after it has the why.
 - Notification failures never fail a review. Worker `concurrency: 1` (512 MB).
 - No usable model output **completes** the review as `not_reviewed`, behind two fixed summary strings in
   `ai/verdict.ts` that `isIncompleteReview()` recognises. Change both or neither.
-- Groq only; model list, order and temperature are measured. Don't change them without re-measuring.
+- Groq only. The model list was swapped on 2026-11-07 after Groq retired the originals, and is **not
+  re-measured** ([ADR 0007](docs/adr/0007-groq-is-the-only-ai-provider.md)). Order and temperature are
+  measured: don't change them without re-measuring.
 - Findings are validated against the anchors the model was shown; the **anchor's** location is displayed.
 - Risk Radar is pure and `tryAssessRisk()` never throws. The risk comment section appears only when `risk`
   is supplied.

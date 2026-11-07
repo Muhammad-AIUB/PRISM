@@ -8,7 +8,6 @@ What is tested, how, and the rules that keep the suite fast, offline and trustwo
 |---|---|---|
 | `prism-api` | Jest 29 with ts-jest. Specs sit beside the code as `*.spec.ts` | Pure logic with fakes: the AI client, validators, verdict, diff parsing, Risk Radar, both runners, the processor, the queue policy, guards, stores, services, DTO validation. A few specs drive a Nest HTTP app (the repository reviews route, the OAuth throttle) |
 | `prism-web` | Vitest 5, jsdom, Testing Library. Tests sit beside the code as `*.test.ts(x)` | `lib/api.ts`, the middleware CSP, time helpers, the reviews query, and several components (`RepoCard`, `RepositoryReviewsView`, `ReviewFeedTable`, `RiskPanel`, `VerdictPanel`, `ThemeSync`) |
-| `mcp-server` | `node --check index.js` only | Syntax. There are no behavioural tests |
 
 **Nothing in `npm test` may need Postgres, Redis, the network or a secret.** Unit tests fake
 their stores (a Redis stand-in, an in-memory repository). That keeps the suite fast and runnable
@@ -156,5 +155,5 @@ pipeline, auth or the schema, against the local stack in [development.md](develo
 Be honest about these when you change them. In `prism-web`: the dashboard, review and commit
 views, the diff viewer, `BranchPicker`, `ModeSelector`, the settings, profile, security and
 Design Studio views, every Server Action, the export and Markdown route handlers, and the demo
-pages. In `mcp-server`: everything beyond syntax. Add tests when you touch them, and update this
+pages. when you touch them, and update this
 list in the same pull request.

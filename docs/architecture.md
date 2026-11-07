@@ -29,7 +29,7 @@ flowchart LR
     WEB -->|server-side fetch<br/>cookie + X-Request-Id| API[prism-api<br/>NestJS 11]
     WEB -->|rewrites: /auth/*<br/>/api/v1/* /webhook/*| API
     GH[GitHub] -->|webhook| API
-    MCP[MCP server<br/>developer machine] -->|bearer token<br/>/api/v1| API
+    CLI[Other API clients<br/>developer machine] -->|bearer token<br/>/api/v1| API
     subgraph proc [prism-api process]
         API --- Q[BullMQ worker<br/>concurrency 1]
     end
@@ -48,7 +48,6 @@ flowchart LR
 |---|---|---|
 | `prism-web` | Renders every page. Calls the API from the server only. Owns the CSP and the theme | Vercel |
 | `prism-api` | HTTP API, webhook intake, session and token auth, the review worker, Risk Radar, Design Studio | A VPS |
-| `mcp-server` | Translates MCP tool calls into `/api/v1` requests | The developer's machine |
 | PostgreSQL 16 | Users, repositories, pull requests, reviews, commit reviews, comments, tokens, audit log | Neon |
 | Redis | The review queue, caches, saved risk, Design Studio blueprints, session revocations, erasure markers | Upstash (must be `noeviction`) |
 | Groq | The only AI provider | External |

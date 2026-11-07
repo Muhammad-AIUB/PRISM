@@ -14,7 +14,8 @@ reported incident; PRism has no outside users yet.
 
 1. **A review that checked nothing can read as clean** (T1). This contradicts the product's
    central promise. Fix first.
-2. **Review quality has never been measured** against the current pipeline (the model-accuracy
+2. **Review quality has never been measured** against the current pipeline, and the Groq models were
+   replaced on 2026-11-07 without re-measuring parse rates ([ADR 0007](adr/0007-groq-is-the-only-ai-provider.md)). (The model-accuracy
    half of the harness has not been run).
 3. **Schema integrity fixes wait on one decision**: who applies DDL to production, and how it is
    rolled back.
@@ -186,21 +187,18 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
 
 <a id="hosted-offline"></a>
 - **The original Render instance is gone.** Production is now `prism-api` on a VPS and `prism-web` on
-  Vercel. The MCP server has no default `PRISM_URL`; it exits asking for one.
+  Vercel.
 <a id="f3"></a>
 - **Node is not pinned.** No `NODE_VERSION` is set, so the host resolves the
   `engines.node` ranges (`>=20.11` API, `>=22.12` web) and the major version can change under the
   app while development uses 22. Set `NODE_VERSION=22` or add a `.node-version`.
 - **There is no full CI.** Both original GitHub Actions workflows were removed on 2026-11-06 at the
   maintainer's request. The only workflow is the API deploy, which gates on `prism-api`'s typecheck,
-  lint and tests. Nothing checks `prism-web`, `mcp-server` or `npm audit` on a push, so a broken
+  lint and tests. Nothing checks `prism-web` or `npm audit` on a push, so a broken
   change there can reach `main`, and Vercel deploys `main`. Restoring CI:
   [deployment.md](deployment.md#ci).
 - **`/health` cannot see the worker.** `queue: running` means the queue is reachable, not that a
   job is being consumed. A heartbeat from the worker would close that.
-- **The MCP package is not published.** `npm view prism-code-review-mcp` returns 404 as of
-  2026-11-06, so `npx -y prism-code-review-mcp` fails. Run it from a clone
-  ([mcp-server/README.md](../mcp-server/README.md)), or publish 1.1.1.
 
 ## Review quality (needs keys)
 
