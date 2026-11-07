@@ -110,6 +110,7 @@ export class PullRequestReviewRunner {
       `Review this diff:\n${prepared.body}`,
       'pr_review',
       signal,
+      { userId: repository.userId },
     );
 
     const model = attemptResult.model;
@@ -206,6 +207,7 @@ export class PullRequestReviewRunner {
       'pull request',
       'pr_review',
       signal,
+      repository.userId,
     );
 
     if (suggestedFixes !== null) {

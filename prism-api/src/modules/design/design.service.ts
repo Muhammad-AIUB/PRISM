@@ -77,7 +77,7 @@ export class DesignService {
       throw new HttpException('Too Many Attempts.', HttpStatus.TOO_MANY_REQUESTS);
     }
 
-    const generated = await this.generate(brief);
+    const generated = await this.generate(brief, user.id);
 
     const blueprint: Blueprint = {
       ...generated.content,
@@ -146,7 +146,7 @@ export class DesignService {
    * because the person asked for a design and a correct generic one is worth
    * more than an error page.
    */
-  private async generate(brief: DesignBrief): Promise<Generated> {
+  private async generate(brief: DesignBrief, userId: number): Promise<Generated> {
     let notice: string;
 
     try {
@@ -155,6 +155,7 @@ export class DesignService {
         buildDesignUserPrompt(brief),
         'design_advice',
         AbortSignal.timeout(DESIGN_BUDGET_MS),
+        { userId },
       );
       const content = normaliseBlueprint(result.parsed);
 

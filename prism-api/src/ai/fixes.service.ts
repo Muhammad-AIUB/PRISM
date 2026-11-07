@@ -75,6 +75,7 @@ export class FixesService {
     target: ReviewTarget,
     context: AiCallContext,
     signal?: AbortSignal,
+    userId?: number,
   ): Promise<SuggestedFixes | null> {
     const payload: IssueLayers = {
       security: layers.security ?? [],
@@ -97,6 +98,7 @@ export class FixesService {
       this.promptBuilder.buildFixesPrompt(payload, diff, target),
       context,
       signal,
+      { userId },
     );
 
     if (!parsed || !Array.isArray(parsed.fixes)) {

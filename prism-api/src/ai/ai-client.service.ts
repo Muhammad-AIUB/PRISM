@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { extractJson, type ExtractedJson } from './json-extractor';
 import type { AiCallContext } from './providers/ai-provider';
 import { GROQ_MODELS, GroqProvider } from './providers/groq.provider';
+import { providerFor, SELECTABLE_PROVIDERS } from './providers/registry';
+import { UserAiSettingsService } from './user-ai-settings.service';
 import { AI_TIMEOUT_MS } from './providers/http';
 
 /**
@@ -67,7 +69,10 @@ export class AiClientService {
 
   private readonly groq = new GroqProvider();
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly userAi: UserAiSettingsService,
+  ) {}
 
   /**
    * Returns the first parseable result, or the last model's raw text when
@@ -79,10 +84,39 @@ export class AiClientService {
     user: string,
     context: AiCallContext,
     signal?: AbortSignal,
+    options: { userId?: number } = {},
   ): Promise<FallbackAiResult> {
     const strongSystem =
       'Respond with ONLY raw JSON. NO prose. NO markdown code fences. NO explanations before or after.\n\n' +
       system;
+
+    // The user's own model, when they saved one (ADR 0012). Any failure falls
+    // through to the Groq chain below, which is unchanged.
+    const own = options.userId ? await this.userAi.resolve(options.userId) : null;
+
+    if (own) {
+      signal?.throwIfAborted();
+
+      const provider = providerFor(own.provider);
+      const response = await provider.complete({
+        model: own.model,
+        system: strongSystem,
+        user,
+        context,
+        apiKey: own.apiKey,
+        signal,
+      });
+      const parsed = response.ok ? extractJson(response.content ?? '') : null;
+
+      if (parsed) {
+        return { model: `${own.provider}/${own.model}`, parsed, raw: response.content };
+      }
+
+      // Never the key, never the provider's body: the status is enough to debug.
+      this.logger.warn(
+        `Own model ${own.provider}/${own.model} gave no usable answer (status ${response.status}); falling back to Groq`,
+      );
+    }
 
     let lastModel: string | null = null;
     let lastRaw: string | null = null;
@@ -138,7 +172,35 @@ export class AiClientService {
     user: string,
     context: AiCallContext,
     signal?: AbortSignal,
+    options: { userId?: number } = {},
   ): Promise<ExtractedJson | null> {
+    const slash = model.indexOf('/');
+    const label = slash > 0 ? model.slice(0, slash) : '';
+
+    // "<provider>/<model>" labels from the user's own model go back to that
+    // provider, and only if it is still what they have saved. Anything else
+    // (groq/..., a bare Groq id) is the Groq path exactly as before.
+    if (options.userId && SELECTABLE_PROVIDERS.some((p) => p.id === label)) {
+      const own = await this.userAi.resolve(options.userId);
+
+      if (!own || own.provider !== label || own.model !== model.slice(slash + 1)) {
+        return null;
+      }
+
+      signal?.throwIfAborted();
+
+      const response = await providerFor(own.provider).complete({
+        model: own.model,
+        system,
+        user,
+        context,
+        apiKey: own.apiKey,
+        signal,
+      });
+
+      return response.ok ? extractJson(response.content ?? '') : null;
+    }
+
     const result = await this.callGroqRaw(
       model.startsWith('groq/') ? model.slice(5) : model,
       system,

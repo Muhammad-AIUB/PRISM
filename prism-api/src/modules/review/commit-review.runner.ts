@@ -94,6 +94,7 @@ export class CommitReviewRunner {
       `Review this commit diff:\n${prepared.body}`,
       'commit_review',
       signal,
+      { userId: repository.userId },
     );
 
     const model = attemptResult.model;
@@ -172,6 +173,7 @@ export class CommitReviewRunner {
       'commit',
       'commit_review',
       signal,
+      repository.userId,
     );
 
     if (suggestedFixes !== null) {

@@ -27,7 +27,7 @@ describe('review job retry policy', () => {
    * the relationship, not the value.
    */
   it('leaves room for the slowest attempt the pipeline can actually take', () => {
-    const aiWorstCase = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 1);
+    const aiWorstCase = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 2);
     const githubWorstCase = GITHUB_TIMEOUT_MS * 2;
 
     expect(REVIEW_JOB_TIMEOUT_MS).toBeGreaterThan(aiWorstCase + githubWorstCase);

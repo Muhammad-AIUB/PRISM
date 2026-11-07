@@ -40,10 +40,12 @@ export const REVIEW_JOB_BACKOFF_SECONDS = [60, 180, 600];
  * unparseable JSON, save the raw text" path unreachable whenever the models
  * failed by hanging rather than by answering badly.
  *
+ * +2 = the fixes pass and one attempt on the user's own model before the Groq chain.
+ *
  * Importing the two constants is the point: change a provider timeout or add a
  * model and this budget follows, instead of silently going back under water.
  */
-const AI_WORST_CASE_MS = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 1);
+const AI_WORST_CASE_MS = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 2);
 const GITHUB_WORST_CASE_MS = GITHUB_TIMEOUT_MS * 2;
 
 /** Plus a margin for the DB writes and JSON work between the calls. */

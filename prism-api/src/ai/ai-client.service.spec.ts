@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { AiClientService, GROQ_MODELS, RateLimitedError } from './ai-client.service';
 
 /**
@@ -31,7 +32,7 @@ describe('AiClientService rate limiting', () => {
   let fetchMock: jest.Mock;
 
   beforeEach(() => {
-    service = new AiClientService(config);
+    service = new AiClientService(config, { resolve: async () => null } as never);
     fetchMock = jest.fn();
     global.fetch = fetchMock as never;
   });
@@ -87,5 +88,102 @@ describe('AiClientService rate limiting', () => {
     // fail a job whose first pass already succeeded and is correct on disk, so
     // this call reports the miss instead.
     await expect(service.call('groq/x', 'system', 'user', 'pr_review')).resolves.toBeNull();
+  });
+});
+
+describe('AiClientService own model', () => {
+  const own = { provider: 'openai' as const, model: 'gpt-4.1', apiKey: 'sk-test-1234' };
+  let service: AiClientService;
+  let fetchMock: jest.Mock;
+  let userAi: { resolve: jest.Mock };
+
+  const answer = (content: string, status = 200) =>
+    fetchMock.mockResolvedValueOnce(
+      response(status, status === 200 ? completion(content) : '{"error":"bad key"}'),
+    );
+
+  beforeEach(() => {
+    userAi = { resolve: jest.fn() };
+    service = new AiClientService(config, userAi as never);
+    fetchMock = jest.fn();
+    global.fetch = fetchMock as never;
+  });
+
+  it('uses the user model first and labels the result with it', async () => {
+    userAi.resolve.mockResolvedValue(own);
+    answer('{"overall_score": 90, "summary": "ok"}');
+
+    const result = await service.callWithFallback('S', 'U', 'pr_review', undefined, { userId: 7 });
+
+    expect(result.model).toBe('openai/gpt-4.1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('api.openai.com');
+  });
+
+  it('falls back to Groq when the user key is rejected', async () => {
+    userAi.resolve.mockResolvedValue(own);
+    answer('', 401);
+    answer('{"overall_score": 80}');
+
+    const result = await service.callWithFallback('S', 'U', 'pr_review', undefined, { userId: 7 });
+
+    expect(result.model).toBe(`groq/${GROQ_MODELS[0]}`);
+  });
+
+  it('falls back to Groq when the user model returns text that is not JSON', async () => {
+    userAi.resolve.mockResolvedValue(own);
+    answer('I am sorry, I cannot do that.');
+    answer('{"overall_score": 80}');
+
+    const result = await service.callWithFallback('S', 'U', 'pr_review', undefined, { userId: 7 });
+
+    expect(result.model).toBe(`groq/${GROQ_MODELS[0]}`);
+  });
+
+  it('never puts the key in a log line', async () => {
+    userAi.resolve.mockResolvedValue(own);
+    answer('', 401);
+    answer('{"overall_score": 80}');
+    const logs: string[] = [];
+    const sink = (message: unknown) => logs.push(String(message));
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(sink);
+    jest.spyOn(Logger.prototype, 'log').mockImplementation(sink);
+
+    await service.callWithFallback('S', 'U', 'pr_review', undefined, { userId: 7 });
+
+    expect(logs.join('\n')).not.toContain('sk-test-1234');
+  });
+
+  it('never consults user settings when no userId is given', async () => {
+    answer('{"overall_score": 80}');
+
+    await service.callWithFallback('S', 'U', 'pr_review');
+
+    expect(userAi.resolve).not.toHaveBeenCalled();
+  });
+
+  it('routes the fixes pass by the model label, and only for the saved provider', async () => {
+    userAi.resolve.mockResolvedValue(own);
+    answer('{"fixes": []}');
+
+    await service.call('openai/gpt-4.1', 'S', 'U', 'pr_review', undefined, { userId: 7 });
+
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('api.openai.com');
+  });
+
+  it('does not send a different provider label to the saved key', async () => {
+    userAi.resolve.mockResolvedValue(own);
+
+    expect(await service.call('anthropic/claude-x', 'S', 'U', 'pr_review', undefined, { userId: 7 })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Groq path for a groq/ label even when a user model is saved', async () => {
+    userAi.resolve.mockResolvedValue(own);
+    answer('{"fixes": []}');
+
+    await service.call(`groq/${GROQ_MODELS[0]}`, 'S', 'U', 'pr_review', undefined, { userId: 7 });
+
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('api.groq.com');
   });
 });
