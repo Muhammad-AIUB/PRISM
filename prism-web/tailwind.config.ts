@@ -24,6 +24,7 @@ export default {
         'bg-secondary': 'var(--bg-secondary)',
         'bg-card': 'var(--bg-card)',
         'bg-hover': 'var(--bg-hover)',
+        'bg-tint': 'var(--bg-tint)',
         'fg-primary': 'var(--text-primary)',
         'fg-secondary': 'var(--text-secondary)',
         'fg-muted': 'var(--text-muted)',

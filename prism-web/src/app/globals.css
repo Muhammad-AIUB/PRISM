@@ -8,6 +8,7 @@
     --bg-secondary: #13131a;
     --bg-card:      #1a1a24;
     --bg-hover:     #22222e;
+    --bg-tint:      #17173a;     /* indigo-toned panel, e.g. the login product side */
 
     --border:       #2a2a36;
     --border-hover: #3a3a48;
@@ -55,6 +56,7 @@ html.light {
     --bg-primary:   #f8fafc;
     --bg-secondary: #ffffff;
     --bg-card:      #ffffff;
+    --bg-tint:      #e0e7ff;     /* indigo-toned panel, e.g. the login product side */
     --bg-hover:     #eef2ff;     /* slightly indigo-tinted so hover reads clearly */
 
     --border:       #e2e8f0;

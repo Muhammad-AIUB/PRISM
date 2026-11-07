@@ -22,7 +22,18 @@ describe('LoginPage', () => {
       '/demo',
     );
     expect(screen.getByRole('heading', { name: /risk radar/i })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: /bring your own ai key/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /your own ai key/i })).toBeTruthy();
+  });
+
+  it('puts the PRism header above both sides', async () => {
+    await renderLogin();
+
+    const banner = screen.getByRole('banner');
+
+    expect(banner.textContent).toContain('PRism');
+    expect(banner.querySelector('a')?.getAttribute('href')).toBe('/');
+    expect(screen.getByRole('heading', { name: /sign in to prism/i })).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(6);
   });
 
   it('shows an OAuth failure from the query string', async () => {
