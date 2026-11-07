@@ -131,13 +131,51 @@ external uptime monitor on `https://<api-host>/health`, and redeliver failed del
 repository's *Settings -> Webhooks -> Recent deliveries*. Automatic redelivery on boot is a
 proposed fix, not built.
 
+## Auto-deploy on push
+
+`prism-web` deploys itself from `main` on Vercel. `prism-api` on the VPS deploys through a small
+webhook listener: GitHub reports each push to `main`, the listener verifies it, and runs
+`deploy/deploy.sh`, which fast-forwards the checkout, builds, restarts the API, waits for `/health`
+and **rolls back to the previous commit if the new build is not healthy**. The files are in
+`deploy/`: `webhook.js` (listener, no dependencies), `deploy.sh`, and a systemd unit.
+
+Nothing runs tests first: `nest build` type-checks, but a green build is the only gate. Run the
+checks locally before pushing ([CLAUDE.md](../CLAUDE.md)).
+
+**One-time setup on the VPS** (adjust paths and names to your setup):
+
+1. A user that owns a clone of the repository, e.g. `deploy`, and a clone at `/srv/prism`
+   (`git clone` over a read-only deploy key or an HTTPS URL, so `git fetch` works non-interactively).
+   Node 20.11 or newer, `curl` and `git` installed.
+2. Let that user restart the API without a password. In `visudo`:
+   `deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart prism-api`. If the API runs under another
+   manager, set `RESTART_CMD` instead (for example `pm2 restart prism-api`).
+3. Put the secret in a root-only file, `/etc/prism-deploy.env` (`chmod 600`):
+   `DEPLOY_WEBHOOK_SECRET=<long random string>`. Generate one with `openssl rand -hex 32`.
+4. Copy `deploy/prism-deploy-webhook.service` to `/etc/systemd/system/`, fix the user and paths, then
+   `systemctl daemon-reload && systemctl enable --now prism-deploy-webhook`.
+5. Expose the listener over **HTTPS** through your reverse proxy, for example
+   `https://api.example.com/_deploy` proxied to `127.0.0.1:9000`. The listener binds to loopback on
+   purpose and must not be reachable in plain HTTP from outside.
+6. On GitHub: *Settings -> Webhooks -> Add webhook*. Payload URL is the HTTPS address above, content
+   type `application/json`, the same secret, event **Just the push event**. GitHub's "ping" should show a
+   green tick (the listener answers 200).
+
+This is a different webhook from the one each connected repository sends to the API's
+`/webhook/github`; use a different secret.
+
+**Checking it:** push a commit, then `journalctl -u prism-deploy-webhook -f` shows `deploy started`
+and `deployed <sha>`. A failed release shows `rolling back`; the API then keeps running the previous
+commit. A diverged server checkout (local edits) fails the fast-forward and deploys nothing, so keep
+the clone clean.
+
 ## Releasing
 
 There is no release step beyond merging to `main`.
 
 1. Run typecheck, lint and tests in each package you changed. **There is no CI**, so nothing
    checks this for you, and the host will deploy whatever reaches `main`.
-2. Merge or push to `main`. Vercel deploys `prism-web` from `main`; deploy `prism-api` on the VPS by hand.
+2. Merge or push to `main`. Vercel deploys `prism-web` from `main`; the push also triggers the VPS webhook ([auto-deploy](#auto-deploy-on-push)) for `prism-api`.
 3. Verify the deploy: `/health` is `ok`, and exercise the change. After a change to sign-in,
    request `https://<web-host>/auth/github` and expect a redirect to GitHub, not a 404.
 
