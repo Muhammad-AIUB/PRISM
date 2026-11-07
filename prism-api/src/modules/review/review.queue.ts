@@ -1,6 +1,5 @@
 import type { JobsOptions, WorkerOptions } from 'bullmq';
-import { GROQ_MODELS, GROQ_TIMEOUT_MS } from '../../ai/ai-client.service';
-import { REQUEST_TIMEOUT_MS as GITHUB_TIMEOUT_MS } from '../../github/github-client.service';
+import { BATCH_CONFIG, jobBudgetMs } from './batching.config';
 
 /**
  * Queue identity and retry policy.
@@ -33,23 +32,19 @@ export const REVIEW_JOB_BACKOFF_SECONDS = [60, 180, 600];
  * Per-attempt budget, derived rather than written down.
  *
  * The PHP said `public int $timeout = 120`, and the port copied the number
- * without re-checking it against what one attempt actually does. It does not
- * fit: a single attempt can spend GROQ_TIMEOUT_MS on each model of the first
- * pass, the same again on the fixes pass, and a GitHub round trip either side.
- * At 120s the job died mid-pipeline, which made the "every model returned
- * unparseable JSON, save the raw text" path unreachable whenever the models
- * failed by hanging rather than by answering badly.
+ * without re-checking it against what one attempt actually does. It did not
+ * fit then, and it fits less now: a review is up to MAX_BATCHES model calls,
+ * each of which can spend the user's own model and the whole Groq chain, plus
+ * a wait for the per-minute token allowance, then one fixes pass and a GitHub
+ * round trip either side. `jobBudgetMs` (batching.config.ts) owns the
+ * formula: change the batch cap, a provider timeout or the model list and this
+ * budget follows, instead of silently going back under water.
  *
- * +2 = the fixes pass and one attempt on the user's own model before the Groq chain.
- *
- * Importing the two constants is the point: change a provider timeout or add a
- * model and this budget follows, instead of silently going back under water.
+ * It is a ceiling that holds only if every call hangs. It is also how long the
+ * single worker (concurrency 1) can be blocked, which is why the cap on
+ * batches exists and why each batch has its own deadline inside it.
  */
-const AI_WORST_CASE_MS = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 2);
-const GITHUB_WORST_CASE_MS = GITHUB_TIMEOUT_MS * 2;
-
-/** Plus a margin for the DB writes and JSON work between the calls. */
-export const REVIEW_JOB_TIMEOUT_MS = AI_WORST_CASE_MS + GITHUB_WORST_CASE_MS + 30_000;
+export const REVIEW_JOB_TIMEOUT_MS = jobBudgetMs(BATCH_CONFIG.maxBatches);
 
 /**
  * BullMQ's built-in `exponential`/`fixed` strategies cannot express

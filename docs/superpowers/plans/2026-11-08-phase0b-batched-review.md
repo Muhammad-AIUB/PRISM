@@ -3334,7 +3334,7 @@ git commit -m "Review commits in batches, the same way as pull requests" -m "The
 - Consumes: `BATCH_CONFIG`, `jobBudgetMs` (Task 3).
 - Produces: `REVIEW_JOB_TIMEOUT_MS = jobBudgetMs(BATCH_CONFIG.maxBatches)` (2,070,000 ms at the defaults); `ERASURE_MARKER_TTL_SECONDS = 7200`.
 
-- [ ] **Step 1: Update the spec** (the budget is now pinned as a derived relationship, and the old ten-minute ceiling becomes forty minutes, a number changed on purpose here):
+- [x] **Step 1: Update the spec** (the budget is now pinned as a derived relationship, and the old ten-minute ceiling becomes forty minutes, a number changed on purpose here):
 
 ```diff
 diff --git a/prism-api/src/modules/review/review.queue.spec.ts b/prism-api/src/modules/review/review.queue.spec.ts
@@ -3372,12 +3372,12 @@ diff --git a/prism-api/src/modules/review/review.queue.spec.ts b/prism-api/src/m
    it('reproduces the [60, 180, 600] second backoff', () => {
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm test -- src/modules/review/review.queue src/modules/account/erasure-marker`
 Expected: FAIL: `expected 330000 to be 2070000`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```diff
 diff --git a/prism-api/src/modules/review/review.queue.ts b/prism-api/src/modules/review/review.queue.ts
@@ -3448,12 +3448,12 @@ diff --git a/prism-api/src/modules/account/erasure-marker.ts b/prism-api/src/mod
 +export const ERASURE_MARKER_TTL_SECONDS = 2 * 60 * 60;
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `npm test -- src/modules/review/ src/modules/account && npm run typecheck`
 Expected: PASS. `review.processor.spec.ts` still passes because it advances fake timers by `REVIEW_JOB_TIMEOUT_MS`, whatever it is.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/modules/review/review.queue.ts prism-api/src/modules/review/review.queue.spec.ts prism-api/src/modules/account/erasure-marker.ts

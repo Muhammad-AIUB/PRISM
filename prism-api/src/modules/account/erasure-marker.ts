@@ -20,8 +20,9 @@ export function erasureMarkerKey(userId: number): string {
 
 /**
  * Must outlast anything in flight when erasure starts: a review attempt
- * (REVIEW_JOB_TIMEOUT_MS) and a design generation (DESIGN_BUDGET_MS). A test
+ * (REVIEW_JOB_TIMEOUT_MS, now up to 34.5 minutes because a review is several
+ * batched model calls) and a design generation (DESIGN_BUDGET_MS). A test
  * pins that. A review retried after the user row is gone finds no pull request
  * and stops, so the marker does not need to outlast the retry schedule.
  */
-export const ERASURE_MARKER_TTL_SECONDS = 60 * 60;
+export const ERASURE_MARKER_TTL_SECONDS = 2 * 60 * 60;

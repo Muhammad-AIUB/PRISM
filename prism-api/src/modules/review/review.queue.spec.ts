@@ -1,5 +1,6 @@
 import { GROQ_MODELS, GROQ_TIMEOUT_MS } from '../../ai/ai-client.service';
 import { REQUEST_TIMEOUT_MS as GITHUB_TIMEOUT_MS } from '../../github/github-client.service';
+import { BATCH_CONFIG, jobBudgetMs } from './batching.config';
 import {
   REVIEW_JOB_ATTEMPTS,
   REVIEW_JOB_TIMEOUT_MS,
@@ -33,10 +34,20 @@ describe('review job retry policy', () => {
     expect(REVIEW_JOB_TIMEOUT_MS).toBeGreaterThan(aiWorstCase + githubWorstCase);
   });
 
+  it('is derived from the batch cap, with one fixes pass and two GitHub round trips on top', () => {
+    const perBatch = GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 1) + 60_000;
+
+    expect(REVIEW_JOB_TIMEOUT_MS).toBe(jobBudgetMs(BATCH_CONFIG.maxBatches));
+    expect(REVIEW_JOB_TIMEOUT_MS).toBe(
+      BATCH_CONFIG.maxBatches * perBatch + GROQ_TIMEOUT_MS + 2 * GITHUB_TIMEOUT_MS + 30_000,
+    );
+  });
+
   it('stays inside a range a free-tier worker slot can afford to block for', () => {
     // Unbounded growth here starves the single worker: concurrency is 1, so a
-    // stuck job is the whole queue. Ten minutes is the outer limit.
-    expect(REVIEW_JOB_TIMEOUT_MS).toBeLessThanOrEqual(600_000);
+    // stuck job is the whole queue. Forty minutes is the outer limit; raising
+    // the batch cap past what fits means deciding that on purpose, here.
+    expect(REVIEW_JOB_TIMEOUT_MS).toBeLessThanOrEqual(40 * 60_000);
   });
 
   it('reproduces the [60, 180, 600] second backoff', () => {
