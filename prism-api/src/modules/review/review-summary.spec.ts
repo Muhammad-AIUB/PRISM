@@ -1,3 +1,4 @@
+import { PARTIAL_REVIEW } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 
 /**
@@ -52,5 +53,18 @@ describe('composeSummary', () => {
 
   it('treats an empty model summary as absent, the way the comment builder does', () => {
     expect(composeSummary('', null, 0)).toBeNull();
+  });
+});
+
+describe('composeSummary partial marker', () => {
+  it('leads with the partial-review marker, before the coverage sentence', () => {
+    const out = composeSummary('Looks fine.', 'Reviewed 2 of 8 changed files.', 0, true);
+
+    expect(out?.startsWith(PARTIAL_REVIEW)).toBe(true);
+    expect(out).toContain('Reviewed 2 of 8 changed files.');
+  });
+
+  it('does not add the marker by default', () => {
+    expect(composeSummary('Looks fine.', null, 0)).toBe('Looks fine.');
   });
 });

@@ -13,7 +13,7 @@ import { prepareDiff } from '../../diff/prepare';
 import { tryAssessRisk } from '../../diff/risk-radar';
 import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
-import { incompleteReviewSummary, reconcileScore, verdictFor } from '../../ai/verdict';
+import { incompleteReviewSummary, isUnderCovered, scoreFor, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
 import { GithubClientService } from '../../github/github-client.service';
 import { SlackService } from '../../notifications/slack.service';
@@ -139,11 +139,12 @@ export class CommitReviewRunner {
       ...layers.performance,
       ...layers.code_quality,
     ]);
-    const overallScore = reconcileScore(clampScore(parsed.overall_score), verdict);
+    const overallScore = scoreFor(clampScore(parsed.overall_score), verdict, prepared.coverageRatio);
     const summary = composeSummary(
       typeof parsed.summary === 'string' ? parsed.summary : null,
       prepared.coverage,
       dropped,
+      isUnderCovered(prepared.coverageRatio),
     );
 
     // Out of budget. Stop before persisting: the retry redoes all of this, and

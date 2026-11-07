@@ -1,3 +1,5 @@
+import { PARTIAL_REVIEW } from '../../ai/verdict';
+
 /**
  * Two facts about the review itself, folded into the text every surface shows.
  *
@@ -14,8 +16,13 @@ export function composeSummary(
   modelSummary: string | null,
   coverage: string | null,
   dropped: number,
+  partial = false,
 ): string | null {
   const notes: string[] = [];
+
+  if (partial) {
+    notes.push(PARTIAL_REVIEW);
+  }
 
   if (coverage) {
     notes.push(coverage);

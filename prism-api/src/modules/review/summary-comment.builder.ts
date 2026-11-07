@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ReviewIssue } from '../../database/entities/review.entity';
-import { orderFindings, verdictFor, type Verdict } from '../../ai/verdict';
+import { orderFindings, verdictForReview, type Verdict } from '../../ai/verdict';
 import type { RiskAssessment, RiskLevel } from '../../diff/risk-radar';
 
 /**
@@ -26,6 +26,7 @@ const VERDICT_LABELS: Record<Verdict, string> = {
   // Never posted today (the runners skip the comment when no model answered);
   // present so the label table stays exhaustive over Verdict.
   not_reviewed: '**NOT REVIEWED**',
+  partial: '**PARTIAL REVIEW**',
 };
 
 interface CommentReview {
@@ -79,10 +80,12 @@ export class SummaryCommentBuilder {
       ...(review.codeQualityIssues ?? []),
     ]);
     const score = review.overallScore ?? 'N/A';
-    const verdict = VERDICT_LABELS[verdictFor(findings)];
+    const verdictKey = verdictForReview(findings, review.summary);
+    const verdict = VERDICT_LABELS[verdictKey];
     const count = findings.length === 1 ? '1 finding' : `${findings.length} findings`;
+    const scorePart = verdictKey === 'partial' ? '' : ` · Score ${score}/100`;
 
-    let out = `${verdict} — ${count} · Score ${score}/100\n\n`;
+    let out = `${verdict} — ${count}${scorePart}\n\n`;
 
     findings.slice(0, SHOWN).forEach((finding, index) => {
       out += this.finding(finding, index + 1);

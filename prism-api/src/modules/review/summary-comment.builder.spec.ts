@@ -1,3 +1,4 @@
+import { PARTIAL_REVIEW } from '../../ai/verdict';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 import type { ReviewIssue } from '../../database/entities/review.entity';
 
@@ -161,5 +162,30 @@ describe('SummaryCommentBuilder', () => {
         '**Change risk: LOW** (0/100)\n\n[View full review]',
       );
     });
+  });
+});
+
+describe('SummaryCommentBuilder partial reviews', () => {
+  const builder = new SummaryCommentBuilder(config);
+  const thin = {
+    ...review,
+    overallScore: null,
+    securityIssues: [],
+    performanceIssues: [],
+    codeQualityIssues: [issue({ category: 'other', severity: 'suggestion' })],
+    summary: `${PARTIAL_REVIEW}\n\nReviewed 2 of 8 changed files.`,
+  };
+
+  it('labels a thin review as partial and prints no score', () => {
+    const body = builder.buildForPullRequest(thin);
+
+    expect(body).toContain('**PARTIAL REVIEW**');
+    expect(body).not.toContain('Score');
+  });
+
+  it('still says blocking when a checkable blocker was found in the part that was read', () => {
+    const body = builder.buildForPullRequest({ ...thin, securityIssues: review.securityIssues });
+
+    expect(body).toContain('**BLOCKING**');
   });
 });

@@ -1,6 +1,7 @@
 import { PromptBuilderService } from '../../ai/prompt-builder.service';
 import * as riskRadar from '../../diff/risk-radar';
 import { PullRequestReviewRunner } from './pr-review.runner';
+import { PARTIAL_REVIEW } from '../../ai/verdict';
 
 /**
  * Which diff the language detector gets to see.
@@ -203,5 +204,83 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
 
     expect(reviewedRisk.save).not.toHaveBeenCalled();
     expect(reviewedRisk.forget).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('PullRequestReviewRunner coverage', () => {
+  const addedFile = (name: string, lines: number): string =>
+    `diff --git a/src/${name}.ts b/src/${name}.ts\n--- a/src/${name}.ts\n+++ b/src/${name}.ts\n@@ -1,1 +1,${lines} @@\n` +
+    Array.from({ length: lines }, (_, i) => `+const ${name}${i} = ${i};`).join('\n') +
+    '\n';
+
+  function build(diff: string) {
+    const pullRequests = repo();
+    const reviews = repo();
+
+    pullRequests.findOne.mockResolvedValue({
+      id: 1,
+      prNumber: 7,
+      title: 'x',
+      author: 'a',
+      headBranch: 'f',
+      baseBranch: 'main',
+      updatedAt: new Date(),
+      repository: { fullName: 'o/r', userId: 1, user: { id: 1, githubToken: null } },
+    });
+    reviews.findOne.mockResolvedValue(null);
+    reviews.save.mockResolvedValue({ id: 99 });
+
+    const runner = new PullRequestReviewRunner(
+      pullRequests as never,
+      reviews as never,
+      repo() as never,
+      {
+        callWithFallback: jest.fn().mockResolvedValue({
+          model: 'groq/test',
+          parsed: { overall_score: 95, summary: 'Looks fine.', issues: [] },
+          raw: null,
+        }),
+      } as never,
+      new PromptBuilderService(),
+      { generate: jest.fn().mockResolvedValue(null) } as never,
+      {
+        fetchPullRequestDiff: jest.fn().mockResolvedValue(diff),
+        postPullRequestComment: jest.fn().mockResolvedValue(undefined),
+      } as never,
+      {
+        pullRequestKey: jest.fn().mockReturnValue('k'),
+        remember: jest.fn(async (_key: string, loader: () => Promise<string>) => loader()),
+      } as never,
+      { decrypt: jest.fn().mockReturnValue('token') } as never,
+      { buildForPullRequest: jest.fn().mockReturnValue('body') } as never,
+      { sendPullRequestReview: jest.fn() } as never,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
+      { save: jest.fn().mockResolvedValue(undefined), forget: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+
+    return { runner, reviews };
+  }
+
+  it('withholds the score and marks the summary when most of the change was not read', async () => {
+    const diff = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((n) => addedFile(n, 150)).join('');
+    const { runner, reviews } = build(diff);
+
+    await runner.run(1, 1);
+
+    const saved = reviews.save.mock.calls[0]?.[0] as { overallScore: number | null; summary: string | null };
+
+    expect(saved.overallScore).toBeNull();
+    expect(saved.summary?.startsWith(PARTIAL_REVIEW)).toBe(true);
+  });
+
+  it('keeps the score and adds no marker when the whole change was read', async () => {
+    const { runner, reviews } = build(addedFile('a', 5));
+
+    await runner.run(1, 1);
+
+    const saved = reviews.save.mock.calls[0]?.[0] as { overallScore: number | null; summary: string | null };
+
+    expect(saved.overallScore).toBe(95);
+    expect(saved.summary?.startsWith(PARTIAL_REVIEW)).toBe(false);
   });
 });

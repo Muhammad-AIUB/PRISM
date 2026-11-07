@@ -3,8 +3,11 @@ import {
   EMPTY_REVIEW,
   incompleteReviewSummary,
   isIncompleteReview,
+  isUnderCovered,
   orderFindings,
+  PARTIAL_REVIEW,
   reconcileScore,
+  scoreFor,
   UNPARSEABLE_REVIEW,
   verdictFor,
   verdictForReview,
@@ -169,5 +172,38 @@ describe('verdictForReview: a review no model produced is not an all-clear', () 
 
     expect(summary.startsWith(UNPARSEABLE_REVIEW)).toBe(true);
     expect(summary.length).toBeLessThan(UNPARSEABLE_REVIEW.length + 1600);
+  });
+});
+
+describe('partial reviews', () => {
+  const blocking = { category: 'auth_weakened', severity: 'critical' } as ReviewIssue;
+  const minor = { category: 'other', severity: 'suggestion' } as ReviewIssue;
+  const partialSummary = `${PARTIAL_REVIEW}
+
+Reviewed 2 of 8 changed files.`;
+
+  it('is under-covered strictly below one half', () => {
+    expect(isUnderCovered(0.49)).toBe(true);
+    expect(isUnderCovered(0.5)).toBe(false);
+  });
+
+  it('turns a clean result on thin coverage into partial, not nothing_found', () => {
+    expect(verdictForReview([], partialSummary)).toBe('partial');
+    expect(verdictForReview([minor], partialSummary)).toBe('partial');
+  });
+
+  it('keeps blocking when a checkable blocker was found', () => {
+    expect(verdictForReview([blocking], partialSummary)).toBe('blocking');
+  });
+
+  it('still reports not_reviewed before partial', () => {
+    expect(verdictForReview([], EMPTY_REVIEW)).toBe('not_reviewed');
+  });
+
+  it('drops the score under the threshold and reconciles it above', () => {
+    expect(scoreFor(95, 'nothing_found', 0.25)).toBeNull();
+    expect(scoreFor(95, 'nothing_found', 0.5)).toBe(95);
+    expect(scoreFor(88, 'blocking', 1)).toBe(60);
+    expect(scoreFor(null, 'nothing_found', 1)).toBeNull();
   });
 });

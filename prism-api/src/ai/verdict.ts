@@ -24,7 +24,23 @@ import { BLOCKING_CATEGORIES, type IssueCategory } from './prompt-builder.servic
  * review at all, so nothing was checked. Showing that as a green all-clear is
  * the most misleading thing this product could say.
  */
-export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found' | 'not_reviewed';
+export type Verdict = 'blocking' | 'worth_a_look' | 'nothing_found' | 'not_reviewed' | 'partial';
+
+/** Below this share of reviewable code seen, a score and an all-clear are both claims we cannot back. */
+export const MIN_COVERAGE = 0.5;
+
+export const isUnderCovered = (ratio: number): boolean => ratio < MIN_COVERAGE;
+
+/**
+ * Leads `reviews.summary` when too little of the change was covered. Recognised
+ * by `isPartialReview`; `composeSummary` writes it. Reword both or neither.
+ */
+export const PARTIAL_REVIEW =
+  'Partial review: too little of this change was covered to give it a score.';
+
+export function isPartialReview(summary: string | null | undefined): boolean {
+  return Boolean(summary && summary.startsWith(PARTIAL_REVIEW));
+}
 
 const SEVERITY_RANK: Record<string, number> = {
   critical: 0,
@@ -43,7 +59,14 @@ export function verdictForReview(
   findings: readonly ReviewIssue[],
   summary: string | null | undefined,
 ): Verdict {
-  return isIncompleteReview(summary) ? 'not_reviewed' : verdictFor(findings);
+  if (isIncompleteReview(summary)) {
+    return 'not_reviewed';
+  }
+
+  const verdict = verdictFor(findings);
+
+  // A checkable blocker survives thin coverage; nothing else may read as clean.
+  return verdict !== 'blocking' && isPartialReview(summary) ? 'partial' : verdict;
 }
 
 export function verdictFor(findings: readonly ReviewIssue[]): Verdict {
@@ -91,6 +114,11 @@ export function reconcileScore(score: number | null, verdict: Verdict): number |
   }
 
   return score;
+}
+
+/** The stored score: none when coverage is too thin to stand behind one, otherwise reconciled with the verdict. */
+export function scoreFor(score: number | null, verdict: Verdict, ratio: number): number | null {
+  return isUnderCovered(ratio) ? null : reconcileScore(score, verdict);
 }
 
 /**
