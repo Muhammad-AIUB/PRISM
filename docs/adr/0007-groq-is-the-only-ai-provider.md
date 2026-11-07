@@ -13,12 +13,20 @@ anywhere. It was removed from the client, the config, the environment validation
 
 ## Decision
 
-The only provider is **Groq**, with two models tried in order: `llama-3.3-70b-versatile`, then
-`llama-3.1-8b-instant`, at temperature 0.2 and with `response_format: {type: 'json_object'}`.
+The only provider is **Groq**, with two models tried in order: `openai/gpt-oss-120b`, then
+`openai/gpt-oss-20b`, at temperature 0.2 and with `response_format: {type: 'json_object'}`,
+`max_completion_tokens: 8192` and `include_reasoning: false`.
 `GROQ_API_KEY` is required at boot, so a missing key fails loudly at start-up rather than failing every
 review one at a time.
 
-The model list, its order and the temperature are **measured behaviour**: they must not be reordered or
+**Update 2026-11-07.** Groq shut down the original pair, `llama-3.3-70b-versatile` and
+`llama-3.1-8b-instant`, on 2026-08-16. In production every call returned 404 `model_not_found` and each
+review completed as `not_reviewed`. The list was switched to Groq's named successors (`openai/gpt-oss-120b`
+for the first, `openai/gpt-oss-20b` for the second) **without re-measuring parse rates or review quality**:
+that measurement is still owed ([known issue](../known-issues.md)). The two extra parameters are there
+because these are reasoning models whose default 1024-token ceiling can be spent before the answer.
+
+The model list, its order and the temperature were **measured behaviour**: they must not be reordered or
 "modernised" without re-measuring parse rates.
 
 ## Consequences

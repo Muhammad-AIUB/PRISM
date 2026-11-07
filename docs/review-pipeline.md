@@ -168,8 +168,9 @@ frozen schema is untouched.
 
 [`AiClientService.callWithFallback`](../prism-api/src/ai/ai-client.service.ts) then:
 
-- tries `llama-3.3-70b-versatile`, then `llama-3.1-8b-instant`, at temperature 0.2 with
-  `response_format: {type: 'json_object'}`, 60 s per call;
+- tries `openai/gpt-oss-120b`, then `openai/gpt-oss-20b`, at temperature 0.2 with
+  `response_format: {type: 'json_object'}`, `max_completion_tokens: 8192` and
+  `include_reasoning: false`, 60 s per call ([ADR 0007](adr/0007-groq-is-the-only-ai-provider.md));
 - prepends a stronger "raw JSON only" instruction to the system prompt;
 - returns the first model whose answer parses (`extractJson`: raw parse, fenced block,
   trailing-comma repair, first `{...}`);

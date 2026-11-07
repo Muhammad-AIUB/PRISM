@@ -47,7 +47,7 @@ type Verdict =
 
 const CACHE_DIR = join(__dirname, '.diff-cache');
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 
 const ANCHOR_INSTRUCTIONS =
   'Each changed line is prefixed with an opaque anchor id in square brackets, e.g. [7].\n' +

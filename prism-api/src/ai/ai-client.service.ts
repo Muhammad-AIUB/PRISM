@@ -62,8 +62,19 @@ export class RateLimitedError extends Error {
  */
 export const GROQ_TIMEOUT_MS = 60_000;
 
-/** Tried in order. */
-export const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+/**
+ * Tried in order. Groq shut down llama-3.3-70b-versatile and llama-3.1-8b-instant
+ * on 2026-08-16 (https://console.groq.com/docs/deprecations); these are its named
+ * successors, in the same large-then-small order. Not re-measured: see ADR 0007.
+ */
+export const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
+
+/**
+ * gpt-oss models spend completion tokens on reasoning before the answer, and
+ * Groq's default of 1024 can run out first and leave `content` empty, which the
+ * pipeline reads as "no usable review". A generous ceiling avoids that.
+ */
+const GROQ_MAX_COMPLETION_TOKENS = 8192;
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string } }[];
@@ -174,6 +185,9 @@ export class AiClientService {
         model,
         temperature: 0.2,
         response_format: { type: 'json_object' },
+        max_completion_tokens: GROQ_MAX_COMPLETION_TOKENS,
+        // The reasoning text is not used, only the JSON answer.
+        include_reasoning: false,
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user },
