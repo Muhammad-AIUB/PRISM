@@ -53,9 +53,9 @@ OpenRouter "Connect" button, "Sign in with ChatGPT", a "Tested" badge and per-mo
 - Create: `docs/adr/0012-optional-user-supplied-api-key.md`
 - Modify: `docs/adr/0007-groq-is-the-only-ai-provider.md` (status line), `docs/adr/README.md`
 
-- [ ] **Step 1: Write the ADR** with: Context (users want their own model; ADR 0007 said a second provider needs a superseding record and a re-measure), Decision (the Global Constraints above in prose: optional per-user API key, Groq remains the default and the fallback, server-side encryption and why not browser-local, fixed provider list, API key not subscription, fallback behaviour), Consequences (review quality on other models is **not measured**; `ai_model_used` shows what ran; job budget grows by one provider attempt; the user's code is sent to their chosen provider by their choice; a rotated `APP_KEY` silently drops saved keys back to Groq; Phase 0b multiplies calls and must respect lower provider rate limits), Alternatives (browser-held key relay: rejected, cannot serve webhooks and conflicts with CSP `connect-src 'self'`; subscription login: forbidden by Anthropic's terms, unclear for others; custom URL: SSRF surface).
-- [ ] **Step 2:** In ADR 0007 change the status line to `Accepted, partly superseded by [0012](0012-optional-user-supplied-api-key.md): Groq remains the default provider; users may opt in to their own key.` Add the ADR to the index in `docs/adr/README.md`.
-- [ ] **Step 3: Commit**
+- [x] **Step 1: Write the ADR** with: Context (users want their own model; ADR 0007 said a second provider needs a superseding record and a re-measure), Decision (the Global Constraints above in prose: optional per-user API key, Groq remains the default and the fallback, server-side encryption and why not browser-local, fixed provider list, API key not subscription, fallback behaviour), Consequences (review quality on other models is **not measured**; `ai_model_used` shows what ran; job budget grows by one provider attempt; the user's code is sent to their chosen provider by their choice; a rotated `APP_KEY` silently drops saved keys back to Groq; Phase 0b multiplies calls and must respect lower provider rate limits), Alternatives (browser-held key relay: rejected, cannot serve webhooks and conflicts with CSP `connect-src 'self'`; subscription login: forbidden by Anthropic's terms, unclear for others; custom URL: SSRF surface).
+- [x] **Step 2:** In ADR 0007 change the status line to `Accepted, partly superseded by [0012](0012-optional-user-supplied-api-key.md): Groq remains the default provider; users may opt in to their own key.` Add the ADR to the index in `docs/adr/README.md`.
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/adr/0012-optional-user-supplied-api-key.md docs/adr/0007-groq-is-the-only-ai-provider.md docs/adr/README.md
@@ -103,9 +103,9 @@ export interface AiProvider {
 }
 ```
 
-- [ ] **Step 1: Prove the current behaviour is pinned.** Run (in `prism-api/`) `npm test -- src/ai src/modules/review/` and keep the green output. These existing specs are the no-behaviour-change proof; do not edit them in this task.
+- [x] **Step 1: Prove the current behaviour is pinned.** Run (in `prism-api/`) `npm test -- src/ai src/modules/review/` and keep the green output. These existing specs are the no-behaviour-change proof; do not edit them in this task.
 
-- [ ] **Step 2: Failing test** `groq.provider.spec.ts`
+- [x] **Step 2: Failing test** `groq.provider.spec.ts`
 
 ```ts
 import { GroqProvider, GROQ_MODELS } from './groq.provider';
@@ -157,9 +157,9 @@ describe('GroqProvider', () => {
 });
 ```
 
-- [ ] **Step 3:** `npm test -- src/ai/providers/groq` → FAIL (module missing).
+- [x] **Step 3:** `npm test -- src/ai/providers/groq` → FAIL (module missing).
 
-- [ ] **Step 4: Implement.** Create `ai-provider.ts` with the interfaces above. Create `http.ts` by moving `AiClientService.post()` into an exported function with this signature and the same body (same `ai_call` log shapes for success and failure, same `signal?.throwIfAborted()` in the catch), plus `redirect: 'error'` on the `fetch` call:
+- [x] **Step 4: Implement.** Create `ai-provider.ts` with the interfaces above. Create `http.ts` by moving `AiClientService.post()` into an exported function with this signature and the same body (same `ai_call` log shapes for success and failure, same `signal?.throwIfAborted()` in the catch), plus `redirect: 'error'` on the `fetch` call:
 
 ```ts
 export const AI_TIMEOUT_MS = 60_000;
@@ -188,9 +188,9 @@ Create `groq.provider.ts`: move `GROQ_MODELS`, `GROQ_ENDPOINT`, `GROQ_MAX_COMPLE
 
 In `ai-client.service.ts`: `export { GROQ_MODELS } from './providers/groq.provider'; export type { AiCallContext } from './providers/ai-provider'; export const GROQ_TIMEOUT_MS = AI_TIMEOUT_MS;` (these exports are imported by `review.queue.ts` and its spec, so they must keep resolving from here). Replace `callGroqRaw` and `post` with a private method that calls `this.groq.complete(...)` where `this.groq = new GroqProvider()` is created in the constructor and the key still comes from `configService.get('ai.groqKey')`; on `!result.ok` keep the existing warn line (`Groq call failed: ${status} ${errorBody.slice(0,500)}`) and the existing return shapes (`raw: null`, `rateLimited: status === 429`); on ok return `{ parsed: extractJson(content), raw: content }`. `callWithFallback` and `call` bodies stay as they are.
 
-- [ ] **Step 5: Verify nothing moved.** Run `npm test -- src/ai src/modules/review/` and `npm run typecheck`. Expected: same green as Step 1 plus the two new tests. If any pre-existing test needed editing, the refactor changed behaviour: revert and find out why.
+- [x] **Step 5: Verify nothing moved.** Run `npm test -- src/ai src/modules/review/` and `npm run typecheck`. Expected: same green as Step 1 plus the two new tests. If any pre-existing test needed editing, the refactor changed behaviour: revert and find out why.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prism-api/src/ai/providers prism-api/src/ai/ai-client.service.ts
@@ -220,7 +220,7 @@ class UserAiSettingsService {
 }
 ```
 
-- [ ] **Step 1: DDL** appended to `schema.sql` next to the other tables, and applied by hand to local Postgres (never the production `.env`):
+- [x] **Step 1: DDL** appended to `schema.sql` next to the other tables, and applied by hand to local Postgres (never the production `.env`):
 
 ```sql
 CREATE TABLE public.user_ai_settings (
@@ -243,7 +243,7 @@ ALTER TABLE ONLY public.user_ai_settings
 
 The cascade matters: the account-deletion path is `users.delete(user.id)` in `profile.service.ts`, so the key disappears with the account. Document the table in `docs/database.md` (including "apply by hand in production before deploying the code").
 
-- [ ] **Step 2: Entity** (match the style of `user.entity.ts`):
+- [x] **Step 2: Entity** (match the style of `user.entity.ts`):
 
 ```ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
@@ -277,7 +277,7 @@ export class UserAiSettings {
 
 Export it from `entities/index.ts` and register it wherever `User` is registered in `TypeOrmModule.forFeature`/the data source entity list (grep `User,` in `*.module.ts` and the data-source config).
 
-- [ ] **Step 3: Failing tests** `user-ai-settings.service.spec.ts` with a fake repository (an in-memory `Map`) and the real `CryptService` built from a 32-byte base64 `APP_KEY`:
+- [x] **Step 3: Failing tests** `user-ai-settings.service.spec.ts` with a fake repository (an in-memory `Map`) and the real `CryptService` built from a 32-byte base64 `APP_KEY`:
 
 ```ts
 it('stores the key encrypted and describes it by its last four characters only', async () => {
@@ -322,13 +322,13 @@ it('clear removes the row', async () => {
 });
 ```
 
-- [ ] **Step 4:** `npm test -- src/ai/user-ai-settings` → FAIL.
+- [x] **Step 4:** `npm test -- src/ai/user-ai-settings` → FAIL.
 
-- [ ] **Step 5: Implement** `UserAiSettingsService` (`@Injectable()`, injects `@InjectRepository(UserAiSettings)` and `CryptService`). `save()` encrypts with `crypt.encrypt(apiKey)` and sets `keyHint = apiKey.slice(-4)`; without `apiKey` it requires an existing row with the same provider, else throws `new Error('An API key is required.')`. `resolve()` returns null if there is no row, if `crypt.decrypt(row.apiKey)` returns falsy or throws (catch, `Logger.warn('saved AI key unreadable for user <id>')`, never log the value), or if `row.provider` is not a known `ProviderId`. `describe()` formats `updated_at` with the existing `common/utils/iso8601.ts` helper. Add the provider and make sure the module that provides `CryptService` is imported by `AiModule` (grep `CryptService` in `*.module.ts`); export the service from `AiModule`.
+- [x] **Step 5: Implement** `UserAiSettingsService` (`@Injectable()`, injects `@InjectRepository(UserAiSettings)` and `CryptService`). `save()` encrypts with `crypt.encrypt(apiKey)` and sets `keyHint = apiKey.slice(-4)`; without `apiKey` it requires an existing row with the same provider, else throws `new Error('An API key is required.')`. `resolve()` returns null if there is no row, if `crypt.decrypt(row.apiKey)` returns falsy or throws (catch, `Logger.warn('saved AI key unreadable for user <id>')`, never log the value), or if `row.provider` is not a known `ProviderId`. `describe()` formats `updated_at` with the existing `common/utils/iso8601.ts` helper. Add the provider and make sure the module that provides `CryptService` is imported by `AiModule` (grep `CryptService` in `*.module.ts`); export the service from `AiModule`.
 
-- [ ] **Step 6:** `npm test -- src/ai` and `npm run typecheck` → PASS.
+- [x] **Step 6:** `npm test -- src/ai` and `npm run typecheck` → PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add prism-api/schema.sql docs/database.md prism-api/src/database/entities/user-ai-settings.entity.ts prism-api/src/database/entities/index.ts prism-api/src/ai/user-ai-settings.service.ts prism-api/src/ai/user-ai-settings.service.spec.ts prism-api/src/ai/ai.module.ts
@@ -348,7 +348,7 @@ git commit -m "Store one encrypted AI provider key per user"
 - Consumes: `AiProvider`, `sendJson`, `AI_TIMEOUT_MS`
 - Produces: `providerFor(id: ProviderId): AiProvider`; `SELECTABLE_PROVIDERS: readonly { id: Exclude<ProviderId, 'groq'>; label: string }[]`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 `openai-compatible.provider.spec.ts`:
 
@@ -430,9 +430,9 @@ it('posts to the Messages API with x-api-key and a version header', async () => 
 
 `registry.spec.ts`: `providerFor('openai').id === 'openai'`; `SELECTABLE_PROVIDERS.map(p => p.id)` equals `['openai','google','openrouter','anthropic']`; `providerFor` throws on an unknown id.
 
-- [ ] **Step 2:** `npm test -- src/ai/providers` → FAIL.
+- [x] **Step 2:** `npm test -- src/ai/providers` → FAIL.
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
 `openai-compatible.provider.ts`:
 
@@ -494,11 +494,11 @@ export const SELECTABLE_PROVIDERS = [
 ] as const;
 ```
 
-- [ ] **Step 4:** `npm test -- src/ai/providers` and `npm run typecheck` → PASS.
+- [x] **Step 4:** `npm test -- src/ai/providers` and `npm run typecheck` → PASS.
 
-- [ ] **Step 5: Owner check against the real services (not automated, do before Task 7).** With one throwaway key per provider you already hold, run a one-off script (kept in the scratchpad, not committed) that calls `listModels` and one `complete` with the system prompt `Reply with JSON {"ok":true}` and prints the status and content length only. Confirm the four base URLs, the Gemini OpenAI endpoint and the Anthropic header version still work today. If one has changed, fix its constants and test in this task before moving on.
+- [ ] **Step 5 (NOT VERIFIED, no provider keys available): Owner check against the real services (not automated, do before Task 7).** With one throwaway key per provider you already hold, run a one-off script (kept in the scratchpad, not committed) that calls `listModels` and one `complete` with the system prompt `Reply with JSON {"ok":true}` and prints the status and content length only. Confirm the four base URLs, the Gemini OpenAI endpoint and the Anthropic header version still work today. If one has changed, fix its constants and test in this task before moving on.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prism-api/src/ai/providers
@@ -516,7 +516,7 @@ git commit -m "Add OpenAI, Gemini, OpenRouter and Anthropic providers with fixed
 - Consumes: `UserAiSettingsService.resolve`, `providerFor`
 - Produces: `callWithFallback(system, user, context, signal?, options?: { userId?: number })` and `call(model, system, user, context, signal?, options?: { userId?: number })`. Without `options` both behave exactly as today.
 
-- [ ] **Step 1: Failing tests.** The snippet uses `client`, `userAi`, `fetchMock` and `mockFetchOnce(body, status = 200)`; define them in the new `describe` if the spec's existing setup names them differently: `fetchMock = jest.spyOn(global, 'fetch')`, `mockFetchOnce = (body, status = 200) => fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status }))`, `userAi = { resolve: jest.fn() }`, `client = new AiClientService(config, userAi as never)` with the same `config` the existing tests use. (Append to `ai-client.service.spec.ts`; construct the service with a fake `UserAiSettingsService { resolve: jest.fn() }` as the new second constructor argument and update the existing construction calls to pass `{ resolve: async () => null }`, which is the only edit allowed to existing tests):
+- [x] **Step 1: Failing tests.** The snippet uses `client`, `userAi`, `fetchMock` and `mockFetchOnce(body, status = 200)`; define them in the new `describe` if the spec's existing setup names them differently: `fetchMock = jest.spyOn(global, 'fetch')`, `mockFetchOnce = (body, status = 200) => fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status }))`, `userAi = { resolve: jest.fn() }`, `client = new AiClientService(config, userAi as never)` with the same `config` the existing tests use. (Append to `ai-client.service.spec.ts`; construct the service with a fake `UserAiSettingsService { resolve: jest.fn() }` as the new second constructor argument and update the existing construction calls to pass `{ resolve: async () => null }`, which is the only edit allowed to existing tests):
 
 ```ts
 describe('own model', () => {
@@ -581,9 +581,9 @@ describe('own model', () => {
 
 `review.queue.spec.ts`: change the expected worst case to `GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 2)`.
 
-- [ ] **Step 2:** `npm test -- src/ai/ai-client src/modules/review/review.queue` → FAIL.
+- [x] **Step 2:** `npm test -- src/ai/ai-client src/modules/review/review.queue` → FAIL.
 
-- [ ] **Step 3: Implement** in `AiClientService`: add `private readonly userAi: UserAiSettingsService` to the constructor (DI-provided by `AiModule`). Add at the top of `callWithFallback`, after `strongSystem` is built:
+- [x] **Step 3: Implement** in `AiClientService`: add `private readonly userAi: UserAiSettingsService` to the constructor (DI-provided by `AiModule`). Add at the top of `callWithFallback`, after `strongSystem` is built:
 
 ```ts
     const own = options.userId ? await this.userAi.resolve(options.userId) : null;
@@ -617,9 +617,9 @@ The existing Groq loop follows unchanged. In `call()`: if `model` starts with `g
 
 Update `fixes.service.ts` (read lines 60-100): add an optional trailing `userId?: number` to `generate()` and pass `{ userId }` as the new last argument of its `this.aiClient.call(...)`. In both runners pass `repository.userId` to `callWithFallback(..., signal, { userId: repository.userId })` and to `this.fixes.generate(..., userId)`. In `design.service.ts` (~line 153) pass `{ userId: user.id }` using whatever the surrounding variable for the user is called. In `review.queue.ts` change the formula to `GROQ_TIMEOUT_MS * (GROQ_MODELS.length + 2)` and extend its comment with one sentence: "+2 = the fixes pass and one attempt on the user's own model before the Groq chain."
 
-- [ ] **Step 4:** `npm test -- src/ai src/modules/review/ src/modules/design` , `npm run typecheck`, `npm run lint` → PASS. Golden fixtures untouched (`git status` shows nothing under `test/fixtures/`).
+- [x] **Step 4:** `npm test -- src/ai src/modules/review/ src/modules/design` , `npm run typecheck`, `npm run lint` → PASS. Golden fixtures untouched (`git status` shows nothing under `test/fixtures/`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/ai/ai-client.service.ts prism-api/src/ai/ai-client.service.spec.ts prism-api/src/ai/fixes.service.ts prism-api/src/modules/review/pr-review.runner.ts prism-api/src/modules/review/commit-review.runner.ts prism-api/src/modules/design/design.service.ts prism-api/src/modules/review/review.queue.ts prism-api/src/modules/review/review.queue.spec.ts
@@ -644,7 +644,7 @@ Note for the future Phase 0b plan: batching multiplies provider calls per review
   - `PUT /settings/ai` body `{ provider, model, api_key? }` → `{ message, own: OwnModelSummary }`
   - `DELETE /settings/ai` → `{ message }`
 
-- [ ] **Step 1: DTO**
+- [x] **Step 1: DTO**
 
 ```ts
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
@@ -661,7 +661,7 @@ export class SaveAiSettingsDto extends ListAiModelsDto {
 }
 ```
 
-- [ ] **Step 2: Failing tests** `ai-settings.service.spec.ts` (fake `UserAiSettingsService`, fake `providerFor` via `jest.mock('../../ai/providers/registry')`, fake `AuditLogService`):
+- [x] **Step 2: Failing tests** `ai-settings.service.spec.ts` (fake `UserAiSettingsService`, fake `providerFor` via `jest.mock('../../ai/providers/registry')`, fake `AuditLogService`):
 
 ```ts
 it('lists models using the typed key', async () => {
@@ -716,13 +716,13 @@ it('index never returns a key', async () => {
 });
 ```
 
-- [ ] **Step 3:** `npm test -- src/modules/settings/ai-settings` → FAIL.
+- [x] **Step 3:** `npm test -- src/modules/settings/ai-settings` → FAIL.
 
-- [ ] **Step 4: Implement** `AiSettingsService` (`index`, `models`, `save`, `clear`) and the controller. `models()`/`save()` obtain the key from `dto.api_key` or, when absent, from `userAi.resolve(user.id)` only if its provider equals `dto.provider`; if neither exists throw 422 `errors.api_key = ['Enter your API key.']`. Calls to the provider pass `AbortSignal.timeout(AI_TIMEOUT_MS)`. A thrown `{status: 401|403}` becomes 422 `errors.api_key = ['<Label> rejected this API key.']`; any other failure becomes 422 `errors.api_key = ['Could not reach <Label>. Try again in a minute.']`. Build the 422 with `new UnprocessableEntityException({ message: <first error>, errors })`, the same body shape `common/validation/validation-errors.ts` produces. `save()` validates `dto.model` against the freshly listed models before calling `userAi.save`, then `auditLog.record(user.id, 'ai_settings_saved', 'Saved a personal AI model', { provider, model })` (no key). `clear()` calls `userAi.clear` and records `ai_settings_cleared`. `index()` returns `{ default: { provider: 'groq', models: [...GROQ_MODELS] }, own: await userAi.describe(user.id), providers: SELECTABLE_PROVIDERS }`. Register the controller and service in `settings.module.ts` (import `AiModule` for `UserAiSettingsService`). Document the four routes in `docs/api-reference.md`, and note the global `RateLimitGuard` already keys signed-in traffic per user, which is what throttles `/models`.
+- [x] **Step 4: Implement** `AiSettingsService` (`index`, `models`, `save`, `clear`) and the controller. `models()`/`save()` obtain the key from `dto.api_key` or, when absent, from `userAi.resolve(user.id)` only if its provider equals `dto.provider`; if neither exists throw 422 `errors.api_key = ['Enter your API key.']`. Calls to the provider pass `AbortSignal.timeout(AI_TIMEOUT_MS)`. A thrown `{status: 401|403}` becomes 422 `errors.api_key = ['<Label> rejected this API key.']`; any other failure becomes 422 `errors.api_key = ['Could not reach <Label>. Try again in a minute.']`. Build the 422 with `new UnprocessableEntityException({ message: <first error>, errors })`, the same body shape `common/validation/validation-errors.ts` produces. `save()` validates `dto.model` against the freshly listed models before calling `userAi.save`, then `auditLog.record(user.id, 'ai_settings_saved', 'Saved a personal AI model', { provider, model })` (no key). `clear()` calls `userAi.clear` and records `ai_settings_cleared`. `index()` returns `{ default: { provider: 'groq', models: [...GROQ_MODELS] }, own: await userAi.describe(user.id), providers: SELECTABLE_PROVIDERS }`. Register the controller and service in `settings.module.ts` (import `AiModule` for `UserAiSettingsService`). Document the four routes in `docs/api-reference.md`, and note the global `RateLimitGuard` already keys signed-in traffic per user, which is what throttles `/models`.
 
-- [ ] **Step 5:** `npm test -- src/modules/settings` , `npm run typecheck`, `npm run lint` → PASS.
+- [x] **Step 5:** `npm test -- src/modules/settings` , `npm run typecheck`, `npm run lint` → PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prism-api/src/modules/settings prism-api/src/ai docs/api-reference.md
@@ -741,7 +741,7 @@ git commit -m "Add the settings API for a personal AI provider key and model"
 - Produces (types): `AiSettings { default: { provider: 'groq'; models: string[] }; own: { provider: string; model: string; key_hint: string; updated_at: string | null } | null; providers: { id: string; label: string }[] }`
 - Produces (actions, all return `ActionResult` as in `actions.ts`): `listAiModels(provider, apiKey?) -> ActionResult & { models?: string[] }`, `saveAiSettings({ provider, model, apiKey? })`, `clearAiSettings()`
 
-- [ ] **Step 1: Failing tests** `AiModelSection.test.tsx` (Vitest + Testing Library; mock the three actions with `vi.mock('@/app/settings/actions')`):
+- [x] **Step 1: Failing tests** `AiModelSection.test.tsx` (Vitest + Testing Library; mock the three actions with `vi.mock('@/app/settings/actions')`):
 
 ```tsx
 const base: AiSettings = {
@@ -796,9 +796,9 @@ it('shows a saved model with only the key hint, and offers to switch back', () =
 });
 ```
 
-- [ ] **Step 2:** In `prism-web/` run `npm test -- AiModelSection` → FAIL.
+- [x] **Step 2:** In `prism-web/` run `npm test -- AiModelSection` → FAIL.
 
-- [ ] **Step 3: Implement.** Types in `lib/types.ts`. Actions in `actions.ts` using `apiSend`/`apiGet` exactly as the existing actions do (`POST /settings/ai/models`, `PUT /settings/ai`, `DELETE /settings/ai`, `revalidatePath('/settings')`, errors through the existing `toResult`). `page.tsx` loads `/settings/ai` with the same server-side helper it uses for `/settings` and passes it to `SettingsView`, which renders `<AiModelSection settings={...} />` as a new card under the Slack section. The component is a client component: provider `<select>` (label "Provider"), password-type `<input>` (label "API key", `autoComplete="off"`), "Load models" button (disabled while empty or loading), model `<select>` (label "Model") filled from the response, "Save" disabled until a model is chosen, and, when `settings.own` exists, a summary line `Using <provider label> · <model> · key ending <key_hint>` with a "Use PRism's default (Groq)" button that calls `clearAiSettings`. Always-visible copy, in this wording:
+- [x] **Step 3: Implement.** Types in `lib/types.ts`. Actions in `actions.ts` using `apiSend`/`apiGet` exactly as the existing actions do (`POST /settings/ai/models`, `PUT /settings/ai`, `DELETE /settings/ai`, `revalidatePath('/settings')`, errors through the existing `toResult`). `page.tsx` loads `/settings/ai` with the same server-side helper it uses for `/settings` and passes it to `SettingsView`, which renders `<AiModelSection settings={...} />` as a new card under the Slack section. The component is a client component: provider `<select>` (label "Provider"), password-type `<input>` (label "API key", `autoComplete="off"`), "Load models" button (disabled while empty or loading), model `<select>` (label "Model") filled from the response, "Save" disabled until a model is chosen, and, when `settings.own` exists, a summary line `Using <provider label> · <model> · key ending <key_hint>` with a "Use PRism's default (Groq)" button that calls `clearAiSettings`. Always-visible copy, in this wording:
 
   - "By default PRism reviews your code with its own Groq models. You can use your own AI provider instead."
   - "This takes an API key, not a ChatGPT or Claude subscription. API usage is billed separately by the provider."
@@ -806,9 +806,9 @@ it('shows a saved model with only the key hint, and offers to switch back', () =
 
   The key input is cleared after a successful save and is never rendered back. Every action result with `ok: false` shows its `message` in a `role="alert"` element. Use `grid-cols-1` on small screens, token colours only, controls >= 44px high.
 
-- [ ] **Step 4:** `npm test -- AiModelSection`, `npm run typecheck`, `npm run lint` → PASS.
+- [x] **Step 4:** `npm test -- AiModelSection`, `npm run typecheck`, `npm run lint` → PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-web/src/components/settings prism-web/src/app/settings prism-web/src/lib/types.ts
@@ -822,13 +822,13 @@ git commit -m "Let users connect their own AI provider key from Settings"
 **Files:**
 - Modify: `docs/review-pipeline.md`, `docs/security.md`, `docs/configuration.md` (note: no new env var), `docs/known-issues.md`, `docs/frontend.md` (if the settings page is described there), `docs/code-map.md`, `CLAUDE.md`
 
-- [ ] **Step 1: Docs in the same change.** `review-pipeline.md`: own model first, Groq fallback, `ai_model_used` label format, budget `+2`. `security.md`: key storage and handling rules (encrypted, hint only, never logged, `redirect: 'error'`, fixed URLs, `APP_KEY` rotation drops saved keys to Groq). `known-issues.md`: add "Review quality and JSON parse rates on user-supplied models are not measured" and "a revoked or exhausted personal key silently falls back to Groq; the user only sees the model label on the review". `code-map.md`: rows for `ai/providers/`, `user-ai-settings.service.ts`, `modules/settings/ai-settings.*`, `AiModelSection.tsx` (and the new table under `database/`). `CLAUDE.md`: change the "Groq only..." bullet to "Groq is the default and the fallback; a user may add their own provider API key ([ADR 0012](docs/adr/0012-optional-user-supplied-api-key.md))", keep the rule that the Groq order and temperature are measured.
+- [x] **Step 1: Docs in the same change.** `review-pipeline.md`: own model first, Groq fallback, `ai_model_used` label format, budget `+2`. `security.md`: key storage and handling rules (encrypted, hint only, never logged, `redirect: 'error'`, fixed URLs, `APP_KEY` rotation drops saved keys to Groq). `known-issues.md`: add "Review quality and JSON parse rates on user-supplied models are not measured" and "a revoked or exhausted personal key silently falls back to Groq; the user only sees the model label on the review". `code-map.md`: rows for `ai/providers/`, `user-ai-settings.service.ts`, `modules/settings/ai-settings.*`, `AiModelSection.tsx` (and the new table under `database/`). `CLAUDE.md`: change the "Groq only..." bullet to "Groq is the default and the fallback; a user may add their own provider API key ([ADR 0012](docs/adr/0012-optional-user-supplied-api-key.md))", keep the rule that the Groq order and temperature are measured.
 
-- [ ] **Step 2: Full gate, once.** In `prism-api/` and `prism-web/`: `npm run typecheck && npm run lint && npm test`. Expected: green.
+- [x] **Step 2: Full gate, once.** In `prism-api/` and `prism-web/`: `npm run typecheck && npm run lint && npm test`. Expected: green.
 
-- [ ] **Step 3: One end-to-end check (this task touches modules and DI wiring, so the stack is booted once, per `docs/development.md`, with `127.0.0.1` connection strings).** Apply the Task 3 DDL to local Postgres, start Redis and the API on 3999, then in the browser: save a real personal key and model on `/settings`, trigger a review on a test repository, confirm the review's model label is `<provider>/<model>`; then enter a wrong key via the API and confirm the next review is labelled `groq/...`; delete the saved setting and confirm the Settings page shows the default state. Check `docker`/API logs contain no key material (`grep` the log for the key's first 6 characters). Stop the server.
+- [ ] **Step 3 (PARTLY VERIFIED: DDL applied locally, API boots with the new routes mapped and guarded; no live review or provider call): One end-to-end check (this task touches modules and DI wiring, so the stack is booted once, per `docs/development.md`, with `127.0.0.1` connection strings).** Apply the Task 3 DDL to local Postgres, start Redis and the API on 3999, then in the browser: save a real personal key and model on `/settings`, trigger a review on a test repository, confirm the review's model label is `<provider>/<model>`; then enter a wrong key via the API and confirm the next review is labelled `groq/...`; delete the saved setting and confirm the Settings page shows the default state. Check `docker`/API logs contain no key material (`grep` the log for the key's first 6 characters). Stop the server.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/review-pipeline.md docs/security.md docs/configuration.md docs/known-issues.md docs/code-map.md CLAUDE.md

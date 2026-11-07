@@ -87,9 +87,11 @@ Each is a one-liner; the doc named after it has the why.
   `ai/verdict.ts` that `isIncompleteReview()` recognises. Change both or neither. Under half coverage the
   score is `null` and the summary leads with `PARTIAL_REVIEW`, recognised by `isPartialReview()`
   ([ADR 0011](docs/adr/0011-partial-review-on-thin-coverage.md)); reword the pair together.
-- Groq only. The model list was swapped on 2026-11-07 after Groq retired the originals, and is **not
-  re-measured** ([ADR 0007](docs/adr/0007-groq-is-the-only-ai-provider.md)). Order and temperature are
-  measured: don't change them without re-measuring.
+- Groq is the default and the fallback; a user may add their own provider API key
+  ([ADR 0012](docs/adr/0012-optional-user-supplied-api-key.md)): encrypted, last 4 characters only, never
+  logged, fixed provider URLs. The Groq model list was swapped on 2026-11-07 and is **not re-measured**
+  ([ADR 0007](docs/adr/0007-groq-is-the-only-ai-provider.md)). Order and temperature are measured: don't
+  change them without re-measuring.
 - Findings are validated against the anchors the model was shown; the **anchor's** location is displayed.
 - Risk Radar is pure and `tryAssessRisk()` never throws. The risk comment section appears only when `risk`
   is supplied.

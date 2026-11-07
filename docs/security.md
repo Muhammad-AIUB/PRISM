@@ -119,6 +119,13 @@ configs.
 | `users.github_token` | AES-256-CBC, MAC checked in constant time **before** decrypting | n/a |
 | Webhook secrets | Per repository, random, 40 characters | Re-connect the repository |
 | Groq and GitHub client secrets | Environment only | Rotate at the provider and redeploy |
+| `user_ai_settings.api_key` | Same envelope as `github_token` (`CryptService`) | Rotating `APP_KEY` makes it unreadable; it is then treated as absent and reviews run on Groq |
+
+**A user's own AI provider key** ([ADR 0012](adr/0012-optional-user-supplied-api-key.md)) is stored
+encrypted and only `UserAiSettingsService` reads it. The API exposes the last 4 characters only. It is
+never logged, put in an audit entry or echoed in an error (the provider's error body is not forwarded
+either). Provider base URLs are constants and every provider call uses `redirect: 'error'`, so there is
+no user-supplied URL and a redirect cannot forward the key. The account-deletion cascade removes it.
 
 The token envelope is fixed by the rows already in the database; see
 [database.md](database.md#usersgithub_token). A token preview on `/security/my-data` shows only

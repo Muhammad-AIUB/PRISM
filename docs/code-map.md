@@ -16,8 +16,9 @@ starting `prism-web/` or `docs/` is repo-relative; one starting `app/`,
 | A review step, in **either** runner | `modules/review/pr-review.runner.ts` **and** `commit-review.runner.ts` | [review-pipeline](review-pipeline.md) |
 | Retries, backoff, the job budget, the deadline | `modules/review/review.queue.ts`, `review.processor.ts` | [ADR 0003](adr/0003-derive-the-job-budget-and-cancel-on-deadline.md) |
 | The review prompt or language rules | `ai/prompt-builder.service.ts` | Frozen fixtures: [testing](testing.md#changing-a-prompt-on-purpose) |
-| The Groq call, models, timeouts | `ai/ai-client.service.ts` | [ADR 0007](adr/0007-groq-is-the-only-ai-provider.md); re-measure first |
+| The Groq call, models, timeouts | `ai/providers/groq.provider.ts`, `ai/providers/http.ts`, `ai/ai-client.service.ts` | [ADR 0007](adr/0007-groq-is-the-only-ai-provider.md); re-measure first |
 | Finding validation, the verdict, the score | `ai/issue-validator.ts`, `ai/verdict.ts` | The two fallback summaries are a contract |
+| A user's own provider key and model | `ai/providers/`, `ai/user-ai-settings.service.ts`, `modules/settings/ai-settings.*`, `components/settings/AiModelSection.tsx`, table `user_ai_settings` | [ADR 0012](adr/0012-optional-user-supplied-api-key.md) |
 | Suggested fixes | `ai/fixes.service.ts`, `ai/fix-validator.ts` | |
 | Which part of a diff is shown, anchors | `diff/prepare.ts`, `file-selection.ts`, `hunk-index.ts`, `render.ts` | |
 | A Risk Radar signal or question | `diff/risk-radar.ts` (**24 KB: grep the constant, read a range**) | `risk-radar.spec.ts`, [risk-radar](risk-radar.md) |
@@ -51,7 +52,7 @@ starting `prism-web/` or `docs/` is repo-relative; one starting `app/`,
 | `app.module.ts` | TypeORM (`synchronize: false`), BullMQ, throttler, every feature module |
 | `config/` | Env validation (fails at boot) and typed config |
 | `database/` | `entities/` (one per table), `transformers.ts` (bigint), `pg-types.ts`, `repository.helpers.ts` (review modes, watched branches, webhook events), `review-feed.mapper.ts` |
-| `ai/` | `ai-client`, `prompt-builder`, `json-extractor`, `issue-validator`, `fix-validator`, `fixes.service`, `verdict` |
+| `ai/` | `ai-client`, `prompt-builder`, `json-extractor`, `issue-validator`, `fix-validator`, `fixes.service`, `verdict`, `user-ai-settings.service` (the encrypted personal key), `providers/` (`AiProvider`, `groq`, `openai-compatible`, `anthropic`, `registry`, `http`) |
 | `diff/` | Pure: `hunk-index`, `render`, `file-selection`, `prepare`, `language-detector`, `git-paths`, `risk-radar` |
 | `design/` | Pure: `blueprint`, `design-prompt`, `blueprint-normaliser`, `design-baseline`, `blueprint-markdown` |
 | `github/` | The GitHub REST client |

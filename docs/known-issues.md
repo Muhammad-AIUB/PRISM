@@ -214,6 +214,12 @@ the data can go wrong. Fixes that need DDL wait on the production-DDL decision.
   `GET /repos/{owner}/{repo}/commits/{sha}` with `Accept: application/vnd.github.v3.diff`, every
   post-merge commit review would say it found nothing it could verify. This was raised by an outside
   reviewer and **has not been verified**; it needs one authenticated call against a real merge commit.
+- **Review quality and JSON parse rates on user-supplied models are not measured.** Bring-your-own-key
+  ([ADR 0012](adr/0012-optional-user-supplied-api-key.md)) accepts any chat model the provider lists.
+  The four provider endpoints and the Gemini OpenAI-compatible and Anthropic headers were also never
+  called against the real services from this code (no keys were available when it was written).
+- **A revoked or exhausted personal key silently falls back to Groq.** The user sees only the model
+  label on the review (`groq/...` instead of `<provider>/<model>`).
 - **Design Studio output has not been read by a person.** No live Groq design has been reviewed for
   over-engineering or generic failure modes; only the fallback path has run end to end. Run about
   twenty briefs across all four scales and tighten the prompt from evidence.

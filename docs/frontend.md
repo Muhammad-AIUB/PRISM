@@ -38,7 +38,7 @@ each page can supply its own sticky header.
 | `/reviews/[pullRequest]`, `/reviews/[pullRequest]/export` | session | A PR review (verdict, findings, risk, fixes, diff); the PDF |
 | `/commits/[commitReview]` | session | A commit review |
 | `/design`, `/design/[id]`, `/design/[id]/markdown` | session | Design Studio form and history; a blueprint; the Markdown download |
-| `/settings`, `/profile` | session | Slack and API tokens; profile |
+| `/settings`, `/profile` | session | Slack, an optional own AI provider key and model, API tokens; profile |
 | `/security`, `/security/my-data`, `/security/audit-log` | `/security` public, rest session | What PRism stores, your data and deletion, your activity log |
 | `/help/how-to-use` | session | In-app guide |
 | `/demo`, `/demo/review/[id]` | public | A sample review on hard-coded data |

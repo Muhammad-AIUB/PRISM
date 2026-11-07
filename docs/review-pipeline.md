@@ -38,6 +38,13 @@ sequenceDiagram
     R-->>P: done (Slack notified if configured)
 ```
 
+**Own model first (optional, [ADR 0012](adr/0012-optional-user-supplied-api-key.md)).** When the
+repository owner has saved their own provider key, pass 1 tries that model before the Groq chain, and
+the fixes pass reuses it if it answered. Any failure (401/403/429/5xx, timeout, unparseable text)
+falls through to the unchanged Groq chain. `ai_model_used` is `<provider>/<model>` for whatever
+answered, for example `openai/gpt-4.1` or `groq/openai/gpt-oss-120b`. Design Studio does the same for
+the signed-in user. Parse rates on other models are not measured.
+
 A pull-request review and a commit review follow the same steps. They live in two files,
 [`pr-review.runner.ts`](../prism-api/src/modules/review/pr-review.runner.ts) and
 [`commit-review.runner.ts`](../prism-api/src/modules/review/commit-review.runner.ts), that are
@@ -95,7 +102,7 @@ job runs, so a job can never act on a stale copy of an entity.
 | Backoff | `[60, 180, 600]` seconds through a custom strategy. With 3 attempts only the first two delays happen |
 | Retention | last 100 completed, last 500 failed |
 | Worker concurrency | 1 |
-| Per-attempt budget | `GROQ_TIMEOUT_MS x (models + 1) + GITHUB_TIMEOUT_MS x 2 + 30 s` = 60 x 3 + 30 x 2 + 30 = **270 s** |
+| Per-attempt budget | `GROQ_TIMEOUT_MS x (models + 2) + GITHUB_TIMEOUT_MS x 2 + 30 s` = 60 x 4 + 30 x 2 + 30 = **330 s** (+2 = the fixes pass and one attempt on the user's own model) |
 
 The budget is computed by importing the constants it covers. Adding a model or raising a
 timeout raises it automatically.

@@ -84,7 +84,7 @@ budget derived from them stays consistent.
 | Value | Where | Why it matters |
 |---|---|---|
 | `DIFF_LIMIT = 8000` | each runner | Characters of diff shown to the model |
-| `GROQ_MODELS`, `GROQ_TIMEOUT_MS = 60000` | `ai/ai-client.service.ts` | Measured behaviour; the job budget is derived from them |
+| `GROQ_MODELS`, `GROQ_TIMEOUT_MS = 60000` (= `AI_TIMEOUT_MS`) | `ai/providers/groq.provider.ts`, `ai/providers/http.ts` (re-exported by `ai/ai-client.service.ts`) | Measured behaviour; the job budget is derived from them |
 | `MAX_DIFF_BYTES = 2000000` | `github/github-client.service.ts` | Memory ceiling on a diff |
 | `REVIEW_JOB_ATTEMPTS = 3`, backoff `[60, 180, 600]` | `modules/review/review.queue.ts` | Retry policy |
 | `DESIGN_BUDGET_MS = 55000`, 10 designs per user per hour | `modules/design/` | Design Studio's cost bound |
