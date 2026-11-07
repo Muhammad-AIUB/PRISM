@@ -24,7 +24,8 @@ import type { CommitReviewDetail, SessionUser } from '@/lib/types';
  *
  * Three things differ from the PR screen and are kept: there is no diff tab
  * (a commit review has no PR diff endpoint), there is no severity filter bar,
- * and Re-analyze lives only inside the failure card rather than in the header.
+ * and Re-analyze lives only inside the failure card and the "not reviewed" card
+ * rather than in the header.
  */
 const LAYERS = [
   { key: 'security', label: 'Security' },
@@ -181,6 +182,23 @@ export default function CommitShowView({
         {/* Same panel, same position as the pull request page: these two stay
             in step, the way their runners do. */}
         <VerdictPanel verdict={commitReview.verdict} findings={commitReview.findings} />
+
+        {/* A review the AI never answered completes as "not reviewed", not as
+            failed, so the failure card above never shows. This is the only
+            way to retry it, and the panel's own text tells the reader to. */}
+        {commitReview.status === 'completed' && commitReview.verdict === 'not_reviewed' && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={reanalyze}
+              className="btn btn-primary min-h-[44px] transition active:scale-95"
+            >
+              <RefreshCw className={`h-4 w-4 ${pending ? 'animate-spin' : ''}`} />
+              {pending ? 'Retrying…' : 'Re-analyze'}
+            </button>
+          </div>
+        )}
 
         <RiskPanel kind="commit" id={commitReview.id} revision={commitReview.status} />
 
