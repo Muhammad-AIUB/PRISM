@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PullRequest } from '../../database/entities';
 import { DesignModule } from '../design/design.module';
+import { ReviewCheckpointModule } from '../review/review-checkpoint.module';
 import { RiskModule } from '../risk/risk.module';
 import { AccountDataService } from './account-data.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PullRequest]), DesignModule, RiskModule],
+  imports: [TypeOrmModule.forFeature([PullRequest]), DesignModule, RiskModule, ReviewCheckpointModule],
   providers: [AccountDataService],
   exports: [AccountDataService],
 })

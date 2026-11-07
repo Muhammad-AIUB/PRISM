@@ -1499,7 +1499,7 @@ git commit -m "Prepare anchors per batch and merge batch results" -m "Anchor ids
   - `SAVE_BATCH_SCRIPT` (the Lua), `ReviewCheckpointModule` (exports the store)
   - `AccountDataService` constructor gains a **last** parameter `checkpoints: ReviewCheckpointStore` and `deleteAccount` calls `checkpoints.purgeOwner(user.id)` after `designs.purgeOwner`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `prism-api/src/modules/review/review-checkpoint.store.spec.ts`:
 
@@ -1676,12 +1676,12 @@ diff --git a/prism-api/src/modules/account/account-data.service.spec.ts b/prism-
      const deleteRows = jest.fn();
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `npm test -- src/modules/review/review-checkpoint src/modules/account`
 Expected: FAIL (`Cannot find module './review-checkpoint.store'`; the account spec does not compile against the old constructor).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `prism-api/src/modules/review/review-checkpoint.store.ts`:
 
@@ -1937,12 +1937,12 @@ diff --git a/prism-api/src/modules/account/account-data.module.ts b/prism-api/sr
  })
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `npm test -- src/modules/review/review-checkpoint src/modules/account && npm run typecheck`
 Expected: PASS (`review-checkpoint.store.spec.ts` 8 tests; the account specs, including `erasure-marker.spec.ts`, green).
 
-- [ ] **Step 5: Run the Lua once against a LOCAL Redis**
+- [x] **Step 5: Run the Lua once against a LOCAL Redis**
 
 The Lua is the one part a mock cannot test. Only if a local Redis answers (`redis-cli -h 127.0.0.1 ping` prints `PONG`; the dev containers in `docs/development.md` use port 56379, so use `-p 56379` if that is yours), run from `prism-api/`, with the port adjusted to your instance:
 
@@ -1974,7 +1974,7 @@ refused 0
 ```
 (The author saw exactly this.) The file is deleted by the command; do not commit it. If no Redis is up, skip and write "Lua not run against Redis" in the final report.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prism-api/src/modules/review/review-checkpoint.store.ts prism-api/src/modules/review/review-checkpoint.store.spec.ts prism-api/src/modules/review/review-checkpoint.module.ts prism-api/src/modules/account/account-data.service.ts prism-api/src/modules/account/account-data.service.spec.ts prism-api/src/modules/account/account-data.module.ts

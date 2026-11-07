@@ -5,7 +5,7 @@ import { AccountDataService } from './account-data.service';
 
 const user = { id: 1, githubToken: null } as User;
 
-function build(overrides: { purgeOwner?: jest.Mock; purge?: jest.Mock } = {}) {
+function build(overrides: { purgeOwner?: jest.Mock; purge?: jest.Mock; purgeCheckpoints?: jest.Mock } = {}) {
   const query = {
     innerJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
@@ -24,15 +24,17 @@ function build(overrides: { purgeOwner?: jest.Mock; purge?: jest.Mock } = {}) {
     purge: overrides.purge ?? jest.fn().mockResolvedValue(undefined),
     count: jest.fn().mockResolvedValue(2),
   };
+  const checkpoints = { purgeOwner: overrides.purgeCheckpoints ?? jest.fn().mockResolvedValue(undefined) };
   const redis = { set: jest.fn().mockResolvedValue('OK') };
   const service = new AccountDataService(
     { createQueryBuilder: () => query } as never,
     designs as never,
     risk as never,
     redis as never,
+    checkpoints as never,
   );
 
-  return { service, designs, risk, redis };
+  return { service, designs, risk, redis, checkpoints };
 }
 
 describe('AccountDataService.deleteAccount', () => {
@@ -51,7 +53,7 @@ describe('AccountDataService.deleteAccount', () => {
   }
 
   it('sets the marker, purges Redis, then deletes the rows - in that order', async () => {
-    const { service, designs, risk, redis } = withRedis();
+    const { service, designs, risk, redis, checkpoints } = withRedis();
     const deleteRows = jest.fn().mockResolvedValue(undefined);
 
     await service.deleteAccount(user, deleteRows);
@@ -60,16 +62,29 @@ describe('AccountDataService.deleteAccount', () => {
       redis.set.mock.invocationCallOrder[0],
       risk.purge.mock.invocationCallOrder[0],
       designs.purgeOwner.mock.invocationCallOrder[0],
+      checkpoints.purgeOwner.mock.invocationCallOrder[0],
       deleteRows.mock.invocationCallOrder[0],
     ] as number[];
 
     expect(redis.set).toHaveBeenCalledWith(MARKER, '1', 'EX', expect.any(Number));
     expect(risk.purge).toHaveBeenCalledWith([41, 42]);
     expect(designs.purgeOwner).toHaveBeenCalledWith(1);
+    expect(checkpoints.purgeOwner).toHaveBeenCalledWith(1);
     expect(order).toEqual([...order].sort((a, b) => a - b));
     // On success the marker stays and expires: a review still running for
     // this id may yet try to save, and the marker is what refuses it.
     expect(redis.del).not.toHaveBeenCalled();
+  });
+
+  it('clears the marker and keeps the account when purging saved review batches fails', async () => {
+    const { service, checkpoints, redis } = withRedis();
+    const deleteRows = jest.fn();
+
+    checkpoints.purgeOwner.mockRejectedValue(new Error('ECONNREFUSED'));
+
+    await expect(service.deleteAccount(user, deleteRows)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(deleteRows).not.toHaveBeenCalled();
+    expect(redis.del).toHaveBeenCalledWith(MARKER);
   });
 
   it('clears the marker and keeps the account when a purge fails', async () => {

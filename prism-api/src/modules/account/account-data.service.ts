@@ -6,6 +6,7 @@ import { PullRequest, type User } from '../../database/entities';
 import { summarise, type BlueprintSummary } from '../../design/blueprint';
 import { DesignStore } from '../design/design.store';
 import { REDIS_CLIENT } from '../../redis/redis.constants';
+import { ReviewCheckpointStore } from '../review/review-checkpoint.store';
 import { ReviewRiskStore } from '../risk/review-risk.store';
 import { ERASURE_MARKER_TTL_SECONDS, erasureMarkerKey } from './erasure-marker';
 
@@ -28,6 +29,7 @@ export class AccountDataService {
     private readonly designs: DesignStore,
     private readonly reviewedRisk: ReviewRiskStore,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly checkpoints: ReviewCheckpointStore,
   ) {}
 
   /**
@@ -39,7 +41,7 @@ export class AccountDataService {
    * so work in flight cannot re-create what is being erased, and it is removed
    * if any step fails, because an attempt that failed has not deleted the
    * account: left in place, the marker would make the surviving account refuse
-   * new designs and skip saving review risk for an hour.
+   * new designs and skip saving review risk for two hours.
    *
    * On success it is left to expire on its own. The user id is never reused
    * and a review still running for it may yet try to save; the marker is what
@@ -58,6 +60,8 @@ export class AccountDataService {
 
       await this.reviewedRisk.purge(ids);
       await this.designs.purgeOwner(user.id);
+      // Finished batches of reviews in progress: findings about the user's code.
+      await this.checkpoints.purgeOwner(user.id);
       await deleteRows();
     } catch (error) {
       this.logger.error(
