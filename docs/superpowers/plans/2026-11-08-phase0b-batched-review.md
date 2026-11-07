@@ -938,7 +938,7 @@ git commit -m "Add a token pacer for the provider's per-minute allowance" -m "Gr
 - Consumes: `BatchConfig` (Task 1), `PaceProfile` (Task 2), `GROQ_MODELS`, `GROQ_TIMEOUT_MS` (`ai/ai-client.service.ts`), `REQUEST_TIMEOUT_MS` (`github/github-client.service.ts`).
 - Produces: `BATCH_CONFIG: BatchConfig`, `MAX_MERGED_FINDINGS = 40`, `CHECKPOINT_VERSION = 1`, `CHECKPOINT_TTL_SECONDS`, `GROQ_FREE_PACE: PaceProfile`, `OWN_KEY_PACE: PaceProfile`, `BATCH_WORST_CASE_MS`, `jobBudgetMs(maxBatches: number, pace?: PaceProfile): number`.
 
-- [ ] **Step 1: Write the failing test** `prism-api/src/modules/review/batching.config.spec.ts`:
+- [x] **Step 1: Write the failing test** `prism-api/src/modules/review/batching.config.spec.ts`:
 
 ```ts
 import { GROQ_MODELS, GROQ_TIMEOUT_MS } from '../../ai/ai-client.service';
@@ -967,12 +967,12 @@ describe('batching config', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm test -- src/modules/review/batching.config`
 Expected: FAIL, `Cannot find module './batching.config'`.
 
-- [ ] **Step 3: Implement** `prism-api/src/modules/review/batching.config.ts`:
+- [x] **Step 3: Implement** `prism-api/src/modules/review/batching.config.ts`:
 
 ```ts
 import { GROQ_MODELS, GROQ_TIMEOUT_MS } from '../../ai/ai-client.service';
@@ -1046,12 +1046,12 @@ export function jobBudgetMs(maxBatches: number, pace: PaceProfile = GROQ_FREE_PA
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm test -- src/modules/review/batching.config && npm run typecheck`
 Expected: PASS, `Tests: 4 passed, 4 total`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/modules/review/batching.config.ts prism-api/src/modules/review/batching.config.spec.ts
