@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserAiSettings } from '../database/entities';
+import { UserAiSettingsService } from './user-ai-settings.service';
 import { AiClientService } from './ai-client.service';
 import { FixesService } from './fixes.service';
 import { PromptBuilderService } from './prompt-builder.service';
@@ -8,7 +11,8 @@ import { PromptBuilderService } from './prompt-builder.service';
  * unchanged; only the duplication is gone.
  */
 @Module({
-  providers: [AiClientService, PromptBuilderService, FixesService],
-  exports: [AiClientService, PromptBuilderService, FixesService],
+  imports: [TypeOrmModule.forFeature([UserAiSettings])],
+  providers: [AiClientService, PromptBuilderService, FixesService, UserAiSettingsService],
+  exports: [AiClientService, PromptBuilderService, FixesService, UserAiSettingsService],
 })
 export class AiModule {}

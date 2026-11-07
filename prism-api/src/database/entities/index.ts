@@ -6,3 +6,4 @@ export * from './repository.entity';
 export * from './review-comment.entity';
 export * from './review.entity';
 export * from './user.entity';
+export * from './user-ai-settings.entity';

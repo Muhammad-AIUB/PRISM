@@ -27,6 +27,7 @@ import {
   Review,
   ReviewComment,
   User,
+  UserAiSettings,
 } from './database/entities';
 import { AuthWebModule } from './modules/auth/auth-web.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -79,6 +80,7 @@ import { RedisModule } from './redis/redis.module';
           Review,
           ReviewComment,
           User,
+          UserAiSettings,
         ],
 
         /**

@@ -515,5 +515,26 @@ ALTER TABLE ONLY public.reviews
 
 
 
+-- Name: user_ai_settings; Type: TABLE; Schema: public; Owner: -
+-- Track B (ADR 0012). Hand-applied: run before deploying the code that uses it.
+
+CREATE TABLE public.user_ai_settings (
+    user_id bigint NOT NULL,
+    provider character varying(32) NOT NULL,
+    model character varying(191) NOT NULL,
+    api_key text NOT NULL,
+    key_hint character varying(8) NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+ALTER TABLE ONLY public.user_ai_settings
+    ADD CONSTRAINT user_ai_settings_pkey PRIMARY KEY (user_id);
+
+ALTER TABLE ONLY public.user_ai_settings
+    ADD CONSTRAINT user_ai_settings_user_id_foreign
+    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
 \unrestrict wjcdXnRhm7ejMSSnByBjuPVLFgZSRZ3tQUatnNqEFT04Sarm8p2Z46dAviqbFuv
 

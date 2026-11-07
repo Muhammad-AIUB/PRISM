@@ -42,6 +42,7 @@ data, not an error. The history is in [ADR 0001](adr/0001-keep-the-stored-format
 erDiagram
     users ||--o{ repositories : "owns (CASCADE)"
     users ||--o{ audit_logs : "acts (CASCADE)"
+    users ||--o| user_ai_settings : "CASCADE"
     users ||--o{ personal_access_tokens : "tokenable_id (no FK)"
     repositories ||--o{ pull_requests : "CASCADE"
     repositories ||--o{ commit_reviews : "CASCADE, unique per SHA"
@@ -208,6 +209,20 @@ One row per finding on a PR review, written alongside the JSON arrays.
 | `abilities` | text | Always `'["*"]'`; parsed but never enforced |
 | `last_used_at`, `expires_at` | timestamp | `last_used_at` is updated without awaiting; `expires_at` is always null today but honoured if set |
 
+### `user_ai_settings`
+
+One row per user who saved their own AI provider key ([ADR 0012](adr/0012-optional-user-supplied-api-key.md)).
+**Not in the original schema: apply the DDL in `schema.sql` by hand in production before deploying the code.**
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | bigint | Primary key; FK to `users`, CASCADE (the key disappears with the account) |
+| `provider` | varchar(32) NOT NULL | `openai`, `google`, `openrouter` or `anthropic`. No CHECK; code guards it |
+| `model` | varchar(191) NOT NULL | The provider's model id |
+| `api_key` | text NOT NULL | Ciphertext (`CryptService`, same envelope as `users.github_token`). Only `UserAiSettingsService` reads or writes it; rotating `APP_KEY` makes it unreadable |
+| `key_hint` | varchar(8) NOT NULL | The last 4 characters, the only part ever shown |
+| `created_at`, `updated_at` | timestamp | Set by the service |
+
 ### `audit_logs`
 
 | Column | Type | Notes |
@@ -223,6 +238,7 @@ One row per finding on a PR review, written alongside the JSON arrays.
 |---|---|
 | `login` | GitHub sign-in completes |
 | `repo_connected` | A repository is connected |
+| `ai_settings_saved`, `ai_settings_cleared` | A personal AI model is saved or removed (never the key) |
 | `settings_updated` | Slack settings or a repository's review settings change |
 | `api_token_created`, `api_token_revoked` | Token lifecycle |
 | `review_reanalyzed` | Re-analyze from the web or the API |
