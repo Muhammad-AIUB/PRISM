@@ -16,11 +16,12 @@ worth reading alongside.
 | [0004](0004-server-side-api-access-on-one-hostname.md) | Call the API only from the server, and serve both services on one hostname | Accepted |
 | [0005](0005-wake-the-api-from-the-browser.md) | Wake a sleeping API from the visitor's browser | Superseded |
 | [0006](0006-validate-findings-against-the-diff.md) | Show the model anchors and validate every finding against the diff | Accepted |
-| [0007](0007-groq-is-the-only-ai-provider.md) | Groq is the only AI provider | Accepted, with a known cost |
+| [0007](0007-groq-is-the-only-ai-provider.md) | Groq is the only AI provider | Accepted, partly superseded by 0012 |
 | [0008](0008-deterministic-risk-radar.md) | Compute change risk deterministically, without a model | Accepted |
 | [0009](0009-design-studio-inline-and-in-redis.md) | Run Design Studio inline and store blueprints in Redis | Accepted |
 | [0010](0010-lead-with-a-verdict-and-keep-the-score.md) | Lead with a verdict, and keep the score | Accepted |
 | [0011](0011-partial-review-on-thin-coverage.md) | Partial review on thin coverage | Accepted |
+| [0012](0012-optional-user-supplied-api-key.md) | Optional user-supplied API key | Accepted |
 
 ## Writing a new one
 

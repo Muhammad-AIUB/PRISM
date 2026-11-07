@@ -1,6 +1,6 @@
 # 0007. Groq is the only AI provider
 
-Status: Accepted, with a known cost
+Status: Accepted, partly superseded by [0012](0012-optional-user-supplied-api-key.md): Groq remains the default provider; users may opt in to their own key.
 Date: 2026-09-03 (`bec6ce6`)
 
 ## Context
