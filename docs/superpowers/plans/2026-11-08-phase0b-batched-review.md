@@ -3002,7 +3002,7 @@ git commit -m "Review pull requests in batches" -m "The runner now hands the dif
 - Consumes: as Task 7.
 - Produces: `CommitReviewRunner` constructor is now `(commitReviews, batched, fixes, github, diffCache, crypt, summaryComment, slack, auditLog)`.
 
-- [ ] **Step 1: Write the failing test** `prism-api/src/modules/review/commit-review.runner.spec.ts`:
+- [x] **Step 1: Write the failing test** `prism-api/src/modules/review/commit-review.runner.spec.ts`:
 
 ```ts
 import { PARTIAL_REVIEW, UNPARSEABLE_REVIEW } from '../../ai/verdict';
@@ -3109,12 +3109,12 @@ describe('CommitReviewRunner batched review', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm test -- src/modules/review/commit-review.runner`
 Expected: FAIL (TypeScript: constructor arity).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```diff
 diff --git a/prism-api/src/modules/review/commit-review.runner.ts b/prism-api/src/modules/review/commit-review.runner.ts
@@ -3311,12 +3311,12 @@ diff --git a/prism-api/src/modules/review/commit-review.runner.ts b/prism-api/sr
        `Commit review job completed ${JSON.stringify({ review_id: review.id, score: overallScore })}`,
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm test -- src/modules/review/ && npm run typecheck` (keep the trailing slash)
 Expected: PASS for the whole `src/modules/review/` directory (the commit spec: 3 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/modules/review/commit-review.runner.ts prism-api/src/modules/review/commit-review.runner.spec.ts

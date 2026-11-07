@@ -1,20 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository as OrmRepository } from 'typeorm';
-import { AiClientService } from '../../ai/ai-client.service';
-import { clampScore } from '../../ai/json-extractor';
 import { FixesService } from '../../ai/fixes.service';
-import { PromptBuilderService } from '../../ai/prompt-builder.service';
 import { AuditLogService } from '../../audit/audit-log.service';
 import { DiffCacheService } from '../../cache/diff-cache.service';
 import { CryptService } from '../../common/utils/crypt.service';
 import { CommitReview } from '../../database/entities';
-import { prepareDiff } from '../../diff/prepare';
+import { detectLanguages } from '../../diff/language-detector';
 import { tryAssessRisk } from '../../diff/risk-radar';
-import { droppedCount, validateLayers } from '../../ai/issue-validator';
 import { validateFixes } from '../../ai/fix-validator';
 import { incompleteReviewSummary, isUnderCovered, scoreFor, verdictFor } from '../../ai/verdict';
 import { composeSummary } from './review-summary';
+import { BatchedReviewService } from './batched-review.service';
 import { GithubClientService } from '../../github/github-client.service';
 import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
@@ -26,7 +23,6 @@ import { SummaryCommentBuilder } from './summary-comment.builder';
  * the terminal-failure cleanup lives in the processor's failed handler, exactly
  * as the original splits handle() and failed().
  */
-const DIFF_LIMIT = 8000;
 
 @Injectable()
 export class CommitReviewRunner {
@@ -35,8 +31,7 @@ export class CommitReviewRunner {
   constructor(
     @InjectRepository(CommitReview)
     private readonly commitReviews: OrmRepository<CommitReview>,
-    private readonly aiClient: AiClientService,
-    private readonly promptBuilder: PromptBuilderService,
+    private readonly batched: BatchedReviewService,
     private readonly fixes: FixesService,
     private readonly github: GithubClientService,
     private readonly diffCache: DiffCacheService,
@@ -79,36 +74,43 @@ export class CommitReviewRunner {
       () => this.github.fetchCommitDiff(token, repository.fullName, review.commitSha, signal),
     );
 
-    // Same preparation as the pull-request runner, by design: these two stay in
-    // step, and a parser fix has to land once rather than twice.
-    const prepared = prepareDiff(diffBody, DIFF_LIMIT);
-    const languages = prepared.languages;
+    // Reviewed the same way as a pull request, by design: these two stay in
+    // step, and the batching lives in one service rather than in two files.
+    const languages = detectLanguages(diffBody);
+
+    // Computed from the whole diff, not the batches the model saw: blast radius
+    // is a property of the change, not of what fit. Also orders the files when
+    // the change is over the batch cap.
+    const risk = tryAssessRisk(diffBody);
 
     if (languages.length > 0) {
       await this.commitReviews.update(review.id, { detectedLanguages: languages });
     }
 
-    // 2. First AI pass.
-    const attemptResult = await this.aiClient.callWithFallback(
-      this.promptBuilder.buildSystemPrompt(languages, 'commit'),
-      `Review this commit diff:\n${prepared.body}`,
-      'commit_review',
+    // 2. First AI pass, one call per batch, each checked against its own anchors
+    // and checkpointed, so a retry resumes instead of paying again.
+    const checkpoint = { kind: 'commit', id: review.id, ownerId: repository.userId } as const;
+    const outcome = await this.batched.review({
+      diffBody,
+      languages,
+      target: 'commit',
+      lead: 'Review this commit diff',
+      context: 'commit_review',
+      ref: checkpoint,
+      risk,
       signal,
-      { userId: repository.userId },
-    );
+    });
 
-    const model = attemptResult.model;
-    const parsed = attemptResult.parsed;
-
-    // Graceful degradation: every model returned unparseable output. The user
-    // sees the raw text and a retry hint rather than a failed review.
-    if (!parsed) {
+    // Graceful degradation: no batch produced a usable answer. The user sees the
+    // raw text and a retry hint rather than a failed review.
+    if (outcome.status === 'unusable') {
       await this.commitReviews.update(review.id, {
         status: 'completed',
         overallScore: null,
-        summary: incompleteReviewSummary(attemptResult.raw),
-        aiModelUsed: model ?? 'multi-fallback',
+        summary: incompleteReviewSummary(outcome.raw),
+        aiModelUsed: outcome.model ?? 'multi-fallback',
       });
+      await this.batched.finish(checkpoint);
 
       this.logger.warn(
         `Commit review: no AI model returned a usable review (review_id=${review.id})`,
@@ -117,35 +119,25 @@ export class CommitReviewRunner {
       return;
     }
 
-    // Every reported location is checked against the lines actually rendered;
-    // anything that does not resolve is dropped rather than shown at a guess.
-    const layers = validateLayers(FixesService.layersFrom(parsed), prepared.anchors);
-    const dropped = droppedCount(layers);
-
-    if (dropped > 0) {
-      this.logger.log(
-        `issue_validation ${JSON.stringify({
-          review_id: review.id,
-          kept: layers.kept,
-          dropped,
-          reasons: layers.reasons,
-        })}`,
-      );
-    }
+    // Every reported location was checked, batch by batch, against the lines
+    // that batch rendered; anything that did not resolve is already dropped.
+    const { merged } = outcome;
+    const layers = merged.layers;
+    const model = merged.models.join(', ');
 
     // Same reconciliation as the pull-request runner: the score describes the
-    // list that survived validation, not the one the model first reported.
+    // list that survived validation, starting from the lowest batch score.
     const verdict = verdictFor([
       ...layers.security,
       ...layers.performance,
       ...layers.code_quality,
     ]);
-    const overallScore = scoreFor(clampScore(parsed.overall_score), verdict, prepared.coverageRatio);
+    const overallScore = scoreFor(merged.score, verdict, outcome.coverageRatio);
     const summary = composeSummary(
-      typeof parsed.summary === 'string' ? parsed.summary : null,
-      prepared.coverage,
-      dropped,
-      isUnderCovered(prepared.coverageRatio),
+      merged.summary,
+      outcome.coverage,
+      merged.dropped,
+      isUnderCovered(outcome.coverageRatio),
     );
 
     // Out of budget. Stop before persisting: the retry redoes all of this, and
@@ -167,9 +159,9 @@ export class CommitReviewRunner {
     // The selected text, matching the pull-request runner. The fixes pass keeps
     // its own 4000-character limit and its line numbers stay unvalidated.
     const suggestedFixes = await this.fixes.generate(
-      model ?? '',
+      merged.lastModel,
       layers,
-      prepared.selection.text,
+      outcome.selection.text,
       'commit',
       'commit_review',
       signal,
@@ -180,7 +172,7 @@ export class CommitReviewRunner {
       // Fixes carry their own file and line and the UI shows them in a badge,
       // so they are checked against the quoted code the same way the
       // pull-request runner checks them.
-      const checked = validateFixes(suggestedFixes.fixes, prepared.index);
+      const checked = validateFixes(suggestedFixes.fixes, outcome.index);
 
       if (checked.dropped > 0) {
         this.logger.log(
@@ -208,14 +200,13 @@ export class CommitReviewRunner {
         performanceIssues: layers.performance,
         codeQualityIssues: layers.code_quality,
         aiModelUsed: model,
-        // Computed from the whole diff, not the budgeted selection the model
-        // saw: blast radius is a property of the change, not of what fit.
-        risk: tryAssessRisk(diffBody),
+        risk,
       }),
       signal,
     );
 
     await this.commitReviews.update(review.id, { status: 'completed' });
+    await this.batched.finish(checkpoint);
 
     this.logger.log(
       `Commit review job completed ${JSON.stringify({ review_id: review.id, score: overallScore })}`,
