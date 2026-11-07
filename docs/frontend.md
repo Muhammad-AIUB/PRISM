@@ -41,7 +41,7 @@ each page can supply its own sticky header.
 | `/settings`, `/profile` | session | Slack, an optional own AI provider key and model, API tokens; profile |
 | `/security`, `/security/my-data`, `/security/audit-log` | `/security` public, rest session | What PRism stores, your data and deletion, your activity log |
 | `/help/how-to-use` | session | In-app guide |
-| `/demo`, `/demo/review/[id]` | public | A sample review on hard-coded data |
+| `/demo`, `/demo/review/[id]` | public | A sample dashboard and review on hard-coded data, in the login page's look: PRism header on top, tinted sidebar (`--bg-tint`) with a vertical rule beside the page |
 
 ## Talking to the API
 

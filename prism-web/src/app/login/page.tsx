@@ -9,6 +9,7 @@ import {
   ScanSearch,
   type LucideIcon,
 } from "lucide-react";
+import BrandLogo from "@/components/ui/BrandLogo";
 import PermissionsDisclosure from "@/components/auth/PermissionsDisclosure";
 
 export const metadata: Metadata = { title: "Sign in to PRism" };
@@ -24,30 +25,6 @@ function GithubIcon({ className }: { className?: string }) {
     >
       <path d="M12 .5C5.65.5.5 5.66.5 12.04c0 5.1 3.29 9.42 7.86 10.96.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.87-1.55-3.87-1.55-.52-1.34-1.27-1.7-1.27-1.7-1.04-.72.08-.7.08-.7 1.15.08 1.75 1.19 1.75 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.29-5.24-5.74 0-1.27.45-2.31 1.19-3.13-.12-.3-.52-1.49.11-3.11 0 0 .97-.31 3.18 1.2.92-.26 1.91-.39 2.9-.39s1.98.13 2.9.39c2.21-1.51 3.18-1.2 3.18-1.2.63 1.62.23 2.81.11 3.11.74.82 1.19 1.86 1.19 3.13 0 4.47-2.69 5.45-5.25 5.73.41.36.78 1.07.78 2.16 0 1.56-.01 2.82-.01 3.2 0 .31.21.68.8.56 4.56-1.54 7.85-5.86 7.85-10.96C23.5 5.66 18.35.5 12 .5z" />
     </svg>
-  );
-}
-
-function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2 rounded-md">
-      <span className="grid h-10 w-10 place-items-center rounded-md bg-accent-solid text-white">
-        <svg
-          viewBox="0 0 24 24"
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M3 7l9-4 9 4-9 4-9-4z" />
-          <path d="M3 17l9 4 9-4" />
-          <path d="M3 12l9 4 9-4" />
-        </svg>
-      </span>
-      <span className="brand-text text-3xl">PRism</span>
-    </Link>
   );
 }
 
@@ -102,7 +79,7 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen flex-col bg-bg-primary">
       <header className="flex h-14 shrink-0 items-center border-b border-border-base bg-bg-primary px-4 sm:px-8">
-        <Logo />
+        <BrandLogo />
       </header>
 
       <div className="flex flex-1 flex-col lg:grid lg:grid-cols-2">
