@@ -95,10 +95,15 @@ export class ReviewCheckpointStore {
           continue;
         }
 
-        const parsed: unknown = JSON.parse(value);
+        // One corrupt entry costs that batch's call on a retry, not its siblings.
+        try {
+          const parsed: unknown = JSON.parse(value);
 
-        if (isBatchResult(parsed)) {
-          found.set(Number(match[1]), parsed);
+          if (isBatchResult(parsed)) {
+            found.set(Number(match[1]), parsed);
+          }
+        } catch {
+          continue;
         }
       }
     } catch (error) {

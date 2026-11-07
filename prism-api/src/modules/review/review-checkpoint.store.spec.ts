@@ -66,6 +66,15 @@ describe('ReviewCheckpointStore', () => {
     expect((await build({ hgetall: jest.fn().mockRejectedValue(new Error('down')) }).load(REF, 'fp1')).size).toBe(0);
   });
 
+  it('keeps the good entries when a sibling is corrupt', async () => {
+    const redis = {
+      hgetall: jest.fn().mockResolvedValue({ fp: 'fp1', b0: 'not json', b1: JSON.stringify(result(1)), b2: '{"index":2}' }),
+    };
+    const found = await build(redis).load(REF, 'fp1');
+
+    expect([...found.keys()]).toEqual([1]);
+  });
+
   it('clears one review and swallows a failure', async () => {
     const redis = { del: jest.fn().mockResolvedValue(1) };
 
