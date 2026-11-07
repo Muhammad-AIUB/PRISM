@@ -17,13 +17,12 @@ import { SlackService } from '../../notifications/slack.service';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
- * Port of the original commit-review job.
+ * Runs one commit review job.
  *
  * Exceptions propagate on purpose so BullMQ retries per the backoff schedule;
- * the terminal-failure cleanup lives in the processor's failed handler, exactly
- * as the original splits handle() and failed().
+ * the terminal-failure cleanup lives in the processor's failed handler,
+ * not in run().
  */
-
 @Injectable()
 export class CommitReviewRunner {
   private readonly logger = new Logger(CommitReviewRunner.name);

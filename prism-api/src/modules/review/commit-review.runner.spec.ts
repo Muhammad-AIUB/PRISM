@@ -7,7 +7,12 @@ const addedFile = (name: string, lines: number): string =>
   Array.from({ length: lines }, (_, i) => `+const ${name}${i} = ${i};`).join('\n') +
   '\n';
 
-function build(diff: string, ai: unknown, config = { batchChars: 16_000, maxBatches: 8 }) {
+function build(
+  diff: string,
+  ai: unknown,
+  config = { batchChars: 16_000, maxBatches: 8 },
+  generate: jest.Mock = jest.fn().mockResolvedValue(null),
+) {
   const commitReviews = {
     findOne: jest.fn().mockResolvedValue({
       id: 4,
@@ -27,7 +32,7 @@ function build(diff: string, ai: unknown, config = { batchChars: 16_000, maxBatc
   const runner = new CommitReviewRunner(
     commitReviews as never,
     service,
-    { generate: jest.fn().mockResolvedValue(null) } as never,
+    { generate } as never,
     github as never,
     {
       commitKey: jest.fn().mockReturnValue('k'),
@@ -72,6 +77,42 @@ describe('CommitReviewRunner batched review', () => {
     expect(String(saved.summary).startsWith(PARTIAL_REVIEW)).toBe(false);
     expect(github.postCommitComment).toHaveBeenCalledTimes(1);
     expect(checkpoints.cleared).toEqual(['commit:4']);
+  });
+
+  it('gives the fixes pass the last model and the reviewed text, and checks its fixes against every batch', async () => {
+    answer.callWithFallback
+      .mockReset()
+      .mockResolvedValueOnce({ model: 'groq/first', parsed: { overall_score: 90, summary: 'a' }, raw: null })
+      .mockResolvedValueOnce({ model: 'groq/second', parsed: { overall_score: 90, summary: 'b' }, raw: null });
+
+    const fix = (file: string, code: string) => ({
+      layer: 'security',
+      file,
+      line: 1,
+      original_issue: 'i',
+      problematic_code: code,
+      suggested_code: 's',
+      explanation: 'e',
+    });
+    const generate = jest.fn().mockResolvedValue({
+      // 'a' was reviewed in batch one, 'd' in batch two: both must be in the merged index.
+      fixes: [fix('src/a.ts', 'const a0 = 0;'), fix('src/d.ts', 'const d0 = 0;'), fix('src/zzz.ts', 'const a0 = 0;')],
+    });
+    const diff = ['a', 'b', 'c', 'd'].map((n) => addedFile(n, 150)).join('');
+    const { runner, commitReviews } = build(diff, answer, { batchChars: 8000, maxBatches: 8 }, generate);
+
+    await runner.run(4, 1);
+
+    expect(generate.mock.calls[0]?.[0]).toBe('groq/second');
+    expect(generate.mock.calls[0]?.[2]).toContain('const a0 = 0;');
+    expect(generate.mock.calls[0]?.[2]).toContain('const d149 = 149;');
+
+    const written = commitReviews.update.mock.calls.find(
+      (call) => (call[1] as Record<string, unknown>).suggestedFixes != null,
+    );
+    const kept = (written?.[1] as { suggestedFixes: { fixes: Array<{ file: string }> } }).suggestedFixes.fixes;
+
+    expect(kept.map((f) => f.file)).toEqual(['src/a.ts', 'src/d.ts']);
   });
 
   it('marks the review partial and withholds the score when the cap leaves most of it unread', async () => {

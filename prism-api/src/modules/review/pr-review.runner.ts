@@ -20,7 +20,7 @@ import { ReviewRiskStore } from '../risk/review-risk.store';
 import { SummaryCommentBuilder } from './summary-comment.builder';
 
 /**
- * Port of the original pull-request review job.
+ * Runs one pull-request review job.
  *
  * Differs from the commit pipeline in three ways that are behaviour, not
  * style: the review lives in its own `reviews` row (upserted, not updated in

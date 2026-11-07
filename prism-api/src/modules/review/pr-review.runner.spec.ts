@@ -6,15 +6,14 @@ import { PARTIAL_REVIEW } from '../../ai/verdict';
 /**
  * Which diff the language detector gets to see.
  *
- * Both runners truncate the diff to DIFF_LIMIT for the AI call, then run
- * detectLanguages() on the TRUNCATED slice. The truncation is deliberate; the
- * detector reading it is not. `detected_languages` feeds two user-visible
- * things — the badges in the UI and the language-specific rule block appended
- * to the system prompt — so a PR whose Python files happen to sort after 8000
- * characters of Markdown silently gets reviewed with no Python rules at all.
+ * The AI call reads the batches, which cover a limited part of a large change,
+ * but `detected_languages` describes the whole pull request. It feeds the badges
+ * in the UI and the language-specific rule block appended to the system prompt,
+ * so a PR whose Python files sort after a long run of other files must still be
+ * reported, and reviewed with the Python rules.
  *
- * Nothing about that failure is visible: the review completes, the badges just
- * show fewer languages than the PR contains.
+ * Nothing about a miss is visible: the review completes, the badges just show
+ * fewer languages than the PR contains.
  */
 const bigTypeScriptDiff = (): string => {
   const filler = Array.from(
@@ -26,7 +25,7 @@ const bigTypeScriptDiff = (): string => {
     'diff --git a/src/app.ts b/src/app.ts\n' +
     '@@ -1,1 +1,401 @@\n' +
     `${filler}\n` +
-    // Well past the 8000-character truncation point.
+    // Past the first 8000 characters of the diff.
     'diff --git a/scripts/migrate.py b/scripts/migrate.py\n' +
     '@@ -1,1 +1,2 @@\n' +
     '+import os\n'
@@ -43,7 +42,7 @@ const repo = () => ({
 });
 
 describe('PullRequestReviewRunner language detection', () => {
-  it('detects languages from the whole diff, not the truncated slice', async () => {
+  it('detects languages from the whole diff, not only the part the model read', async () => {
     const pullRequests = repo();
     const reviews = repo();
     const reviewComments = repo();
@@ -119,7 +118,7 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
     '+export const allow = true;',
   ].join('\n');
 
-  function build(parsed: Record<string, unknown> | null) {
+  function build(parsed: Record<string, unknown> | null, generate: jest.Mock = jest.fn().mockResolvedValue(null)) {
     const pullRequests = repo();
     const reviews = repo();
     const reviewComments = repo();
@@ -152,7 +151,7 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
       buildBatchedReview({
         callWithFallback: jest.fn().mockResolvedValue({ model: 'groq/test', parsed, raw: parsed ? null : 'garbled' }),
       }).service,
-      { generate: jest.fn().mockResolvedValue(null) } as never,
+      { generate } as never,
       github as never,
       {
         pullRequestKey: jest.fn().mockReturnValue('k'),
@@ -183,6 +182,33 @@ describe('PullRequestReviewRunner reviewed-revision risk', () => {
 
     expect(riskWrite).toBeGreaterThan(rowWrite as number);
     expect(riskWrite).toBeLessThan(comment as number);
+  });
+
+  it('hands the fixes pass the last model and the reviewed text, and checks its fixes against the merged index', async () => {
+    const fix = (file: string, code: string) => ({
+      layer: 'security',
+      file,
+      line: 1,
+      original_issue: 'i',
+      problematic_code: code,
+      suggested_code: 's',
+      explanation: 'e',
+    });
+    const generate = jest.fn().mockResolvedValue({
+      fixes: [fix('src/auth/guard.ts', 'export const allow = true;'), fix('src/elsewhere.ts', 'export const allow = true;')],
+    });
+    const { runner, reviews } = build({ overall_score: 80, summary: 's' }, generate);
+
+    await runner.run(1, 1);
+
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate.mock.calls[0]?.[0]).toBe('groq/test');
+    expect(generate.mock.calls[0]?.[2]).toContain('+export const allow = true;');
+
+    const written = reviews.update.mock.calls.find((call) => (call[1] as Record<string, unknown>).suggestedFixes !== undefined);
+    const kept = (written?.[1] as { suggestedFixes: { fixes: Array<{ file: string }> } }).suggestedFixes.fixes;
+
+    expect(kept.map((f) => f.file)).toEqual(['src/auth/guard.ts']);
   });
 
   it('records it on the unparseable-output path too, which returns early', async () => {
