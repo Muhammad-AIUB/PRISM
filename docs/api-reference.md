@@ -218,6 +218,10 @@ return 401 `Unauthenticated.` without it, except where marked public.
 | POST | `/settings/api-tokens` | `{ name }` (at most 64 characters) | `{ token, new_api_token: "{id}\|{plaintext}" }`. The plaintext is returned once |
 | DELETE | `/settings/api-tokens/:tokenId` | | Revokes |
 | POST | `/settings/test-slack` | `{ slack_webhook_url }` | `{ ok, message }`. A Slack rejection is a 200 with `ok: false` |
+| GET | `/settings/ai` | | `{ default: { provider: 'groq', models }, own, providers }`. `own` is `{ provider, model, key_hint, updated_at }` or `null`; the key is never returned |
+| POST | `/settings/ai/models` | `{ provider, api_key? }` | `{ models }` from the provider, using the typed key or the saved one for the same provider. 422 `errors.api_key` when rejected or unreachable |
+| PUT | `/settings/ai` | `{ provider, model, api_key? }` | `{ message, own }`. The model must be in the provider's list; a provider change needs a key |
+| DELETE | `/settings/ai` | | `{ message }`. Back to the default model |
 | GET | `/security/audit-log` | | `{ logs }`, newest first, at most 200 |
 | GET | `/security/my-data` | | `{ profile, token_preview, stats, designs, repositories }`. The token preview shows only its first 4 and last 4 characters and its length |
 | DELETE | `/security/my-data` | `{ confirm: "DELETE" }` | Full account deletion. 503 if it could not finish |
