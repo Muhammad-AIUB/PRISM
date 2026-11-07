@@ -68,3 +68,24 @@ describe('prepareDiff', () => {
     expect(prepared.coverage).toBeNull();
   });
 });
+
+describe('prepareDiff coverageRatio', () => {
+  const one = (n: string): string =>
+    `diff --git a/${n}.ts b/${n}.ts
+index 1111111..2222222 100644
+--- a/${n}.ts
++++ b/${n}.ts
+@@ -1,1 +1,1 @@
++const ${n} = 1
+`;
+
+  it('is 1 when everything fit', () => {
+    expect(prepareDiff(one('a') + one('b'), 10_000).coverageRatio).toBe(1);
+  });
+
+  it('is below 1 when files were left out', () => {
+    const diff = ['a', 'b', 'c', 'd'].map(one).join('');
+
+    expect(prepareDiff(diff, one('a').length).coverageRatio).toBeCloseTo(0.25);
+  });
+});

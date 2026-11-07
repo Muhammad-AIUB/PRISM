@@ -1,5 +1,5 @@
 import { buildHunkIndex, type HunkIndex } from './hunk-index';
-import { selectForReview, type Selection } from './file-selection';
+import { coverageRatio, selectForReview, type Selection } from './file-selection';
 import { renderWithAnchors, type Anchor } from './render';
 import { detectLanguages } from './language-detector';
 
@@ -19,6 +19,8 @@ export interface PreparedDiff {
   languages: string[];
   /** One sentence for the reader, or null when nothing was left out. */
   coverage: string | null;
+  /** 0..1 share of reviewable code the model saw. */
+  coverageRatio: number;
   selection: Selection;
   /**
    * The parsed index of what was sent. The second AI pass sees raw code rather
@@ -69,6 +71,7 @@ export function prepareDiff(diffBody: string, budget: number): PreparedDiff {
     // language rules the prompt carries, which is what it used to do.
     languages: detectLanguages(diffBody),
     coverage: coverageSentence(selection),
+    coverageRatio: coverageRatio(selection),
     selection,
   };
 }
