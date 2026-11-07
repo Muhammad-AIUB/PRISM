@@ -21,7 +21,8 @@ import {
 } from '@/app/settings/actions';
 import AuthenticatedLayout from '@/components/layouts/AuthenticatedLayout';
 import FlashBanner from '@/components/ui/FlashBanner';
-import type { ApiToken, SessionUser, SettingsData } from '@/lib/types';
+import type { AiSettings, ApiToken, SessionUser, SettingsData } from '@/lib/types';
+import AiModelSection from './AiModelSection';
 
 /** Port of Pages/Settings/Index.jsx. */
 function ApiTokensSection({
@@ -192,9 +193,11 @@ function ApiTokensSection({
 export default function SettingsView({
   sessionUser,
   data,
+  aiSettings,
 }: {
   sessionUser: SessionUser;
   data: SettingsData;
+  aiSettings: AiSettings;
 }) {
   const { user, api_tokens } = data;
 
@@ -390,6 +393,8 @@ export default function SettingsView({
             </div>
           </section>
         </form>
+
+        <AiModelSection settings={aiSettings} />
 
         <ApiTokensSection tokens={api_tokens} onFlash={setFlash} />
       </div>

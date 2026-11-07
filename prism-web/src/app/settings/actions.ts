@@ -71,6 +71,55 @@ export async function revokeApiToken(id: number): Promise<ActionResult> {
   }
 }
 
+/** The key is passed through to the API and not kept: nothing here stores or logs it. */
+export async function listAiModels(
+  provider: string,
+  apiKey?: string,
+): Promise<ActionResult & { models?: string[] }> {
+  try {
+    const body = await apiSend<{ models: string[] }>('/settings/ai/models', 'POST', {
+      provider,
+      api_key: apiKey,
+    });
+
+    return { ok: true, message: '', models: body.models };
+  } catch (error) {
+    return toResult(error, 'Could not load models.');
+  }
+}
+
+export async function saveAiSettings(input: {
+  provider: string;
+  model: string;
+  apiKey?: string;
+}): Promise<ActionResult> {
+  try {
+    const body = await apiSend<{ message: string }>('/settings/ai', 'PUT', {
+      provider: input.provider,
+      model: input.model,
+      api_key: input.apiKey,
+    });
+
+    revalidatePath('/settings');
+
+    return { ok: true, message: body.message };
+  } catch (error) {
+    return toResult(error, 'Could not save your AI model.');
+  }
+}
+
+export async function clearAiSettings(): Promise<ActionResult> {
+  try {
+    const body = await apiSend<{ message: string }>('/settings/ai', 'DELETE');
+
+    revalidatePath('/settings');
+
+    return { ok: true, message: body.message };
+  } catch (error) {
+    return toResult(error, 'Could not switch back to the default model.');
+  }
+}
+
 /**
  * Sends a probe to a candidate webhook without saving it. A URL Slack rejects
  * is not an error here — the request succeeded, Slack just did not like it —

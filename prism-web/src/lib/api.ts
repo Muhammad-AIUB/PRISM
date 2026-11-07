@@ -27,7 +27,7 @@ export class ApiError extends Error {
 }
 
 interface ApiRequest {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Pages read live data; nothing here should be cached between users. */
   cache?: RequestCache;
@@ -130,7 +130,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiSend<T>(
   path: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   body?: unknown,
 ): Promise<T> {
   return parse<T>(await request(path, { method, body }));

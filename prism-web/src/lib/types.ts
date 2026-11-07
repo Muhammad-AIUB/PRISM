@@ -239,6 +239,12 @@ export interface SettingsData {
   api_tokens: ApiToken[];
 }
 
+export interface AiSettings {
+  default: { provider: 'groq'; models: string[] };
+  own: { provider: string; model: string; key_hint: string; updated_at: string | null } | null;
+  providers: { id: string; label: string }[];
+}
+
 export interface AuditLogEntry {
   id: number;
   action: string;
