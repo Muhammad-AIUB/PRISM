@@ -684,7 +684,7 @@ git commit -m "Add a pure packer that splits a change into reviewable batches" -
   - `interface PaceClock { now(): number; sleep(ms: number, signal?: AbortSignal): Promise<void> }`, `const systemClock: PaceClock`
   - `class TokenPacer { constructor(profile: PaceProfile, clock?: PaceClock); estimate(inputChars: number): number; acquire(tokens: number, signal?: AbortSignal): Promise<number> }`
 
-- [ ] **Step 1: Write the failing test** `prism-api/src/ai/token-pacer.spec.ts`:
+- [x] **Step 1: Write the failing test** `prism-api/src/ai/token-pacer.spec.ts`:
 
 ```ts
 import { systemClock, TokenPacer, type PaceClock, type PaceProfile } from './token-pacer';
@@ -798,12 +798,12 @@ describe('systemClock.sleep', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm test -- src/ai/token-pacer`
 Expected: FAIL, `Cannot find module './token-pacer'`.
 
-- [ ] **Step 3: Implement** `prism-api/src/ai/token-pacer.ts`:
+- [x] **Step 3: Implement** `prism-api/src/ai/token-pacer.ts`:
 
 ```ts
 /**
@@ -915,12 +915,12 @@ export class TokenPacer {
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm test -- src/ai/token-pacer && npm run typecheck`
 Expected: PASS, `Tests: 10 passed, 10 total`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prism-api/src/ai/token-pacer.ts prism-api/src/ai/token-pacer.spec.ts
